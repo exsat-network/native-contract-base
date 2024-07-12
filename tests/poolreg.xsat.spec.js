@@ -1,0 +1,271 @@
+const { Asset, Name, TimePointSec } = require('@greymass/eosio')
+const { Blockchain, log, expectToThrow } = require('@proton/vert')
+const { getTokenBalance } = require('./src/help')
+const { BTC, BTC_CONTRACT } = require('./src/constants')
+
+// Vert EOS VM
+const blockchain = new Blockchain()
+//log.setLevel('debug');
+// contracts
+const contracts = {
+    poolreg: blockchain.createContract('poolreg.xsat', 'tests/wasm/poolreg.xsat', true),
+    exsat: blockchain.createContract('exsat.xsat', 'tests/wasm/exsat.xsat', true),
+    rescmng: blockchain.createContract('rescmng.xsat', 'tests/wasm/rescmng.xsat', true),
+    btc: blockchain.createContract('btc.xsat', 'tests/wasm/btc.xsat', true),
+    eos: blockchain.createContract('eosio.token', 'tests/wasm/exsat.xsat', true),
+}
+
+// accounts
+blockchain.createAccounts('blksync.xsat', 'rwddist.xsat', 'alice', 'bob', 'amy', 'fees.xsat')
+
+const get_synchronizer = synchronizer => {
+    let key = Name.from(synchronizer).value.value
+    return contracts.poolreg.tables.synchronizer().getTableRow(key)
+}
+
+const get_miners = () => {
+    return contracts.poolreg.tables.miners().getTableRows()
+}
+
+// one-time setup
+beforeAll(async () => {
+    blockchain.setTime(TimePointSec.from(new Date()))
+    // create XSAT token
+    await contracts.exsat.actions.create(['exsat.xsat', '10000000.00000000 XSAT']).send('exsat.xsat@active')
+    await contracts.exsat.actions.issue(['exsat.xsat', '10000000.00000000 XSAT', 'init']).send('exsat.xsat@active')
+
+    // transfer XSAT to account
+    await contracts.exsat.actions
+        .transfer(['exsat.xsat', 'bob', '1000000.00000000 XSAT', ''])
+        .send('exsat.xsat@active')
+    await contracts.exsat.actions
+        .transfer(['exsat.xsat', 'rwddist.xsat', '1000000.00000000 XSAT', ''])
+        .send('exsat.xsat@active')
+
+    // create EOS token
+    await contracts.eos.actions.create(['eosio.token', '10000000000.0000 EOS']).send('eosio.token@active')
+    await contracts.eos.actions.issue(['eosio.token', '10000000000.0000 EOS', 'init']).send('eosio.token@active')
+
+    // transfer EOS to account
+    await contracts.eos.actions.transfer(['eosio.token', 'bob', '100000.0000 EOS', 'init']).send('eosio.token@active')
+    await contracts.eos.actions
+        .transfer(['eosio.token', 'rwddist.xsat', '100000.0000 EOS', 'init'])
+        .send('eosio.token@active')
+
+    // create BTC token
+    await contracts.btc.actions.create(['btc.xsat', '10000000.00000000 BTC']).send('btc.xsat@active')
+    await contracts.btc.actions.issue(['btc.xsat', '10000000.00000000 BTC', 'init']).send('btc.xsat@active')
+
+    // transfer BTC to account
+    await contracts.btc.actions.transfer(['btc.xsat', 'bob', '1000000.00000000 BTC', '']).send('btc.xsat@active')
+    await contracts.btc.actions.transfer(['btc.xsat', 'alice', '1000000.00000000 BTC', '']).send('btc.xsat@active')
+    await contracts.btc.actions.transfer(['btc.xsat', 'amy', '1000000.00000000 BTC', '']).send('btc.xsat@active')
+
+    // rescmng.xsat init
+    await contracts.rescmng.actions
+        .init([
+            'fees.xsat',
+            Asset.fromUnits(5, BTC),
+            Asset.fromUnits(2, BTC),
+            Asset.fromUnits(1, BTC),
+            Asset.fromUnits(3, BTC),
+            Asset.fromUnits(3, BTC),
+        ])
+        .send('rescmng.xsat@active')
+})
+
+describe('poolreg.xsat', () => {
+    it('initpool: missing required authority', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions
+                .initpool(['bob', 839999, 'bob', ['12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL']])
+                .send('alice@active'),
+            'missing required authority poolreg.xsat'
+        )
+    })
+    it('initpool', async () => {
+        await contracts.poolreg.actions
+            .initpool(['bob', 839999, 'bob', ['12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL']])
+            .send('poolreg.xsat@active')
+        expect(get_synchronizer('bob')).toEqual({
+            synchronizer: 'bob',
+            claimed: '0.00000000 XSAT',
+            latest_produced_block_height: 839999,
+            memo: '',
+            num_slots: 2,
+            produced_block_limit: 432,
+            reward_recipient: 'bob',
+            unclaimed: '0.00000000 XSAT',
+            latest_reward_block: 0,
+            latest_reward_time: '1970-01-01T00:00:00',
+        })
+        expect(get_miners()).toEqual([
+            {
+                id: 0,
+                synchronizer: 'bob',
+                miner: '12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL',
+            },
+        ])
+    })
+
+    it('no balance to claim', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.claim(['bob']).send('poolreg.xsat@active'),
+            'eosio_assert: poolreg.xsat::claim: no balance to claim'
+        )
+    })
+
+    it('only transfer from [rwddist.xsat]', async () => {
+        await expectToThrow(
+            contracts.exsat.actions.transfer(['bob', 'poolreg.xsat', '1.00000000 XSAT', '']).send('bob@active'),
+            'eosio_assert: poolreg.xsat: only transfer from [rwddist.xsat]'
+        )
+    })
+
+    it('only transfer [exsat.xsat/XSAT]', async () => {
+        await expectToThrow(
+            contracts.eos.actions
+                .transfer(['rwddist.xsat', 'poolreg.xsat', '1.0000 EOS', ''])
+                .send('rwddist.xsat@active'),
+            'eosio_assert: poolreg.xsat: only transfer [exsat.xsat/XSAT]'
+        )
+    })
+
+    it('invalid memo', async () => {
+        await expectToThrow(
+            contracts.exsat.actions
+                .transfer(['rwddist.xsat', 'poolreg.xsat', '1.00000000 XSAT', ''])
+                .send('rwddist.xsat@active'),
+            'eosio_assert: poolreg.xsat: invalid memo ex: "<synchronizer><height>"'
+        )
+    })
+
+    it('reward received', async () => {
+        await contracts.exsat.actions
+            .transfer(['rwddist.xsat', 'poolreg.xsat', '100.00000000 XSAT', 'bob,840000'])
+            .send('rwddist.xsat@active')
+
+        expect(get_synchronizer('bob')).toEqual({
+            synchronizer: 'bob',
+            claimed: '0.00000000 XSAT',
+            latest_produced_block_height: 839999,
+            memo: '',
+            num_slots: 2,
+            produced_block_limit: 432,
+            reward_recipient: 'bob',
+            unclaimed: '100.00000000 XSAT',
+            latest_reward_block: 840000,
+            latest_reward_time: TimePointSec.from(blockchain.timestamp).toString(),
+        })
+    })
+
+    it('setfinacct: missing required authority', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.setfinacct(['bob', 'bob']).send('alice@active'),
+            'missing required authority bob'
+        )
+    })
+
+    it('setfinacct', async () => {
+        await contracts.poolreg.actions
+            .setfinacct(['bob', '0x36825bf3Fbdf5a29E2d5148bfe7Dcf7B5639e320'])
+            .send('bob@active')
+        expect(get_synchronizer('bob')).toEqual({
+            synchronizer: 'bob',
+            claimed: '0.00000000 XSAT',
+            latest_produced_block_height: 839999,
+            memo: '0x36825bf3Fbdf5a29E2d5148bfe7Dcf7B5639e320',
+            num_slots: 2,
+            produced_block_limit: 432,
+            reward_recipient: 'erc2o.xsat',
+            unclaimed: '100.00000000 XSAT',
+            latest_reward_block: 840000,
+            latest_reward_time: TimePointSec.from(blockchain.timestamp).toString(),
+        })
+
+        await contracts.poolreg.actions.setfinacct(['bob', 'alice']).send('bob@active')
+        expect(get_synchronizer('bob')).toEqual({
+            synchronizer: 'bob',
+            claimed: '0.00000000 XSAT',
+            latest_produced_block_height: 839999,
+            memo: '',
+            num_slots: 2,
+            produced_block_limit: 432,
+            reward_recipient: 'alice',
+            unclaimed: '100.00000000 XSAT',
+            latest_reward_block: 840000,
+            latest_reward_time: TimePointSec.from(blockchain.timestamp).toString(),
+        })
+    })
+
+    it('claim: missing authority financial account', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.claim(['bob']).send('bob@active'),
+            'missing required authority alice'
+        )
+    })
+
+    it('claim', async () => {
+        const before_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', 'XSAT')
+        await contracts.poolreg.actions.claim(['bob']).send('alice@active')
+        const after_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', 'XSAT')
+        expect(after_balance - before_balance).toEqual(10000000000)
+
+        expect(get_synchronizer('bob')).toEqual({
+            synchronizer: 'bob',
+            claimed: '100.00000000 XSAT',
+            latest_produced_block_height: 839999,
+            memo: '',
+            num_slots: 2,
+            produced_block_limit: 432,
+            reward_recipient: 'alice',
+            unclaimed: '0.00000000 XSAT',
+            latest_reward_block: 840000,
+            latest_reward_time: TimePointSec.from(blockchain.timestamp).toString(),
+        })
+    })
+
+    it('buyslot: missing required authority', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.buyslot(['bob', 'bob', 1]).send('alice@active'),
+            'missing required authority bob'
+        )
+    })
+
+    it('buyslot: insufficient balance', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.buyslot(['bob', 'bob', 1]).send('bob@active'),
+            'eosio_assert: rescmng.xsat::pay: insufficient balance'
+        )
+    })
+
+    it('buyslot', async () => {
+        // recharge
+        await contracts.btc.actions.transfer(['bob', 'rescmng.xsat', '1.00000000 BTC', 'bob']).send('bob@active')
+        await contracts.btc.actions.transfer(['amy', 'rescmng.xsat', '1.00000000 BTC', 'amy']).send('amy@active')
+
+        // buyslot for self
+        const before_bob_slots = get_synchronizer('bob').num_slots
+        await contracts.poolreg.actions.buyslot(['bob', 'bob', 1]).send('bob@active')
+        const after_bob_slots = get_synchronizer('bob').num_slots
+        expect(after_bob_slots - before_bob_slots).toEqual(1)
+
+        // buyslot for others
+        const before_alice_slots = get_synchronizer('bob').num_slots
+        await contracts.poolreg.actions.buyslot(['amy', 'bob', 1]).send('amy@active')
+        const after_alice_slots = get_synchronizer('bob').num_slots
+        expect(after_alice_slots - before_alice_slots).toEqual(1)
+    })
+
+    it('config: missing required authority', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.config(['bob', 1]).send('alice@active'),
+            'missing required authority poolreg.xsat'
+        )
+    })
+
+    it('config', async () => {
+        await contracts.poolreg.actions.config(['bob', 0]).send('poolreg.xsat@active')
+        expect(get_synchronizer('bob').produced_block_limit).toEqual(0)
+    })
+})

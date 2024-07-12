@@ -1,0 +1,8 @@
+node_modules
+coverage
+.vscode
+!external/**/*.wasm
+!external/**/*.abi
+.clangd
+.idea
+wasm
