@@ -1,0 +1,3 @@
+[submodule "external/intx"]
+	path = external/intx
+	url = https://github.com/eosnetworkfoundation/intx

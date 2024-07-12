@@ -1,0 +1,18 @@
+{
+    "private": true,
+    "name": "contract-of-consensus",
+    "version": "1.0.0",
+    "description": "consensus contract",
+    "license": "MIT",
+    "repository": "https://github.com/exsat-network/contract-of-consensus.git",
+    "contributors": [],
+    "scripts": {
+        "build": "cd script && ./build.sh",
+        "test_build": "cd tests && ./build.sh",
+        "test": "jest --verbose"
+    },
+    "devDependencies": {
+        "@proton/vert": "^0.3.24",
+        "jest": "^29.7.0"
+    }
+}
