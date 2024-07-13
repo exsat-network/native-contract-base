@@ -8,7 +8,7 @@
 #include "../internal/utils.hpp"
 
 using namespace eosio;
-using std::string;
+using namespace std;
 
 class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
    public:
@@ -85,6 +85,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         uint16_t num_retain_data_blocks = 100;
         uint16_t num_txs_per_verification = 2048;
         uint8_t num_merkle_layer = 11;
+        uint16_t num_miner_priority_blocks = 10;
     };
     typedef eosio::singleton<"config"_n, config_row> config_table;
 
@@ -107,12 +108,12 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         uint64_t value;
         uint64_t primary_key() const { return id; }
         checksum256 by_scriptpubkey() const { return xsat::utils::hash(scriptpubkey); }
-        checksum256 by_outpoint() const { return get_output_id(txid, index); }
+        checksum256 by_utxo_id() const { return compute_utxo_id(txid, index); }
     };
     typedef eosio::multi_index<
         "utxos"_n, utxo_row,
         eosio::indexed_by<"scriptpubkey"_n, const_mem_fun<utxo_row, checksum256, &utxo_row::by_scriptpubkey>>,
-        eosio::indexed_by<"byoutpoint"_n, const_mem_fun<utxo_row, checksum256, &utxo_row::by_outpoint>>>
+        eosio::indexed_by<"byutxoid"_n, const_mem_fun<utxo_row, checksum256, &utxo_row::by_utxo_id>>>
         utxo_table;
 
     /**
@@ -314,6 +315,11 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     [[eosio::action]]
     void consensus(const uint64_t height, const checksum256 &hash);
 
+#ifdef DEBUG
+    [[eosio::action]]
+    void cleartable(const name table_name, const optional<uint64_t> scope, const optional<uint64_t> max_rows);
+#endif
+
     using consensus_action = eosio::action_wrapper<"consensus"_n, &utxo_manage::consensus>;
 
     static std::string get_parsing_status_name(const parsing_status status) {
@@ -332,11 +338,11 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         }
     }
 
-    static checksum256 get_output_id(const checksum256 &txid, const uint32_t index) {
+    static checksum256 compute_utxo_id(const checksum256 &tx_id, const uint32_t index) {
         std::vector<char> result;
         result.resize(36);
         eosio::datastream<char *> ds(result.data(), result.size());
-        ds << txid;
+        ds << tx_id;
         ds << index;
         return eosio::sha256((char *)result.data(), result.size());
     }
@@ -390,4 +396,9 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     utxo_row save_utxo(const std::vector<uint8_t> &script_data, const uint64_t value, const checksum256 &txid,
                        const uint32_t index);
+
+#ifdef DEBUG
+    template <typename T>
+    void clear_table(T &table, uint64_t rows_to_clear);
+#endif
 };

@@ -8,7 +8,7 @@
 #include "../internal/utils.hpp"
 
 using namespace eosio;
-using std::string;
+using namespace std;
 
 class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
    public:
@@ -246,6 +246,12 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     [[eosio::action]]
     verify_block_result verify(const name &from, const uint64_t height, const checksum256 &hash);
 
+#ifdef DEBUG
+    [[eosio::action]]
+    void cleartable(const name table_name, const name &synchronizer, const uint64_t height,
+                    const optional<uint64_t> max_rows);
+#endif
+
     // logs
     [[eosio::action]]
     void bucketlog(const uint64_t bucket_id, const name &synchronizer, const uint64_t height, const checksum256 &hash,
@@ -311,4 +317,9 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     template <typename T, typename ITR>
     verify_block_result check_fail(T &_block_chunk, const ITR block_chunk_itr, const string &state,
                                    const checksum256 &block_hash);
+
+#ifdef DEBUG
+    template <typename T>
+    void clear_table(T &table, uint64_t rows_to_clear);
+#endif
 };

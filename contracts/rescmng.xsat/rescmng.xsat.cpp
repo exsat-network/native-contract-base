@@ -2,6 +2,10 @@
 #include <btc.xsat/btc.xsat.hpp>
 #include "../internal/utils.hpp"
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth get_self()
 [[eosio::action]]
 void resource_management::init(const name& fee_account, const asset& cost_per_slot, const asset& cost_per_upload,

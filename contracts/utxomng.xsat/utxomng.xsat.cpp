@@ -8,6 +8,10 @@
 #include <bitcoin/core/transaction.hpp>
 #include <bitcoin/script/address.hpp>
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth get_self()
 [[eosio::action]]
 void utxo_manage::init(const uint64_t height, const checksum256& hash, const checksum256& cumulative_work) {
@@ -53,8 +57,8 @@ void utxo_manage::addutxo(const uint64_t id, const checksum256& txid, const uint
                           const vector<uint8_t>& scriptpubkey, const uint64_t value) {
     require_auth(get_self());
 
-    auto utxo_idx = _utxo.get_index<"byoutpoint"_n>();
-    auto utxo_itr = utxo_idx.find(get_output_id(txid, index));
+    auto utxo_idx = _utxo.get_index<"byutxoid"_n>();
+    auto utxo_itr = utxo_idx.find(compute_utxo_id(txid, index));
     if (utxo_itr == utxo_idx.end()) {
         _utxo.emplace(get_self(), [&](auto& row) {
             row.id = id;
@@ -446,9 +450,9 @@ void utxo_manage::process_transactions(utxo_manage::chain_state_row* chain_state
 }
 
 void utxo_manage::remove_utxo(const checksum256& prev_txid, const uint32_t prev_index) {
-    auto utxo_idx = _utxo.get_index<"byoutpoint"_n>();
+    auto utxo_idx = _utxo.get_index<"byutxoid"_n>();
 
-    auto utxo_itr = utxo_idx.find(get_output_id(prev_txid, prev_index));
+    auto utxo_itr = utxo_idx.find(compute_utxo_id(prev_txid, prev_index));
     if (utxo_itr != utxo_idx.end()) {
         utxo_idx.erase(utxo_itr);
     }

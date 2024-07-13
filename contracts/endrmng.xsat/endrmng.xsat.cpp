@@ -2,6 +2,10 @@
 #include <btc.xsat/btc.xsat.hpp>
 #include "../internal/safemath.hpp"
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth get_self()
 [[eosio::action]]
 void endorse_manage::addwhitelist(const name& type, const name& account) {

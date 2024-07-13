@@ -3,6 +3,10 @@
 #include <blkendt.xsat/blkendt.xsat.hpp>
 #include <utxomng.xsat/utxomng.xsat.hpp>
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth utxomng.xsat
 [[eosio::action]]
 void reward_distribution::distribute(const uint64_t height) {

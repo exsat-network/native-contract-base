@@ -7,7 +7,7 @@
 #include <endrmng.xsat/endrmng.xsat.hpp>
 
 using namespace eosio;
-using std::string;
+using namespace std;
 
 class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract {
    public:
@@ -83,6 +83,11 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
     [[eosio::action]]
     void endtreward(const name& parser, const uint64_t height, uint32_t from_index, const uint32_t to_index);
 
+#ifdef DEBUG
+    [[eosio::action]]
+    void cleartable(const name table_name, const optional<name> scope, const optional<uint64_t> max_rows);
+#endif
+
     // logs
     [[eosio::action]]
     void rewardlog(const uint64_t height, const checksum256& hash, const name& parser, const asset& synchronizer_reward,
@@ -106,4 +111,9 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
     reward_log_table _reward_log = reward_log_table(_self, _self.value);
 
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
+
+#ifdef DEBUG
+    template <typename T>
+    void clear_table(T& table, uint64_t rows_to_clear);
+#endif
 };

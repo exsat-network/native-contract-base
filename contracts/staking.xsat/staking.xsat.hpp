@@ -7,7 +7,7 @@
 #include "../internal/utils.hpp"
 
 using namespace eosio;
-using std::string;
+using namespace std;
 
 class [[eosio::contract("staking.xsat")]] stake : public contract {
    public:
@@ -141,6 +141,11 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
     [[eosio::on_notify("*::transfer")]]
     void on_transfer(const name& from, const name& to, const asset& quantity, const string& memo);
 
+#ifdef DEBUG
+    [[eosio::action]]
+    void cleartable(const name table_name, const optional<name> scope, const optional<uint64_t> max_rows);
+#endif
+
    private:
     // table init
     global_id_table _global_id = global_id_table(_self, _self.value);
@@ -151,4 +156,9 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
     asset get_balance(const name& owner, const extended_symbol& token);
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
     void do_stake(const name& from, const name& validator, const extended_asset& ext_in);
+
+#ifdef DEBUG
+    template <typename T>
+    void clear_table(T& table, uint64_t rows_to_clear);
+#endif
 };

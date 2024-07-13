@@ -3,6 +3,10 @@
 #include <btc.xsat/btc.xsat.hpp>
 #include "../internal/defines.hpp"
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth blksync.xsat
 [[eosio::action]]
 void pool::updateheight(const name& synchronizer, const uint64_t latest_produced_block_height,
@@ -23,11 +27,12 @@ void pool::updateheight(const name& synchronizer, const uint64_t latest_produced
             row.unclaimed = asset{0, XSAT_SYMBOL};
         });
     } else {
-        if (synchronizer_itr->latest_produced_block_height < latest_produced_block_height) {
-            _synchronizer.modify(synchronizer_itr, same_payer, [&](auto& row) {
-                row.latest_produced_block_height = latest_produced_block_height;
-            });
+        if (synchronizer_itr->latest_produced_block_height >= latest_produced_block_height) {
+            return;
         }
+        _synchronizer.modify(synchronizer_itr, same_payer, [&](auto& row) {
+            row.latest_produced_block_height = latest_produced_block_height;
+        });
     }
 
     save_miners(synchronizer, miners);

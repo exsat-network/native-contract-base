@@ -7,6 +7,10 @@
 #include <cmath>
 #include "../internal/defines.hpp"
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth utxomng.xsat
 [[eosio::action]]
 void block_sync::consensus(const uint64_t height, const name& synchronizer, const uint64_t bucket_id) {
@@ -349,7 +353,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
 
         if (verify_info->processed_position == block_bucket_itr->size
             && verify_info->num_transactions > verify_info->processed_transactions) {
-            return check_fail(block_bucket_idx, block_bucket_itr, "not_enough_data", hash);
+            return check_fail(block_bucket_idx, block_bucket_itr, "missing_block_data", hash);
         }
 
         if (verify_info->num_transactions == verify_info->processed_transactions
