@@ -166,6 +166,8 @@ $ cleos push action utxo.xsat processblock '{"synchronizer": "alice", "process_r
 $ cleos get table utxomng.xsat utxomng.xsat chainstate
 $ cleos get table utxomng.xsat utxomng.xsat config
 $ cleos get table utxomng.xsat utxomng.xsat utxos
+$ cleos get table utxomng.xsat utxomng.xsat blocks
+$ cleos get table utxomng.xsat utxomng.xsat consensusblk
 ```
 
 ### `endrmng.xsat`
