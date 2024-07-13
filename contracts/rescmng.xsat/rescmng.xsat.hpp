@@ -6,7 +6,7 @@
 #include "../internal/defines.hpp"
 
 using namespace eosio;
-using std::string;
+using namespace std;
 
 class [[eosio::contract("rescmng.xsat")]] resource_management : public contract {
    public:
@@ -105,6 +105,11 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
     [[eosio::on_notify("*::transfer")]]
     void on_transfer(const name& from, const name& to, const asset& quantity, const string& memo);
 
+#ifdef DEBUG
+    [[eosio::action]]
+    void cleartable(const name table_name, const optional<name> scope, const optional<uint64_t> max_rows);
+#endif
+
     // logs
     [[eosio::action]]
     void depositlog(const name& owner, const asset& quantity, const asset& balance) {
@@ -136,4 +141,9 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
     void do_deposit(const name& from, const name& contract, const asset& quantity, const string& memo);
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
     asset get_fee(const fee_type type, const uint64_t time_or_size);
+
+#ifdef DEBUG
+    template <typename T>
+    void clear_table(T& table, uint64_t rows_to_clear);
+#endif
 };

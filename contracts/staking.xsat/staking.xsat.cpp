@@ -3,6 +3,10 @@
 #include <endrmng.xsat/endrmng.xsat.hpp>
 #include "../internal/defines.hpp"
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth get_self()
 [[eosio::action]]
 void stake::addtoken(const extended_symbol& token) {

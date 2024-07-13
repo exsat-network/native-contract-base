@@ -4,6 +4,10 @@
 #include <rescmng.xsat/rescmng.xsat.hpp>
 #include "../internal/safemath.hpp"
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth utxomng.xsat
 [[eosio::action]]
 void block_endorse::erase(const uint64_t height) {

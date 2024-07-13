@@ -8,7 +8,7 @@
 #include "../internal/utils.hpp"
 
 using namespace eosio;
-using std::string;
+using namespace std;
 
 class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
    public:
@@ -76,8 +76,18 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
     [[eosio::action]]
     void erase(const uint64_t height);
 
+#ifdef DEBUG
+    [[eosio::action]]
+    void cleartable(const name table_name, const optional<uint64_t> scope, const optional<uint64_t> max_rows);
+#endif
+
     using erase_action = eosio::action_wrapper<"erase"_n, &block_endorse::erase>;
 
    private:
     std::vector<validator_info> get_valid_validator();
+
+#ifdef DEBUG
+    template <typename T>
+    void clear_table(T& table, uint64_t rows_to_clear);
+#endif
 };

@@ -153,6 +153,11 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     [[eosio::on_notify("*::transfer")]]
     void on_transfer(const name& from, const name& to, const asset& quantity, const string& memo);
 
+#ifdef DEBUG
+    [[eosio::action]]
+    void cleartable(const name table_name, const optional<name> scope, const optional<uint64_t> max_rows);
+#endif
+
     // logs
     [[eosio::action]]
     void poollog(const name& synchronizer, const uint64_t latest_produced_block_height,
@@ -176,4 +181,9 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
 
     void save_miners(const name& synchronizer, const vector<string>& miners);
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
+
+#ifdef DEBUG
+    template <typename T>
+    void clear_table(T& table, uint64_t rows_to_clear);
+#endif
 };
