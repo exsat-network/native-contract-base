@@ -40,7 +40,7 @@ void stake::deltoken(const uint64_t id) {
 void stake::setstatus(const uint64_t id, const bool disabled_staking) {
     require_auth(get_self());
 
-    auto itr = _token.require_find(id, "staking.xsat::config: [tokens] does not exists");
+    auto itr = _token.require_find(id, "staking.xsat::setstatus: [tokens] does not exists");
     _token.modify(itr, same_payer, [&](auto& row) {
         row.disabled_staking = disabled_staking;
     });
