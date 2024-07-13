@@ -242,7 +242,7 @@ void endorse_manage::evmstake(const name& caller, const checksum160& proxy, cons
     require_auth(caller);
 
     whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmstake: caller is not in the evm caller whitelist");
+    _whitelist.require_find(caller.value, "endrmng.xsat::evmstake: caller is not in the `evmcaller` whitelist");
 
     auto validator_staking = evm_stake_without_auth(proxy, staker, validator, quantity);
 
@@ -258,7 +258,7 @@ void endorse_manage::evmunstake(const name& caller, const checksum160& proxy, co
     require_auth(caller);
 
     whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmunstake: caller is not in the evm caller whitelist");
+    _whitelist.require_find(caller.value, "endrmng.xsat::evmunstake: caller is not in the `evmcaller` whitelist");
 
     auto validator_staking = evm_unstake_without_auth(proxy, staker, validator, quantity);
 
@@ -274,7 +274,7 @@ void endorse_manage::evmnewstake(const name& caller, const checksum160& proxy, c
     require_auth(caller);
 
     whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmnewstake: caller is not in the evm caller whitelist");
+    _whitelist.require_find(caller.value, "endrmng.xsat::evmnewstake: caller is not in the `evmcaller` whitelist");
 
     // unstake
     auto old_validator_staking = evm_unstake_without_auth(proxy, staker, old_validator, quantity);
@@ -293,14 +293,14 @@ void endorse_manage::evmclaim(const name& caller, const checksum160& proxy, cons
     require_auth(caller);
 
     whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmclaim: caller is not in the evm caller whitelist");
+    _whitelist.require_find(caller.value, "endrmng.xsat::evmclaim: caller is not in the `evmcaller` whitelist");
 
     auto evm_staker_idx = _evm_stake.get_index<"bystakingid"_n>();
     auto evm_staker_itr = evm_staker_idx.require_find(compute_staking_id(proxy, staker, validator),
-                                                      "endorse_manage::evmunstake: [evmstakers] does not exists");
+                                                      "endorse_manage::evmclaim: [evmstakers] does not exists");
 
     auto validator_itr = _validator.require_find(evm_staker_itr->validator.value,
-                                                 "endorse_manage::claim: [validators] does not exists");
+                                                 "endorse_manage::evmclaim: [validators] does not exists");
     update_staking_reward(validator_itr->stake_acc_per_share, validator_itr->consensus_acc_per_share,
                           evm_staker_itr->quantity.amount, evm_staker_itr->quantity.amount, evm_staker_idx,
                           evm_staker_itr);
@@ -375,7 +375,7 @@ asset endorse_manage::evm_stake_without_auth(const checksum160& proxy, const che
 
     auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
     auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
-                                                    "endrmng.xsat::delevmproxy: [evmproxys] does not exist");
+                                                    "endrmng.xsat::evmstake: [evmproxys] does not exist");
     auto validator_itr
         = _validator.require_find(validator.value, "endorse_manage::evmstake: [validators] does not exists");
     check(!validator_itr->disabled_staking,
