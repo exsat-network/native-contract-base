@@ -34,7 +34,8 @@ void utxo_manage::init(const uint64_t height, const checksum256& hash, const che
 //@auth get_self()
 [[eosio::action]]
 void utxo_manage::config(const uint16_t parse_timeout_seconds, const uint16_t num_validators_per_distribution,
-                         const uint16_t num_retain_data_blocks, const uint8_t num_merkle_layer) {
+                         const uint16_t num_retain_data_blocks, const uint8_t num_merkle_layer,
+                         const uint16_t num_miner_priority_blocks) {
     require_auth(get_self());
 
     check(parse_timeout_seconds > 0, "utxo_manage::config: parse_timeout_seconds must be greater than 0");
@@ -48,6 +49,7 @@ void utxo_manage::config(const uint16_t parse_timeout_seconds, const uint16_t nu
     config.num_retain_data_blocks = num_retain_data_blocks;
     config.num_merkle_layer = num_merkle_layer;
     config.num_txs_per_verification = 2 << (num_merkle_layer - 1);
+    config.num_miner_priority_blocks = num_miner_priority_blocks;
     _config.set(config, get_self());
 }
 

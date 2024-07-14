@@ -20,6 +20,22 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     static const parsing_status deleting_data = 3;
     static const parsing_status distributing_rewards = 4;
 
+    static std::string get_parsing_status_name(const parsing_status status) {
+        switch (status) {
+            // Because wait starts from a new block, the return name is parsing completed.
+            case waiting:
+                return "parsing_completed";
+            case parsing:
+                return "parsing";
+            case deleting_data:
+                return "deleting_data";
+            case distributing_rewards:
+                return "distributing_rewards";
+            default:
+                return "invalid_status";
+        }
+    }
+
     /**
      * @brief chain state table.
      * @scope `get_self()`
@@ -233,11 +249,13 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * @param num_validators_per_distribution - number of endorsing users each time rewards are distributed
      * @param num_retain_data_blocks - number of blocks to retain data
      * @param num_merkle_layer - verify the number of merkle levels (log(num_txs_per_verification))
+     * @param num_miner_priority_blocks - miner priority block number
      *
      */
     [[eosio::action]]
     void config(const uint16_t parse_timeout_seconds, const uint16_t num_validators_per_distribution,
-                const uint16_t num_retain_data_blocks, const uint8_t num_merkle_layer);
+                const uint16_t num_retain_data_blocks, const uint8_t num_merkle_layer,
+                const uint16_t num_miner_priority_blocks);
 
     /**
      * add utxo action.
@@ -321,22 +339,6 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 #endif
 
     using consensus_action = eosio::action_wrapper<"consensus"_n, &utxo_manage::consensus>;
-
-    static std::string get_parsing_status_name(const parsing_status status) {
-        switch (status) {
-            // Because wait starts from a new block, the return name is parsing completed.
-            case waiting:
-                return "parsing_completed";
-            case parsing:
-                return "parsing";
-            case deleting_data:
-                return "deleting_data";
-            case distributing_rewards:
-                return "distributing_rewards";
-            default:
-                return "invalid_status";
-        }
-    }
 
     static checksum256 compute_utxo_id(const checksum256 &tx_id, const uint32_t index) {
         std::vector<char> result;
