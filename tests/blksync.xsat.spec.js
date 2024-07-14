@@ -167,7 +167,7 @@ beforeAll(async () => {
             '0000000000000000000000000000000000000000753b8c1eaae701e1f0146360',
         ])
         .send('utxomng.xsat@active')
-    await contracts.utxomng.actions.config([600, 100, 100, 11]).send('utxomng.xsat')
+    await contracts.utxomng.actions.config([600, 100, 100, 11, 10]).send('utxomng.xsat')
 
     await contracts.utxomng.actions
         .addblock({
@@ -338,7 +338,7 @@ describe('blksync.xsat', () => {
                 num_chunks: 9,
                 size: 2325617,
                 uploaded_size: 2325617,
-                status: 6,
+                status: 7,
                 uploaded_num_chunks: 9,
                 reason: '',
                 verify_info: null,

@@ -677,6 +677,7 @@ struct [[eosio::table("config")]] config_row {
     uint16_t num_retain_data_blocks = 100;
     uint16_t num_txs_per_verification = 2048;
     uint8_t num_merkle_layer = 11;
+    uint16_t num_miner_priority_blocks = 10;
 };
 typedef eosio::singleton<"config"_n, config_row> config_table;
 
@@ -699,12 +700,12 @@ struct [[eosio::table]] utxo_row {
     uint64_t value;
     uint64_t primary_key() const { return id; }
     checksum256 by_scriptpubkey() const { return xsat::utils::hash(scriptpubkey); }
-    checksum256 by_outpoint() const { return get_output_id(txid, index); }
+    checksum256 by_utxo_id() const { return compute_utxo_id(txid, index); }
 };
 typedef eosio::multi_index<
     "utxos"_n, utxo_row,
     eosio::indexed_by<"scriptpubkey"_n, const_mem_fun<utxo_row, checksum256, &utxo_row::by_scriptpubkey>>,
-    eosio::indexed_by<"byoutpoint"_n, const_mem_fun<utxo_row, checksum256, &utxo_row::by_outpoint>>>
+    eosio::indexed_by<"byutxoid"_n, const_mem_fun<utxo_row, checksum256, &utxo_row::by_utxo_id>>>
     utxo_table;
 
 /**

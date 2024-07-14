@@ -19,8 +19,30 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     static const block_status upload_complete = 2;
     static const block_status verify_merkle = 3;
     static const block_status verify_parent_hash = 4;
-    static const block_status verify_fail = 5;
-    static const block_status verify_pass = 6;
+    static const block_status waiting_miner_verification = 5;
+    static const block_status verify_fail = 6;
+    static const block_status verify_pass = 7;
+
+    static std::string get_block_status_name(const block_status status) {
+        switch (status) {
+            case uploading:
+                return "uploading";
+            case upload_complete:
+                return "upload_complete";
+            case verify_merkle:
+                return "verify_merkle";
+            case verify_parent_hash:
+                return "verify_parent_hash";
+            case waiting_miner_verification:
+                return "waiting_miner_verification";
+            case verify_pass:
+                return "verify_pass";
+            case verify_fail:
+                return "verify_fail";
+            default:
+                return "invalid_status";
+        }
+    }
 
     /**
      * @brief global id table.
@@ -98,7 +120,8 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         std::optional<verify_info_data> verify_info;
 
         bool in_verifiable() const {
-            return status == upload_complete || status == verify_merkle || status == verify_parent_hash;
+            return status == upload_complete || status == verify_merkle || status == verify_parent_hash
+                   || status == waiting_miner_verification;
         }
 
         uint64_t primary_key() const { return bucket_id; }
@@ -136,6 +159,29 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         eosio::indexed_by<"bybucketid"_n, const_mem_fun<passed_index_row, uint64_t, &passed_index_row::by_bucket_id>>,
         eosio::indexed_by<"byhash"_n, const_mem_fun<passed_index_row, checksum256, &passed_index_row::by_hash>>>
         passed_index_table;
+
+    /**
+     * @brief block miner table.
+     * @scope `height`
+     *
+     * @field id - primary key
+     * @field hash - block hash
+     * @field miner - block miner address
+     * @field block_num - the block number that passed the first verification
+     *
+     */
+    struct [[eosio::table]] block_miner_row {
+        uint64_t id;
+        checksum256 hash;
+        name miner;
+        uint32_t block_num;
+        uint64_t primary_key() const { return id; }
+        checksum256 by_hash() const { return hash; }
+    };
+    typedef eosio::multi_index<
+        "blockminer"_n, block_miner_row,
+        eosio::indexed_by<"byhash"_n, const_mem_fun<block_miner_row, checksum256, &block_miner_row::by_hash>>>
+        block_miner_table;
 
     /**
      * @brief block chunk table.
@@ -238,13 +284,13 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * @auth `from`
      * @note from => the `uploader` whitelist in config.exsat
      *
-     * @param from - Caller account
+     * @param synchronizer - Caller account
      * @param height - the height of the block to be verified
      * @param hash - the hash of the block to verified
      *
      */
     [[eosio::action]]
-    verify_block_result verify(const name &from, const uint64_t height, const checksum256 &hash);
+    verify_block_result verify(const name &synchronizer, const uint64_t height, const checksum256 &hash);
 
 #ifdef DEBUG
     [[eosio::action]]
@@ -286,25 +332,6 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
             begin_itr++;
         }
         return result;
-    }
-
-    static std::string get_block_status_name(const block_status status) {
-        switch (status) {
-            case uploading:
-                return "uploading";
-            case upload_complete:
-                return "upload_complete";
-            case verify_merkle:
-                return "verify_merkle";
-            case verify_parent_hash:
-                return "verify_parent_hash";
-            case verify_pass:
-                return "verify_pass";
-            case verify_fail:
-                return "verify_fail";
-            default:
-                return "invalid_status";
-        }
     }
 
    private:

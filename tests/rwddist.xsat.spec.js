@@ -31,7 +31,7 @@ beforeAll(async () => {
     await contracts.eos.actions.transfer(['eosio.token', 'bob', '100000.0000 EOS', 'init']).send('eosio.token@active')
 
     await contracts.utxomng.actions.init([839999, '0000000000000000000172014ba58d66455762add0512355ad651207918494ab', '0000000000000000000000000000000000000000753b8c1eaae701e1f0146360']).send('utxomng.xsat')
-    await contracts.utxomng.actions.config([600, 100, 100, 11]).send('utxomng.xsat')
+    await contracts.utxomng.actions.config([600, 100, 100, 11, 10]).send('utxomng.xsat')
 })
 
 describe('rwddist.xsat', () => {

@@ -11,7 +11,7 @@
 #include "./src/debug.hpp"
 #endif
 
-//@auth utxomng.xsat
+// @auth utxomng.xsat
 [[eosio::action]]
 void block_sync::consensus(const uint64_t height, const name& synchronizer, const uint64_t bucket_id) {
     require_auth(UTXO_MANAGE_CONTRACT);
@@ -26,6 +26,13 @@ void block_sync::consensus(const uint64_t height, const name& synchronizer, cons
     auto passed_index_itr = _passed_index.begin();
     while (passed_index_itr != _passed_index.end()) {
         passed_index_itr = _passed_index.erase(passed_index_itr);
+    }
+
+    // erase block miner
+    block_miner_table _block_miner(get_self(), height);
+    auto block_miner_itr = _block_miner.begin();
+    while (block_miner_itr != _block_miner.end()) {
+        block_miner_itr = _block_miner.erase(block_miner_itr);
     }
 }
 
@@ -391,7 +398,33 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
 
         verify_info = std::nullopt;
         // next action
-        status = verify_pass;
+        if (!block_bucket_itr->miner || synchronizer == block_bucket_itr->miner) {
+            status = verify_pass;
+        } else {
+            status = waiting_miner_verification;
+        }
+    }
+
+    if (status == waiting_miner_verification) {
+        auto current_block = current_block_number();
+        utxo_manage::config_table _config(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+        auto config = _config.get();
+        // save the miner information that passed for the first time
+        block_miner_table _block_miner(get_self(), height);
+        auto block_miner_idx = _block_miner.get_index<"byhash"_n>();
+        auto block_miner_itr = block_miner_idx.find(hash);
+        if (block_miner_itr == block_miner_idx.end()) {
+            _block_miner.emplace(get_self(), [&](auto& row) {
+                row.id = _block_miner.available_primary_key();
+                row.hash = hash;
+                row.miner = block_bucket_itr->miner;
+                row.block_num = current_block;
+            });
+        } else {
+            check(block_miner_itr->block_num + config.num_miner_priority_blocks <= current_block,
+                  "blksync.xsat::verify: waiting for miners to produce blocks first");
+            status = verify_pass;
+        }
     }
 
     if (status == verify_pass) {

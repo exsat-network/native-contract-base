@@ -105,6 +105,8 @@ $ cleos get table blksync.xsat <synchronizer> blockbuckets --index 3 --key-type 
 $ cleos get table blksync.xsat <height> passedindexs
 # by hash
 $ cleos get table blksync.xsat <height> block.chunk  --index 3 --key-type sha256 -U <hash> -L <hash>
+
+$ cleos get table blksync.xsat <height> blockminer
 ```
 
 ### `blkendt.xsat`
@@ -142,7 +144,7 @@ $ cleos get table rwddist.xsat rwddist.xsat rewardlogs
 $ cleos push action utxo.xsat init '{"height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "cumulative_work": "0.00000020 BTC"}' -p utxomng.xsat
 
 # config @utxomng.xsat
-$ cleos push action utxo.xsat config '{"parse_timeout_seconds": 600, "num_validators_per_distribution": 100, "num_retain_data_blocks": 100, "num_merkle_layer": 10}' -p utxomng.xsat
+$ cleos push action utxo.xsat config '{"parse_timeout_seconds": 600, "num_validators_per_distribution": 100, "num_retain_data_blocks": 100, "num_merkle_layer": 10, "num_miner_priority_blocks": 10}' -p utxomng.xsat
 
 # addutxo @utxomng.xsat
 $ cleos push action utxo.xsat addutxo '{"id": 1, "txid": "76a914536ffa992491508dca0354e52f32a3a7a679a53a88ac", "index": 1, "to": "18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX", "value": 4075061499}' -p utxomng.xsat
