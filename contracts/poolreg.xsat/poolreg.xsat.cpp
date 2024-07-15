@@ -219,7 +219,7 @@ void pool::on_transfer(const name& from, const name& to, const asset& quantity, 
     check(contract == EXSAT_CONTRACT && quantity.symbol == XSAT_SYMBOL,
           "poolreg.xsat: only transfer [exsat.xsat/XSAT]");
     auto parts = xsat::utils::split(memo, ",");
-    auto INVALID_MEMO = "poolreg.xsat: invalid memo ex: \"<synchronizer><height>\"";
+    auto INVALID_MEMO = "poolreg.xsat: invalid memo ex: \"<synchronizer>,<height>\"";
     check(parts.size() == 2, INVALID_MEMO);
     auto synchronizer = xsat::utils::parse_name(parts[0]);
     check(xsat::utils::is_digit(parts[1]), INVALID_MEMO);

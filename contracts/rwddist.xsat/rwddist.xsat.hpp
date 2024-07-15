@@ -13,32 +13,78 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
    public:
     using contract::contract;
 
+    /**
+     * ## STRUCT `validator_info`
+     *
+     * - `{name} account` - validator account
+     * - `{uint64_t} staking` - the number of validator pledges
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "account": "test.xsat",
+     *   "staking": "10200000000"
+     * }
+     * ```
+     */
     struct validator_info {
         name account;
         uint64_t staking;
     };
+
     /**
-     * @brief reward log table.
-     * @scope `get_self()`
+     * ## TABLE `rewardlogs`
      *
-     * @field height - block height
-     * @field hash - block hash
-     * @field synchronizer_rewards - the synchronizer assigns the number of rewards
-     * @field consensus_rewards - the consensus validator allocates the number of rewards
-     * @field staking_rewards - the validator assigns the number of rewards
-     * @field num_validators - the number of validators who pledge more than 100 BTC
-     * @field provider_validators - validators who can receive rewards
-     * @field endorsed_staking - total endorsed pledge amount
-     * @field reached_consensus_staking - the total pledge amount to reach consensus is (number of validators * 2/3 + 1
-     *pledge amount)
-     * @field num_validators_assigned - the number of validators that have been allocated rewards
-     * @field synchronizer - synchronizer address
-     * @field miner - miner address
-     * @field parser - parse the address of the block
-     * @field tx_id - transaction id
-     * @field latest_exec_time - latest reward distribution time
+     * ### scope `height`
+     * ### params
      *
-     **/
+     * - `{uint64_t} height` - block height
+     * - `{checksum256} hash` - block hash
+     * - `{asset} synchronizer_rewards` - the synchronizer assigns the number of rewards
+     * - `{asset} consensus_rewards` - the consensus validator allocates the number of rewards
+     * - `{asset} staking_rewards` - the validator assigns the number of rewards
+     * - `{uint32_t} num_validators` - the number of validators who pledge more than 100 BTC
+     * - `{std::vector<validator_info> } provider_validators` - list of endorsed validators
+     * - `{uint64_t} endorsed_staking` - total endorsed pledge amount
+     * - `{uint64_t} reached_consensus_staking` - the total pledge amount to reach consensus is
+     * `(number of validators * 2/3+ 1 pledge amount)`
+     * - `{uint32_t} num_validators_assigned` - the number of validators that have been allocated rewards
+     * - `{name} synchronizer` -synchronizer account
+     * - `{name} miner` - miner account
+     * - `{name} parser` - parse the account of the block
+     * - `{checksum256} tx_id` - tx_id of the reward after distribution
+     * - `{time_point_sec} latest_exec_time` - latest reward distribution time
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "height": 840000,
+     *   "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5",
+     *   "synchronizer_rewards": "5.00000000 XSAT",
+     *   "consensus_rewards": "5.00000000 XSAT",
+     *   "staking_rewards": "40.00000000 XSAT",
+     *   "num_validators": 2,
+     *   "provider_validators": [{
+     *       "account": "alice",
+     *       "staking": "10010000000"
+     *       },{
+     *       "account": "bob",
+     *       "staking": "10200000000"
+     *       }
+     *   ],
+     *   "endorsed_staking": "20210000000",
+     *   "reached_consensus_staking": "20210000000",
+     *   "num_validators_assigned": 2,
+     *   "synchronizer": "alice",
+     *   "miner": "",
+     *   "parser": "alice",
+     *   "tx_id": "0000000000000000000000000000000000000000000000000000000000000000",
+     *   "latest_exec_time": "2024-07-13T09:06:56"
+     * }
+     * ```
+     */
     struct [[eosio::table]] reward_log_row {
         uint64_t height;
         checksum256 hash;
@@ -60,25 +106,44 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
     typedef eosio::multi_index<"rewardlogs"_n, reward_log_row> reward_log_table;
 
     /**
-     * Distribute action.
-     * @auth `utxomng.xsat`
+     * ## ACTION `distribute`
      *
-     * @param height - block height
-     * @param hash - block hash
+     * - **authority**: `utxomng.xsat`
      *
+     * > Allocate rewards and record allocation information.
+     *
+     * ### params
+     *
+     * - `{uint64_t} height` - Block height for allocating rewards
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action rwddist.xsat distribute '[840000]' -p utxomng.xsat
+     * ```
      */
     [[eosio::action]]
     void distribute(const uint64_t height);
 
     /**
-     * Endorser reward action.
-     * @auth `utxomng.xsat`
+     * ## ACTION `endtreward`
      *
-     * @param parser - parse account
-     * @param height - block height
-     * @param from_index - the starting validator index
-     * @param to_index - the ending validator index
+     * - **authority**: `utxomng.xsat`
      *
+     * > Allocate rewards and record allocation information.
+     *
+     * ### params
+     *
+     * - `{name} parser` - parse account
+     * - `{uint64_t} height` - block height
+     * - `{uint32_t} from_index` - the starting reward index of provider_validators
+     * - `{uint32_t} to_index` - end reward index of provider_validators
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action rwddist.xsat endtreward '["alice", 840000, 0, 10]' -p utxomng.xsat
+     * ```
      */
     [[eosio::action]]
     void endtreward(const name& parser, const uint64_t height, uint32_t from_index, const uint32_t to_index);

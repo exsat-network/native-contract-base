@@ -61,7 +61,7 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
     // check whether it is a synchronizer
     pool::synchronizer_table _synchronizer(POOL_REGISTER_CONTRACT, POOL_REGISTER_CONTRACT.value);
     auto synchronizer_itr
-        = _synchronizer.require_find(synchronizer.value, "blksync.xsat::initbucket: not an synchronizer address");
+        = _synchronizer.require_find(synchronizer.value, "blksync.xsat::initbucket: not an synchronizer account");
 
     check(!utxo_manage::check_consensus(height, hash), "blksync.xsat::initbucket: the block has reached consensus");
 
