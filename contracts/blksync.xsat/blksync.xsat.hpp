@@ -200,6 +200,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
 
     struct verify_block_result {
         std::string status;
+        std::string reason;
         checksum256 block_hash;
     };
 
