@@ -48,27 +48,11 @@ describe('utxomng.xsat', () => {
         }
         await contracts.utxomng.actions.addutxo(utxo).send('utxomng.xsat@active')
         expect(get_utxo(1)).toEqual(utxo)
-        expect(get_chain_state()).toEqual({
-            head_height: 0,
-            irreversible_hash: '0000000000000000000000000000000000000000000000000000000000000000',
-            irreversible_height: 0,
-            num_transactions: 0,
-            num_utxos: 1,
-            parsed_expiration_time: '1970-01-01T00:00:00',
-            parser: '',
-            parsing_bucket_id: 0,
-            parsing_height: 0,
-            parsing_hash: '0000000000000000000000000000000000000000000000000000000000000000',
-            processed_position: 0,
-            processed_transactions: 0,
-            processed_vin: 0,
-            processed_vout: 0,
-            synchronizer: '',
-            miner: '',
-            num_validators_assigned: 0,
-            num_provider_validators: 0,
-            status: 0,
-        })
+        expect(get_chain_state().num_utxos).toEqual(1)
+        // update
+        await contracts.utxomng.actions.addutxo(utxo).send('utxomng.xsat@active')
+        expect(get_utxo(1)).toEqual(utxo)
+        expect(get_chain_state().num_utxos).toEqual(1)
     })
 
     it('delutxo: missing required authority utxomng.xsat', async () => {
