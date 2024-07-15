@@ -55,7 +55,7 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
     require_auth(synchronizer);
 
     check(height > START_HEIGHT, "blksync.xsat::initbucket: height must be greater than 840000");
-    check(block_size > 80, "blksync.xsat::initbucket: block size must be greater than 80");
+    check(block_size > BLOCK_HEADER_SIZE, "blksync.xsat::initbucket: block size must be greater than 80");
     check(num_chunks > 0, "blksync.xsat::initbucket: the number of chunks must be greater than 0");
 
     // check whether it is a synchronizer
@@ -89,7 +89,7 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
             row.status = uploading;
         });
     } else {
-        check(block_bucket_itr->status != verify_pass,
+        check(block_bucket_itr->status == uploading,
               "blksync.xsat::initbucket: cannot init bucket in the current state ["
                   + get_block_status_name(block_bucket_itr->status) + "]");
 
@@ -241,20 +241,20 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
         return check_fail(block_bucket_idx, block_bucket_itr, "reached_consensus", hash);
     }
 
-    auto verify_info = block_bucket_itr->verify_info;
-    if (!verify_info.has_value()) {
-        verify_info = verify_info_data{};
-    }
-
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
     pay.send(height, hash, synchronizer, VERIFY, 1);
     auto status = block_bucket_itr->status;
 
+    auto verify_info = block_bucket_itr->verify_info;
     checksum256 cumulative_work = checksum256();
     name miner;
     vector<string> btc_miners;
     if (status == upload_complete || status == verify_merkle) {
+        if (!verify_info.has_value()) {
+            verify_info = verify_info_data{};
+        }
+
         auto block_data = read_bucket(block_bucket_itr->bucket_id, get_self(), verify_info->processed_position,
                                       block_bucket_itr->size);
         eosio::datastream<const char*> block_stream(block_data.data(), block_data.size());
@@ -315,6 +315,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
             const auto& cbtrx = transactions.front();
             verify_info->witness_reserve_value = cbtrx.get_witness_reserve_value();
             verify_info->witness_commitment = cbtrx.get_witness_commitment();
+
             find_miner(cbtrx.outputs, miner, btc_miners);
         }
 
@@ -327,6 +328,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
         if (need_witness_check) {
             witness_merkle = bitcoin::core::generate_witness_merkle(transactions);
         }
+
         // calculate to the same layer
         if (verify_info->num_transactions > num_txs_per_verification && rows != num_txs_per_verification) {
             uint8_t current_layer = static_cast<uint8_t>(std::ceil(std::log2(rows)));
@@ -363,6 +365,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
             return check_fail(block_bucket_idx, block_bucket_itr, "missing_block_data", hash);
         }
 
+        // verify merkle
         if (verify_info->num_transactions == verify_info->processed_transactions
             && verify_info->processed_position == block_bucket_itr->size) {
             // verify header merkle
@@ -383,11 +386,12 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
             }
             // next action
             status = verify_parent_hash;
-
         } else {
             status = verify_merkle;
         }
-    } else if (status == verify_parent_hash) {
+    }
+
+    if (status == verify_parent_hash) {
         // check parent
         auto parent_cumulative_work = utxo_manage::get_cumulative_work(height - 1, verify_info->previous_block_hash);
         check(parent_cumulative_work.has_value(), "blksync.xsat::verify: parent block hash did not reach consensus");
@@ -471,10 +475,13 @@ block_sync::verify_block_result block_sync::check_fail(T& _block_chunk, const IT
     _block_chunk.modify(block_chunk_itr, same_payer, [&](auto& row) {
         row.status = verify_fail;
         row.reason = state;
+        row.miner = name();
+        row.btc_miners = {};
         row.verify_info = std::nullopt;
     });
     return block_sync::verify_block_result{
-        .status = state,
+        .status = get_block_status_name(verify_fail),
+        .reason = state,
         .block_hash = block_hash,
     };
 }
@@ -484,7 +491,9 @@ void block_sync::find_miner(std::vector<bitcoin::core::transaction_output> outpu
     pool::miner_table _miner = pool::miner_table(POOL_REGISTER_CONTRACT, POOL_REGISTER_CONTRACT.value);
     auto miner_idx = _miner.get_index<"byminer"_n>();
     for (const auto output : outputs) {
-        miner = xsat::utils::get_op_return_eos_account(output.script.data);
+        if (!miner) {
+            miner = xsat::utils::get_op_return_eos_account(output.script.data);
+        }
 
         std::vector<string> to;
         bitcoin::ExtractDestination(output.script.data, to);
