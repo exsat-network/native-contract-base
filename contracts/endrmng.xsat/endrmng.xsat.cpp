@@ -80,7 +80,7 @@ void endorse_manage::proxyreg(const name& proxy, const name& validator, const st
     whitelist_table _whitelist(get_self(), "proxyreg"_n.value);
     _whitelist.require_find(proxy.value, "endrmng.xsat::proxyreg: the proxy account is not in the whitelist");
 
-    check(is_account(validator), "endrmng.xsat::proxyreg: validator address does not exists");
+    check(is_account(validator), "endrmng.xsat::proxyreg: validator account does not exists");
 
     register_validator(proxy, validator, financial_account, commission_rate);
 }

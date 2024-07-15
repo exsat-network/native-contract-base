@@ -14,22 +14,51 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
    public:
     using contract::contract;
 
+    /**
+     * ## STRUCT `validator_info`
+     *
+     * - `{name} account` - validator account
+     * - `{uint64_t} staking` - the number of validator pledges
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "account": "test.xsat",
+     *   "staking": "10200000000"
+     * }
+     * ```
+     */
     struct validator_info {
         name account;
         uint64_t staking;
     };
 
     /**
-     * @brief endorsement table.
-     * @scope `height`
+     * ## TABLE `endorsements`
      *
-     * @field id - primary id
-     * @field hash - endorsement block hash
-     * @field requested_validators - list of unendorsed validators
-     * @field provider_validators - list of endorsed validators
-     * @field endorsed_stake - endorsed pledge amount
-     * @field reached_consensus_stake - reach consensus pledge amount
+     * ### scope `height`
+     * ### params
      *
+     * - `{uint64_t} id` - primary key
+     * - `{checksum256} hash` - endorsement block hash
+     * - `{std::vector<validator_info>} requested_validators` - list of unendorsed validators
+     * - `{std::vector<validator_info>} provider_validators` - list of endorsed validators
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 0,
+     *   "hash": "00000000000000000000da20f7d8e9e6412d4f1d8b62d88264cddbdd48256ba0",
+     *   "requested_validators": [],
+     *   "provider_validators": [{
+     *       "account": "test.xsat",
+     *       "staking": "10200000000"
+     *      }
+     *   ]
+     * }
+     * ```
      */
     struct [[eosio::table]] endorsement_row {
         uint64_t id;
@@ -55,23 +84,44 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
         endorsement_table;
 
     /**
-     * Endorse block action.
-     * @auth `validator`
+     * ## ACTION `endorse`
      *
-     * @param validator - validator account
-     * @param height - to endorse the height of the block
-     * @param hash - to endorse the hash of the block
+     * - **authority**: `validator`
      *
+     * > Endorsement block
+     *
+     * ### params
+     *
+     * - `{name} validator` - validator account
+     * - `{uint64_t} height` - to endorse the height of the block
+     * - `{checksum256} hash` - to endorse the hash of the block
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action blkendt.xsat endorse '["alice", 840000,
+     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+     * ```
      */
     [[eosio::action]]
     void endorse(const name& validator, const uint64_t height, const checksum256& hash);
 
     /**
-     * erase endorsement action.
-     * @auth `utxomng.xsat`
+     * ## ACTION `erase`
      *
-     * @param height - endorsement block height
+     * - **authority**: `utxomng.xsat`
      *
+     * > To erase high endorsements
+     *
+     * ### params
+     *
+     * - `{uint64_t} height` - to endorse the height of the block
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action blkendt.xsat erase '[840000]' -p utxomng.xsat
+     * ```
      */
     [[eosio::action]]
     void erase(const uint64_t height);

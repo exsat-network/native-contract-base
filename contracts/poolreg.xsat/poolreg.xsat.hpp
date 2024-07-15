@@ -14,21 +14,39 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     using contract::contract;
 
     /**
-     * @brief synchronizer table.
-     * @scope `get_self()`
+     * ## TABLE `synchronizer`
      *
-     * @field synchronizer - synchronizer address
-     * @field reward_recipient - get rewards to address
-     * @field memo - memo when receiving rewards
-     * @field num_slots - number of slots owned
-     * @field latest_produced_block_height - the height of the latest mined block
-     * @field produced_block_limit - upload limit, for example, the number of blocks in 432 can only be uploaded. 0 is
-     * not limited
-     * @field unclaimed - amount of unclaimed rewards
-     * @field claimed  - amount of claimed rewards
-     * @field latest_reward_block  - amount of claimed rewards
-     * @field latest_reward_time  - amount of claimed rewards
+     * ### scope `get_self()`
+     * ### params
      *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{name} reward_recipient` - receiving account for receiving rewards
+     * - `{string} memo` - memo when receiving reward transfer
+     * - `{uint16_t} num_slots` - number of slots owned
+     * - `{uint64_t} latest_produced_block_height` - the latest block number
+     * - `{uint16_t} produced_block_limit` - upload block limit, for example, if 432 is set, the upload height needs to
+     * be a synchronizer that has produced blocks in 432 blocks before it can be uploaded.
+     * - `{asset} unclaimed` - unclaimed rewards
+     * - `{asset} claimed` - rewards claimed
+     * - `{uint64_t} latest_reward_block` - the latest block number to receive rewards
+     * - `{time_point_sec} latest_reward_time` - latest reward time
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *    "synchronizer": "test.xsat",
+     *    "reward_recipient": "erc2o.xsat",
+     *    "memo": "0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97",
+     *    "num_slots": 2,
+     *    "latest_produced_block_height": 840000,
+     *    "produced_block_limit": 432,
+     *    "unclaimed": "5.00000000 XSAT",
+     *    "claimed": "0.00000000 XSAT",
+     *    "latest_reward_block": 840001,
+     *    "latest_reward_time": "2024-07-13T14:29:32"
+     * }
+     * ```
      */
     struct [[eosio::table]] synchronizer_row {
         name synchronizer;
@@ -46,12 +64,24 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     typedef eosio::multi_index<"synchronizer"_n, synchronizer_row> synchronizer_table;
 
     /**
-     * @brief miner table.
-     * @scope `get_self()`
+     * ## TABLE `miners`
      *
-     * @field id - primary key
-     * @field synchronizer - synchronizer address
-     * @field miner - miner address
+     * ### scope `get_self()`
+     * ### params
+     *
+     * - `{uint64_t} id` - primary key
+     * - `{name} synchronizer` - synchronizer account
+     * - `{string} miner` - associated btc miner account
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *    "id": 1,
+     *    "synchronizer": "alice",
+     *    "miner": "3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv"
+     * }
+     * ```
      *
      */
     struct [[eosio::table]] miner_row {
@@ -69,83 +99,155 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
         miner_table;
 
     /**
-     * @brief Update synchronizer produced block height action.
-     * @auth  `blksync.xsat`
+     * ## ACTION `updateheight`
      *
-     * @param synchronizer - synchronizer account
-     * @param latest_produced_block_height - the height of the latest mined block
-     * @param miners - list of btc addresses corresponding to miner
+     * - **authority**: `blksync.xsat`
      *
+     * > Update synchronizer’s latest block height and add associated btc miners.
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{uint64_t} latest_produced_block_height` - the height of the latest mined block
+     * - `{std::vector<string>} miners` - list of btc accounts corresponding to synchronizer
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat updateheight '["alice", 839999, ["3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv",
+     * "bc1p8k4v4xuz55dv49svzjg43qjxq2whur7ync9tm0xgl5t4wjl9ca9snxgmlt"]]' -p poolreg.xsat
+     * ```
      */
     [[eosio::action]]
     void updateheight(const name& synchronizer, const uint64_t latest_produced_block_height,
                       const std::vector<string>& miners);
 
     /**
-     * @brief Unbundle action.
-     * @auth  `get_self()`
+     * ## ACTION `unbundle`
      *
-     * @param id - miner id
+     * - **authority**: `get_self()`
      *
+     * > Unbind the association between synchronizer and btc miner.
+     *
+     * ### params
+     *
+     * - `{uint64_t} id` - primary key of miners table
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat unbundle '[1]' -p poolreg.xsat
+     * ```
      */
     [[eosio::action]]
     void unbundle(const uint64_t id);
 
     /**
-     * @brief init pool action.
-     * @auth `get_self()`
+     * ## ACTION `initpool`
      *
-     * @param synchronizer - synchronizer account
-     * @param latest_produced_block_height - the height of the latest mined block
-     * @param miners - list of btc addresses corresponding to miner
-     * @param financial_account - financial account
+     * - **authority**: `get_self()`
      *
+     * > Unbind the association between synchronizer and btc miner.
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{uint64_t} latest_produced_block_height` - the height of the latest mined block
+     * - `{string} financial_account` - financial account to receive rewards
+     * - `{std::vector<string>} miners` - list of btc accounts corresponding to synchronizer
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat initpool '["alice", 839997, "alice", ["37jKPSmbEGwgfacCr2nayn1wTaqMAbA94Z",
+     * "39C7fxSzEACPjM78Z7xdPxhf7mKxJwvfMJ"]]' -p poolreg.xsat
+     * ```
      */
     [[eosio::action]]
     void initpool(const name& synchronizer, const uint64_t latest_produced_block_height,
                   const string& financial_account, const std::vector<string>& miners);
 
     /**
-     * @brief config synchronizer produced_block_limit action.
-     * @auth `get_self()`
+     * ## ACTION `config`
      *
-     * @param synchronizer - synchronizer account
-     * @param produced_block_limit - upload limit, for example, the number of blocks in 432 can only be uploaded. 0
-     * is
+     * - **authority**: `get_self()`
      *
+     * > Configure synchronizer block output limit.
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{uint16_t} produced_block_limit` - upload block limit, for example, if 432 is set, the upload height needs to
+     * be a synchronizer that has produced blocks in 432 blocks before it can be uploaded.
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat config '["alice", 432]' -p poolreg.xsat
+     * ```
      */
     [[eosio::action]]
     void config(const name& synchronizer, const uint16_t produced_block_limit);
 
     /**
-     * @brief add slot action.
-     * @auth `synchronizer`
+     * ## ACTION `buyslot`
      *
-     * @param synchronizer - synchronizer account
-     * @param receiver - the synchronizer account of the receiving slot
-     * @param num_slots - number of slots
+     * - **authority**: `synchronizer`
      *
+     * > Buy slot.
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{name} receiver` - the account of the receiving slot
+     * - `{uint16_t} num_slots` - number of slots
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat buyslot '["alice", "alice", 2]' -p alice
+     * ```
      */
     [[eosio::action]]
     void buyslot(const name& synchronizer, const name& receiver, const uint16_t num_slots);
 
     /**
-     * @brief add slot action.
-     * @auth `synchronizer`
+     * ## ACTION `setfinacct`
      *
-     * @param synchronizer - synchronizer account
-     * @param financial_account - financial account
+     * - **authority**: `synchronizer`
      *
+     * > Configure financial account.
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{string} financial_account` - financial account to receive rewards
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat setfinacct '["alice", "alice"]' -p alice
+     * ```
      */
     [[eosio::action]]
     void setfinacct(const name& synchronizer, const string& financial_account);
 
     /**
-     * @brief add slot action.
-     * @auth synchronizer->to or evmutil.xsat
+     * ## ACTION `claim`
      *
-     * @param synchronizer - synchronizer account
+     * - **authority**: `synchronizer->to or evmutil.xsat`
      *
+     * > Receive award.
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat claim '["alice"]' -p alice
+     * ```
      */
     [[eosio::action]]
     void claim(const name& synchronizer);

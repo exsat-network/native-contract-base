@@ -14,11 +14,22 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
     using contract::contract;
 
     /**
-     * @brief global id table.
-     * @scope `get_self()`
+     * ## TABLE `globalid`
      *
-     * @field staking_id - stake number
-     * @field release_id - the number of the release pledge
+     * ### scope `get_self()`
+     * ### params
+     *
+     * - `{uint64_t} staking_id` - the latest staking id
+     * - `{uint64_t} release_id` - the latest release id
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "staking_id": 1,
+     *   "release_id": 1
+     * }
+     * ```
      */
     struct [[eosio::table()]] global_id_row {
         uint64_t staking_id;
@@ -27,12 +38,24 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
     typedef eosio::singleton<"globalid"_n, global_id_row> global_id_table;
 
     /**
-     * @brief whitelist token table.
-     * @scope `get_self()`
+     * ## TABLE `tokens`
      *
-     * @field id - primary key
-     * @field token - whitelist token
+     * ### scope `get_self()`
+     * ### params
      *
+     * - `{uint64_t} id` - token id
+     * - `{uint64_t} token` - whitelist token
+     * - `{bool} disabled_staking` - whether to disable staking
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 1,
+     *   "token": { sym: "8,BTC", contract: "btc.xsat" },
+     *   "disabled_staking": false
+     * }
+     * ```
      */
     struct [[eosio::table]] token_row {
         uint64_t id;
@@ -46,12 +69,22 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
         token_table;
 
     /**
-     * @brief staking table.
-     * @scope `staker`
+     * ## TABLE `staking`
      *
-     * @field id - primary key
-     * @field quantity - total number of stakes
+     * ### scope `staker`
+     * ### params
      *
+     * - `{uint64_t} id` - staking id
+     * - `{extended_asset} quantity` - total number of staking
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 1,
+     *   "quantity": {"quantity":"1.00000000 BTC", "contract":"btc.xsat"}
+     * }
+     * ```
      */
     struct [[eosio::table]] staking_row {
         uint64_t id;
@@ -64,13 +97,27 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
         staking_table;
 
     /**
-     * @brief  release table.
-     * @scope `staker`
+     * ## TABLE `releases`
      *
-     * @field id - primary key
-     * @field quantity - the amount to release the token
-     * @field expiration_time - unstake expiration time
+     * ### scope `staker`
+     * ### params
      *
+     * - `{uint64_t} id` - release id
+     * - `{extended_asset} quantity` - unpledged quantity
+     * - `{time_point_sec} expiration_time` - cancel pledge expiration time
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 1,
+     *   "quantity": {
+     *       "quantity": "1.00000000 BTC",
+     *       "contract": "btc.xsat"
+     *   },
+     *   "expiration_time": "2024-08-12T08:09:57"
+     * }
+     * ```
      */
     struct [[eosio::table]] release_row {
         uint64_t id;
@@ -85,55 +132,105 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
         release_table;
 
     /**
-     * add whitelist token action.
-     * @auth `get_self()`
+     * ## ACTION `addtoken`
      *
-     * @param token - token to be added to the whitelist
+     * - **authority**: `get_self()`
      *
+     * > Add whitelist token
+     *
+     * ### params
+     *
+     * - `{extended_symbol} token` - token to add
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action staking.xsat addtoken '[{ sym: "8,BTC", contract: "btc.xsat" }]' -p staking.xsat
+     * ```
      */
     [[eosio::action]]
     void addtoken(const extended_symbol& token);
 
     /**
-     * delete whitelist token action.
-     * @auth `get_self()`
+     * ## ACTION `deltoken`
      *
-     * @param id - token id
+     * - **authority**: `get_self()`
      *
+     * > Delete whitelist token
+     *
+     * ### params
+     *
+     * - `{uint64_t} id` - token id to be deleted
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action staking.xsat deltoken '[1]' -p staking.xsat
+     * ```
      */
     [[eosio::action]]
     void deltoken(const uint64_t id);
 
     /**
-     * Setting token status action.
-     * @auth `get_self()`
+     * ## ACTION `setstatus`
      *
-     * @param id - token id
-     * @param disabled_staking - token status, if true, staking is prohibited
+     * - **authority**: `get_self()`
      *
+     * > Delete whitelist token
+     *
+     * ### params
+     *
+     * - `{uint64_t} id` - token id
+     * - `{bool} disabled_staking` - whether to disable staking
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action staking.xsat setstatus '[1, true]' -p staking.xsat
+     * ```
      */
     [[eosio::action]]
     void setstatus(const uint64_t id, const bool disabled_staking);
 
     /**
-     * Release action.
-     * @auth `staker`
+     * ## ACTION `release`
      *
-     * @param staking_id - stake id
-     * @param staker - pledge account
-     * @param validator - validator account
-     * @param quantity - pledge quantity
+     * - **authority**: `staker`
      *
+     * > Cancel pledge.
+     *
+     * ### params
+     *
+     * - `{uint64_t} staking_id` - staking id
+     * - `{name} staker` - staker account
+     * - `{name} validator` - the validator account to be pledged to
+     * - `{extended_asset} quantity` - unpledged quantity
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action staking.xsat release '[1, "alice", "alice", "1.00000000 BTC"]' -p alice
+     * ```
      */
     [[eosio::action]]
     void release(const uint64_t staking_id, const name& staker, const name& validator, const asset& quantity);
 
     /**
-     * Withdraw action.
-     * @auth `staker`
+     * ## ACTION `withdraw`
      *
-     * @param staker - account to release the staked token
+     * - **authority**: `staker`
      *
+     * > Withdraw expired pledged tokens.
+     *
+     * ### params
+     *
+     * - `{name} staker` - staker account
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action staking.xsat withdraw '["alice"]' -p alice
+     * ```
      */
     [[eosio::action]]
     void withdraw(const name& staker);
