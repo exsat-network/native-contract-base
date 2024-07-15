@@ -69,15 +69,15 @@ void utxo_manage::addutxo(const uint64_t id, const checksum256& txid, const uint
             row.scriptpubkey = scriptpubkey;
             row.value = value;
         });
+        auto chain_state = _chain_state.get_or_default();
+        chain_state.num_utxos += 1;
+        _chain_state.set(chain_state, get_self());
     } else {
         utxo_idx.modify(utxo_itr, same_payer, [&](auto& row) {
             row.scriptpubkey = scriptpubkey;
             row.value = value;
         });
     }
-    auto chain_state = _chain_state.get_or_default();
-    chain_state.num_utxos += 1;
-    _chain_state.set(chain_state, get_self());
 }
 
 //@auth get_self()
