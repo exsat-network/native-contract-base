@@ -65,6 +65,10 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
 
     check(!utxo_manage::check_consensus(height, hash), "blksync.xsat::initbucket: the block has reached consensus");
 
+    // fee deduction
+    resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
+    pay.send(height, hash, synchronizer, PUSH_CHUNK, 1);
+
     block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
     auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
     auto block_bucket_itr = block_bucket_idx.find(xsat::utils::compute_block_id(height, hash));
@@ -180,6 +184,10 @@ void block_sync::delchunk(const name& synchronizer, const uint64_t height, const
     check(status != verify_merkle && status != verify_parent_hash && status != verify_pass,
           "blksync.xsat::delchunk: cannot delete chunk in the current state [" + get_block_status_name(status) + "]");
 
+    // fee deduction
+    resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
+    pay.send(height, hash, synchronizer, PUSH_CHUNK, 1);
+
     block_chunk_table _block_chunk = block_chunk_table(get_self(), block_bucket_itr->bucket_id);
     auto itr = _block_chunk.require_find(chunk_id, "blksync.xsat::delchunk: chunk_id does not exist");
     auto chunk_size = itr->data.size();
@@ -211,6 +219,10 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
     auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
     auto block_bucket_itr = block_bucket_idx.require_find(xsat::utils::compute_block_id(height, hash),
                                                           "blksync.xsat::delbucket: [blockbuckets] does not exists");
+
+    // fee deduction
+    resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
+    pay.send(height, hash, synchronizer, PUSH_CHUNK, 1);
 
     // erase block chunks
     block_chunk_table _block_chunk = block_chunk_table(get_self(), block_bucket_itr->bucket_id);
