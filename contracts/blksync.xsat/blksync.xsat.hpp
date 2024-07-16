@@ -70,6 +70,8 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *
      * ### params
      *
+     * - `{name} miner` - block miner account
+     * - `{vector<string>} btc_miners` - btc miner account
      * - `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
      * - `{checksum256} work` - block workload
      * - `{checksum256} witness_reserve_value` - witness reserve value in the block
@@ -86,6 +88,10 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *
      * ```json
      * {
+     *   "miner": "",
+     *   "btc_miners": [
+     *       "1BM1sAcrfV6d4zPKytzziu4McLQDsFC2Qc"
+     *   ],
      *   "previous_block_hash": "000000000000000000029bfa01a7cee248f85425e0d0b198f4947717d4d3441e",
      *   "work": "000000000000000000000000000000000000000000004e9235f043634662e0cb",
      *   "witness_reserve_value": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -111,6 +117,8 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * ```
      */
     struct verify_info_data {
+        name miner;
+        vector<string> btc_miners;
         checksum256 previous_block_hash;
         checksum256 work;
         std::optional<checksum256> witness_reserve_value;
@@ -138,9 +146,6 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * - `{uint8_t} uploaded_num_chunks` - number of chunks that have been uploaded
      * - `{block_status} status` - current block status
      * - `{string} reason` - reason for verification failure
-     * - `{checksum256} cumulative_work` - the cumulative workload of the block
-     * - `{name} miner` - block miner account
-     * - `{vector<string>} btc_miners` - btc miner account
      * - `{std::optional<verify_info_data>} verify_info` - @see struct `verify_info_data`
      *
      * ### example
@@ -156,12 +161,11 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *   "uploaded_num_chunks": 11,
      *   "status": 3,
      *   "reason": "",
-     *   "cumulative_work": "0000000000000000000000000000000000000000000000000000000000000000",
-     *   "miner": "",
-     *   "btc_miners": [
-     *       "1BM1sAcrfV6d4zPKytzziu4McLQDsFC2Qc"
-     *   ],
      *   "verify_info": {
+     *       "miner": "",
+     *       "btc_miners": [
+     *           "1BM1sAcrfV6d4zPKytzziu4McLQDsFC2Qc"
+     *       ],
      *       "previous_block_hash": "000000000000000000029bfa01a7cee248f85425e0d0b198f4947717d4d3441e",
      *       "work": "000000000000000000000000000000000000000000004e9235f043634662e0cb",
      *       "witness_reserve_value": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -198,9 +202,6 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         block_status status;
         std::string reason;
 
-        checksum256 cumulative_work;
-        name miner;
-        vector<string> btc_miners;
         std::optional<verify_info_data> verify_info;
 
         bool in_verifiable() const {
@@ -226,8 +227,10 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *
      * - `{uint64_t} id` - primary key
      * - `{checksum256} hash` - block hash
+     * - `{checksum256} cumulative_work` - the cumulative workload of the block
      * - `{uint64_t} bucket_id` - bucket_id is used to obtain block data
      * - `{name} synchronizer` - synchronizer account
+     * - `{name} miner` - miner account
      *
      * ### example
      *
@@ -235,16 +238,20 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * {
      *   "id": 0,
      *   "hash": "000000000000000000029bfa01a7cee248f85425e0d0b198f4947717d4d3441e",
+     *   "cumulative_work": "0000000000000000000000000000000000000000753f3af9322a2a893cb6ece4",
      *   "bucket_id": 80,
-     *   "synchronizer": "test.xsat"
+     *   "synchronizer": "test.xsat",
+     *   "miner": "alice",
      * }
      * ```
      */
     struct [[eosio::table]] passed_index_row {
         uint64_t id;
         checksum256 hash;
+        checksum256 cumulative_work;
         uint64_t bucket_id;
         name synchronizer;
+        name miner;
         uint64_t primary_key() const { return id; }
         uint64_t by_bucket_id() const { return bucket_id; }
         checksum256 by_hash() const { return hash; }
@@ -273,8 +280,8 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * {
      *   "id": 0,
      *   "hash": "000000000000000000029bfa01a7cee248f85425e0d0b198f4947717d4d3441e",
-     *   "bucket_id": 80,
-     *   "synchronizer": "test.xsat"
+     *   "miner": "alice",
+     *   "expired_block_num": 210000
      * }
      * ```
      */
@@ -282,7 +289,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         uint64_t id;
         checksum256 hash;
         name miner;
-        uint32_t block_num;
+        uint32_t expired_block_num;
         uint64_t primary_key() const { return id; }
         checksum256 by_hash() const { return hash; }
     };
@@ -371,16 +378,15 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *
      * ### params
      *
-     * - `{uint64_t} height` - block height
      * - `{uint64_t} bucket_id` - bucket_id of block data to be deleted
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action blksync.xsat delchunks '[840000, 1]' -p utxomng.xsat
+     * $ cleos push action blksync.xsat delchunks '[1]' -p utxomng.xsat
      * ```
      */
-    void delchunks(const uint64_t height, const uint64_t bucket_id);
+    void delchunks(const uint64_t bucket_id);
 
     /**
      * ## ACTION `initbucket`
@@ -554,8 +560,12 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     uint64_t next_bucket_id();
 
     void find_miner(std::vector<bitcoin::core::transaction_output> outputs, name &miner, vector<string> &btc_miners);
+
+    template <typename ITR>
+    optional<string> check_merkle(const ITR &block_bucket_itr, optional<verify_info_data> &verify_info);
+
     template <typename T, typename ITR>
-    verify_block_result check_fail(T &_block_chunk, const ITR block_chunk_itr, const string &state,
+    verify_block_result check_fail(T &_block_bucket, const ITR block_bucket_itr, const string &state,
                                    const checksum256 &block_hash);
 
 #ifdef DEBUG

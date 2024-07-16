@@ -281,7 +281,6 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * less than or
      * - `{name} miner` - block miner account
      * - `{name} synchronizer` - block synchronizer account
-     * - `{uint32_t} num_provider_validators` - the number of users who have endorsed the current block
      *
      * ### example
      *
@@ -298,8 +297,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      *   "bits": 386089497,
      *   "nonce": 1492849681,
      *   "miner": "",
-     *   "synchronizer": "alice",
-     *   "num_provider_validators": 3
+     *   "synchronizer": "alice"
      *  }
      * ```
      */
@@ -316,7 +314,6 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         uint32_t nonce;
         name miner;
         name synchronizer;
-        uint32_t num_provider_validators;
         uint64_t primary_key() const { return bucket_id; }
         uint64_t by_height() const { return height; }
         checksum256 by_block_id() const { return xsat::utils::compute_block_id(height, hash); }
@@ -332,7 +329,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         consensus_block_table;
 
     /**
-     * ## Struct `process_block_result`
+     * ## STRUCT `process_block_result`
      *
      * ### params
      *

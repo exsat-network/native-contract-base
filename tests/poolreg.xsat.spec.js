@@ -136,7 +136,7 @@ describe('poolreg.xsat', () => {
             contracts.exsat.actions
                 .transfer(['rwddist.xsat', 'poolreg.xsat', '1.00000000 XSAT', ''])
                 .send('rwddist.xsat@active'),
-            'eosio_assert: poolreg.xsat: invalid memo ex: "<synchronizer><height>"'
+            'eosio_assert: poolreg.xsat: invalid memo ex: "<synchronizer>,<height>"'
         )
     })
 

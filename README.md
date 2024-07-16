@@ -21,34 +21,78 @@
 
 ### `poolreg.xsat`
 
-#### Actions
+## TABLE `synchronizer`
 
-```bash
-# initpool @poolreg.xsat
-$ cleos push action poolreg.xsat initpool '{"synchronizer": "alice", "latest_produced_block_height": 839999, "financial_account": "alice", "miners": [""]}' -p poolreg.xsat
+### scope `get_self()`
+### params
 
-# unbundle @poolreg.xsat
-$ cleos push action poolreg.xsat unbundle '{"id": 1}' -p poolreg.xsat
+- `{name} synchronizer` - synchronizer account
+- `{name} reward_recipient` - receiving account for receiving rewards
+- `{string} memo` - memo when receiving reward transfer
+- `{uint16_t} num_slots` - number of slots owned
+- `{uint64_t} latest_produced_block_height` - the latest block number
+- `{uint16_t} produced_block_limit` - upload block limit, for example, if 432 is set, the upload height needs to
+be a synchronizer that has produced blocks in 432 blocks before it can be uploaded.
+- `{asset} unclaimed` - unclaimed rewards
+- `{asset} claimed` - rewards claimed
+- `{uint64_t} latest_reward_block` - the latest block number to receive rewards
+- `{time_point_sec} latest_reward_time` - latest reward time
 
-# config @poolreg.xsat
-$ cleos push action poolreg.xsat config '{"synchronizer": "alice", "produced_block_limit": 432}' -p poolreg.xsat
+### example
 
-# setfinacct @synchronizer
-$ cleos push action poolreg.xsat setfinacct '{"synchronizer": "alice", "financial_account": "alice"}' -p alice
-
-# buyslot @synchronizer
-$ cleos push action poolreg.xsat buyslot '{"synchronizer": "alice", "receiver": "alice", "num_slots": 2}' -p alice
-
-# claim @evmutil.xsat or @financial_account
-$ cleos push action poolreg.xsat claim '{"synchronizer": "alice"}' -p alice
+```json
+{
+    "synchronizer": "test.xsat",
+    "reward_recipient": "erc2o.xsat",
+    "memo": "0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97",
+    "num_slots": 2,
+    "latest_produced_block_height": 840000,
+    "produced_block_limit": 432,
+    "unclaimed": "5.00000000 XSAT",
+    "claimed": "0.00000000 XSAT",
+    "latest_reward_block": 840001,
+    "latest_reward_time": "2024-07-13T14:29:32"
+}
 ```
 
-#### Table Information
+## TABLE `miners`
+
+### scope `get_self()`
+### params
+
+- `{uint64_t} id` - primary key
+- `{name} synchronizer` - synchronizer account
+- `{string} miner` - associated btc miner account
+
+### example
+
+```json
+{
+   "id": 1,
+   "synchronizer": "alice",
+   "miner": "3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv"
+}
+```
+
+## ACTION `updateheight`
+
+- **authority**: `blksync.xsat`
+
+> Update synchronizer’s latest block height and add associated btc miners.
+
+### params
+
+- `{name} synchronizer` - synchronizer account
+- `{uint64_t} latest_produced_block_height` - the height of the latest mined block
+- `{std::vector<string>} miners` - list of btc accounts corresponding to synchronizer
+
+### example
 
 ```bash
-$ cleos get table poolreg.xsat poolreg.xsat synchronizer
-$ cleos get table poolreg.xsat poolreg.xsat miners
+$ cleos push action poolreg.xsat updateheight '["alice", 839999, ["3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv",
+"bc1p8k4v4xuz55dv49svzjg43qjxq2whur7ync9tm0xgl5t4wjl9ca9snxgmlt"]]' -p poolreg.xsat
 ```
+
 
 ### `rescmng.xsat`
 

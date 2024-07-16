@@ -215,11 +215,11 @@ describe('endrmng.xsat', () => {
         )
     })
 
-    it('proxyreg: validator address does not exists', async () => {
+    it('proxyreg: validator account does not exists', async () => {
         await contracts.endrmng.actions.addwhitelist(['proxyreg', 'bob']).send('endrmng.xsat@active')
         await expectToThrow(
             contracts.endrmng.actions.proxyreg(['bob', 'brian', 'brian', 2000]).send('bob@active'),
-            'eosio_assert: endrmng.xsat::proxyreg: validator address does not exists'
+            'eosio_assert: endrmng.xsat::proxyreg: validator account does not exists'
         )
     })
 
