@@ -106,6 +106,36 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
     typedef eosio::multi_index<"rewardlogs"_n, reward_log_row> reward_log_table;
 
     /**
+     * ## TABLE `rewardbal`
+     *
+     * ### scope `get_self()`
+     * ### params
+     *
+     * - `{uint64_t} height` - block height
+     * - `{asset} synchronizer_rewards_unclaimed` - unclaimed synchronizer rewards
+     * - `{asset} consensus_rewards_unclaimed` - unclaimed consensus rewards
+     * - `{asset} staking_rewards_unclaimed` - unclaimed staking rewards
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "height": 840000,
+     *   "synchronizer_rewards_unclaimed": "5.00000000 XSAT",
+     *   "consensus_rewards_unclaimed": "5.00000000 XSAT",
+     *   "staking_rewards_unclaimed": "40.00000000 XSAT"
+     * }
+     * ```
+     */
+    struct [[eosio::table]] reward_balance_row {
+        uint64_t height = 0;
+        asset synchronizer_rewards_unclaimed = {0, XSAT_SYMBOL};
+        asset consensus_rewards_unclaimed = {0, XSAT_SYMBOL};
+        asset staking_rewards_unclaimed = {0, XSAT_SYMBOL};
+    };
+    typedef eosio::singleton<"rewardbal"_n, reward_balance_row> reward_balance_table;
+
+    /**
      * ## ACTION `distribute`
      *
      * - **authority**: `utxomng.xsat`
@@ -175,6 +205,7 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
    private:
     // init table
     reward_log_table _reward_log = reward_log_table(_self, _self.value);
+    reward_balance_table _reward_balance = reward_balance_table(_self, _self.value);
 
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
 
