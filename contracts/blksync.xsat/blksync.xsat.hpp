@@ -524,9 +524,27 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         require_auth(get_self());
     }
 
+    [[eosio::action]]
+    void chunklog(const uint64_t bucket_id, const uint8_t chunk_id, const uint8_t uploaded_num_chunks) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void delchunklog(const uint64_t bucket_id, const uint8_t chunk_id, const uint8_t uploaded_num_chunks) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void delbucketlog(const uint64_t bucket_id) {
+        require_auth(get_self());
+    }
+
     using consensus_action = eosio::action_wrapper<"consensus"_n, &block_sync::consensus>;
     using delchunks_action = eosio::action_wrapper<"delchunks"_n, &block_sync::delchunks>;
     using bucketlog_action = eosio::action_wrapper<"bucketlog"_n, &block_sync::bucketlog>;
+    using chunklog_action = eosio::action_wrapper<"chunklog"_n, &block_sync::chunklog>;
+    using delchunklog_action = eosio::action_wrapper<"delchunklog"_n, &block_sync::delchunklog>;
+    using delbucketlog_action = eosio::action_wrapper<"delbucketlog"_n, &block_sync::delbucketlog>;
 
     // [start, end)
     static std::vector<char> read_bucket(const uint64_t bucket_id, const name &code, const uint64_t start,

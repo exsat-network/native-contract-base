@@ -158,6 +158,10 @@ void block_sync::pushchunk(const name& synchronizer, const uint64_t height, cons
             row.status = uploading;
         }
     });
+
+    // log
+    block_sync::chunklog_action _chunklog(get_self(), {get_self(), "active"_n});
+    _chunklog.send(block_bucket_itr->bucket_id, chunk_id, block_bucket_itr->uploaded_num_chunks);
 }
 
 //@auth synchronizer
@@ -191,6 +195,10 @@ void block_sync::delchunk(const name& synchronizer, const uint64_t height, const
             row.status = uploading;
         }
     });
+
+    // log
+    block_sync::delchunklog_action _delchunklog(get_self(), {get_self(), "active"_n});
+    _delchunklog.send(block_bucket_itr->bucket_id, chunk_id, block_bucket_itr->uploaded_num_chunks);
 }
 
 //@auth synchronizer
@@ -221,6 +229,10 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
     if (passed_index_itr != passed_index_idx.end()) {
         passed_index_idx.erase(passed_index_itr);
     }
+
+    // log
+    block_sync::delbucketlog_action _delbucketlog(get_self(), {get_self(), "active"_n});
+    _delbucketlog.send(block_bucket_itr->bucket_id);
 }
 
 //@auth synchronizer
@@ -348,21 +360,20 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
         return {.status = get_block_status_name(status), .block_hash = hash};
     }
 
-    if (status == waiting_miner_verification) {
-        block_miner_table _block_miner(get_self(), height);
-        auto block_miner_idx = _block_miner.get_index<"byhash"_n>();
-        auto block_miner_itr = block_miner_idx.require_find(hash, "blksync.xsat::verify: [blockminer] does not exists");
-        check(block_miner_itr->expired_block_num <= current_block_number(),
-              "blksync.xsat::verify: waiting for miners to produce blocks");
+    // waiting_miner_verification
+    block_miner_table _block_miner(get_self(), height);
+    auto block_miner_idx = _block_miner.get_index<"byhash"_n>();
+    auto block_miner_itr = block_miner_idx.require_find(hash, "blksync.xsat::verify: [blockminer] does not exists");
+    check(block_miner_itr->expired_block_num <= current_block_number(),
+          "blksync.xsat::verify: waiting for miners to produce blocks");
 
-        utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
-        _consensus.send(height, hash);
+    utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
+    _consensus.send(height, hash);
 
-        block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
-            row.status = verify_pass;
-        });
-        return {.status = get_block_status_name(verify_pass), .block_hash = hash};
-    }
+    block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
+        row.status = verify_pass;
+    });
+    return {.status = get_block_status_name(verify_pass), .block_hash = hash};
 }
 
 //@private
