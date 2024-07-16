@@ -12,16 +12,16 @@ cdt-cpp ../../contracts/endrmng.xsat/endrmng.xsat.cpp -I ../../contracts/ -DDEBU
 cdt-cpp ../../contracts/blksync.xsat/blksync.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include -DDEBUG -DMAINNET
 cdt-cpp ../../contracts/utxomng.xsat/utxomng.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include -DDEBUG -DMAINNET
 
-cleos set contract btc.xsat wasm btc.xsat.wasm btc.xsat.abi
-cleos set contract exsat.xsat wasm exsat.xsat.wasm exsat.xsat.abi
-cleos set contract poolreg.xsat wasm poolreg.xsat.wasm poolreg.xsat.abi
-cleos set contract rescmng.xsat wasm rescmng.xsat.wasm rescmng.xsat.abi
-cleos set contract rwddist.xsat wasm rwddist.xsat.wasm rwddist.xsat.abi
-cleos set contract staking.xsat wasm staking.xsat.wasm staking.xsat.abi
-cleos set contract blkendt.xsat wasm blkendt.xsat.wasm blkendt.xsat.abi
-cleos set contract endrmng.xsat wasm endrmng.xsat.wasm endrmng.xsat.abi
-cleos set contract blksync.xsat wasm blksync.xsat.wasm blksync.xsat.abi
-cleos set contract utxomng.xsat wasm utxomng.xsat.wasm utxomng.xsat.abi
+cleos set contract btc.xsat . btc.xsat.wasm btc.xsat.abi
+cleos set contract exsat.xsat . exsat.xsat.wasm exsat.xsat.abi
+cleos set contract poolreg.xsat . poolreg.xsat.wasm poolreg.xsat.abi
+cleos set contract rescmng.xsat . rescmng.xsat.wasm rescmng.xsat.abi
+cleos set contract rwddist.xsat . rwddist.xsat.wasm rwddist.xsat.abi
+cleos set contract staking.xsat . staking.xsat.wasm staking.xsat.abi
+cleos set contract blkendt.xsat . blkendt.xsat.wasm blkendt.xsat.abi
+cleos set contract endrmng.xsat . endrmng.xsat.wasm endrmng.xsat.abi
+cleos set contract blksync.xsat . blksync.xsat.wasm blksync.xsat.abi
+cleos set contract utxomng.xsat . utxomng.xsat.wasm utxomng.xsat.abi
 
 cleos push action btc.xsat create '["btc.xsat", "21000000.00000000 BTC"]' -p btc.xsat
 cleos push action exsat.xsat create '["rwddist.xsat", "21000000.00000000 XSAT"]' -p exsat.xsat
