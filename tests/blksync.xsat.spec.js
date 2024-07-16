@@ -36,6 +36,11 @@ const get_pass_index = height => {
     return contracts.blksync.tables.passedindexs(BigInt(height)).getTableRows()
 }
 
+const get_block_miner = height => {
+    return contracts.blksync.tables.blockminer(BigInt(height)).getTableRows()
+}
+
+
 const get_tx_output = () => {
     return contracts.parse.tables['tx.output']().getTableRows()
 }
@@ -288,9 +293,7 @@ describe('blksync.xsat', () => {
             {
                 bucket_id: 2,
                 hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
-                cumulative_work: '0000000000000000000000000000000000000000000000000000000000000000',
                 height: 840000,
-                miner: '',
                 num_chunks: 9,
                 size: 2325617,
                 uploaded_size: 2325617,
@@ -298,16 +301,13 @@ describe('blksync.xsat', () => {
                 uploaded_num_chunks: 9,
                 reason: 'merkle_invalid',
                 verify_info: null,
-                btc_miners: [],
             },
         ])
         await expectToThrow(
             contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active'),
             'eosio_assert_message: blksync.xsat::verify: cannot validate block in the current state [verify_fail]'
         )
-
     })
-
 
     it('initbucket 840000', async () => {
         const height = 840000
@@ -317,14 +317,12 @@ describe('blksync.xsat', () => {
 
         const block_size = read_block(height).length / 2
         const num_chunks = Math.ceil(read_block(height).length / max_chunk_size)
-        await contracts.blksync.actions.initbucket(['alice', height, hash, block_size, num_chunks]).send('alice@active')
-        expect(get_block_bucket('alice')).toEqual([
+        await contracts.blksync.actions.initbucket(['bob', height, hash, block_size, num_chunks]).send('bob@active')
+        expect(get_block_bucket('bob')).toEqual([
             {
                 bucket_id: 3,
                 hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
-                cumulative_work: '0000000000000000000000000000000000000000000000000000000000000000',
                 height: 840000,
-                miner: '',
                 num_chunks: 9,
                 size: 2325617,
                 uploaded_size: 0,
@@ -332,7 +330,6 @@ describe('blksync.xsat', () => {
                 uploaded_num_chunks: 0,
                 reason: '',
                 verify_info: null,
-                btc_miners: [],
             },
         ])
     })
@@ -340,15 +337,13 @@ describe('blksync.xsat', () => {
     it('push chunks', async () => {
         const height = 840000
         const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
-        await pushUpload('alice', height, hash, read_block(height))
+        await pushUpload('bob', height, hash, read_block(height))
 
-        expect(get_block_bucket('alice')).toEqual([
+        expect(get_block_bucket('bob')).toEqual([
             {
                 bucket_id: 3,
                 hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
-                cumulative_work: '0000000000000000000000000000000000000000000000000000000000000000',
                 height: 840000,
-                miner: '',
                 num_chunks: 9,
                 size: 2325617,
                 uploaded_size: 2325617,
@@ -356,50 +351,37 @@ describe('blksync.xsat', () => {
                 uploaded_num_chunks: 9,
                 reason: '',
                 verify_info: null,
-                btc_miners: [],
             },
         ])
-    })
-
-    it('verify: waiting for miners to produce blocks first', async () => {
-        // tx_count 2332
-        const height = 840000
-        const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
-        await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-        let retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
-        expect(retval.status).toBe('verify_merkle')
-
-        await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-
-        await expectToThrow(
-            contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active'),
-            'eosio_assert: blksync.xsat::verify: waiting for miners to produce blocks first'
-        )
     })
 
     it('accepts and verify block 840000', async () => {
         blockchain.addBlocks(10)
         const height = 840000
         const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
-        await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
+        await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
+        retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
+        expect(retval.status).toBe('verify_merkle')
+        await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
+        await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
         retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
         expect(retval.status).toBe('verify_pass')
         expect(get_pass_index(height)).toEqual([
             {
                 bucket_id: 3,
                 hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
+                cumulative_work: '0000000000000000000000000000000000000000753bdab0e0d745453677442b',
                 id: 0,
-                synchronizer: 'alice',
+                synchronizer: 'bob',
+                miner: 'bob',
             },
         ])
 
-        expect(get_block_bucket('alice')).toEqual([
+        expect(get_block_bucket('bob')).toEqual([
             {
                 bucket_id: 3,
                 hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
-                cumulative_work: '0000000000000000000000000000000000000000753bdab0e0d745453677442b',
                 height: 840000,
-                miner: 'bob',
                 num_chunks: 9,
                 size: 2325617,
                 uploaded_size: 2325617,
@@ -407,7 +389,6 @@ describe('blksync.xsat', () => {
                 uploaded_num_chunks: 9,
                 reason: '',
                 verify_info: null,
-                btc_miners: ['18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX'],
             },
         ])
     })
@@ -415,13 +396,13 @@ describe('blksync.xsat', () => {
     it('invalid state', async () => {
         const height = 840000
         const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
-        let action = pushChunk('alice', height, hash, 1, getChunk(read_block(height), 1))
+        let action = pushChunk('bob', height, hash, 1, getChunk(read_block(height), 1))
         await expectToThrow(
             action,
             'eosio_assert_message: blksync.xsat::pushchunk: cannot push chunk in the current state [verify_pass]'
         )
 
-        action = contracts.blksync.actions.delchunk(['alice', height, hash, 1]).send('alice@active')
+        action = contracts.blksync.actions.delchunk(['bob', height, hash, 1]).send('bob@active')
         await expectToThrow(
             action,
             'eosio_assert_message: blksync.xsat::delchunk: cannot delete chunk in the current state [verify_pass]'
@@ -446,12 +427,11 @@ describe('blksync.xsat', () => {
             miner: 'bob',
             nonce: 3932395645,
             previous_block_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
-            synchronizer: 'alice',
+            synchronizer: 'bob',
             timestamp: 1713571767,
             version: 710926336,
-            num_provider_validators: 4,
         })
-        expect(get_block_bucket('alice')).toEqual([])
+        expect(get_block_bucket('bob')).toEqual([])
         expect(get_pass_index(height)).toEqual([])
     })
 
@@ -503,7 +483,6 @@ describe('blksync.xsat', () => {
             'eosio_assert_message: utxo_manage::processblock: must be more than 6 blocks to process'
         )
     })
-
 
     it('processblock: cannot validate block in the current state [verify_fail]', async () => {
         const height = 840001
@@ -565,7 +544,7 @@ describe('blksync.xsat', () => {
 
     it('parse 840000', async () => {
         //coinbase 1 vin 2 vout
-        await contracts.utxomng.actions.processblock(['alice', 1]).send('alice@active')
+        await contracts.utxomng.actions.processblock(['bob', 1]).send('bob@active')
         expect(get_chain_state()).toEqual({
             num_transactions: 3050,
             processed_position: 0,
@@ -580,16 +559,16 @@ describe('blksync.xsat', () => {
             num_transactions: 3050,
             num_utxos: 1,
             parsed_expiration_time: addTime(blockchain.timestamp, TimePointSec.from(10 * 60)).toString(),
-            parser: 'alice',
+            parser: 'bob',
             parsing_bucket_id: 3,
             status: 2,
-            synchronizer: 'alice',
+            synchronizer: 'bob',
             miner: 'bob',
             num_validators_assigned: 0,
-            num_provider_validators: 4,
+            num_provider_validators: 5,
         })
 
-        await contracts.utxomng.actions.processblock(['alice', 1]).send('alice@active')
+        await contracts.utxomng.actions.processblock(['bob', 1]).send('bob@active')
         expect(get_chain_state()).toEqual({
             num_transactions: 3050,
             processed_position: 0,
@@ -604,16 +583,16 @@ describe('blksync.xsat', () => {
             num_transactions: 3050,
             num_utxos: 1,
             parsed_expiration_time: addTime(blockchain.timestamp, TimePointSec.from(10 * 60)).toString(),
-            parser: 'alice',
+            parser: 'bob',
             parsing_bucket_id: 3,
             status: 2,
-            synchronizer: 'alice',
+            synchronizer: 'bob',
             miner: 'bob',
             num_validators_assigned: 0,
-            num_provider_validators: 4,
+            num_provider_validators: 5,
         })
         // parse utxo
-        await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active')
+        await contracts.utxomng.actions.processblock(['bob', 0]).send('bob@active')
         expect(get_chain_state()).toEqual({
             num_transactions: 3050,
             processed_position: 2325537,
@@ -628,16 +607,16 @@ describe('blksync.xsat', () => {
             num_transactions: 3050,
             num_utxos: 7682,
             parsed_expiration_time: addTime(blockchain.timestamp, TimePointSec.from(10 * 60)).toString(),
-            parser: 'alice',
+            parser: 'bob',
             parsing_bucket_id: 3,
             status: 3,
-            synchronizer: 'alice',
+            synchronizer: 'bob',
             miner: 'bob',
             num_validators_assigned: 0,
-            num_provider_validators: 4,
+            num_provider_validators: 5,
         })
         // erase data
-        await contracts.utxomng.actions.processblock(['alice', 1]).send('alice@active')
+        await contracts.utxomng.actions.processblock(['bob', 1]).send('bob@active')
         expect(get_chain_state()).toEqual({
             num_transactions: 3050,
             processed_position: 2325537,
@@ -652,16 +631,16 @@ describe('blksync.xsat', () => {
             parsed_expiration_time: addTime(blockchain.timestamp, TimePointSec.from(10 * 60)).toString(),
             parsing_height: 840000,
             parsing_hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
-            parser: 'alice',
+            parser: 'bob',
             parsing_bucket_id: 3,
             status: 4,
-            synchronizer: 'alice',
+            synchronizer: 'bob',
             miner: 'bob',
             num_validators_assigned: 0,
-            num_provider_validators: 4,
+            num_provider_validators: 5,
         })
         // distribute reward
-        await contracts.utxomng.actions.processblock(['alice', 1]).send('alice@active')
+        await contracts.utxomng.actions.processblock(['bob', 1]).send('bob@active')
         expect(get_chain_state()).toEqual({
             num_transactions: 0,
             processed_position: 0,
@@ -705,6 +684,7 @@ describe('blksync.xsat', () => {
     }, 15000)
 
     it('parse 840001', async () => {
+        blockchain.addTime(TimePointSec.from(600))
         await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active')
         await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active')
         await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active')

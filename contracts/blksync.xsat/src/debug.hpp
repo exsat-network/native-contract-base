@@ -15,6 +15,7 @@ void block_sync::cleartable(const name table_name, const name& synchronizer, con
     block_bucket_table _block_bucket(get_self(), synchronizer.value);
     block_chunk_table _block_chunk(get_self(), height);
     passed_index_table _pass_index(get_self(), height);
+    block_miner_table _block_miner(get_self(), height);
 
     if (table_name == "globalid"_n)
         _global_id.remove();
@@ -24,6 +25,8 @@ void block_sync::cleartable(const name table_name, const name& synchronizer, con
         clear_table(_block_chunk, rows_to_clear);
     else if (table_name == "passedindexs"_n)
         clear_table(_pass_index, rows_to_clear);
+    else if (table_name == "blockminer"_n)
+        clear_table(_block_miner, rows_to_clear);
     else
         check(false, "blksync.xsat::cleartable: [table_name] unknown table to clear");
 }

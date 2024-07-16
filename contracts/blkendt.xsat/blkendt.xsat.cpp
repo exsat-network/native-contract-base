@@ -73,7 +73,7 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
             row.requested_validators.erase(itr);
         });
 
-        if (endorsement_itr->num_reached_consensus() == endorsement_itr->provider_validators.size()) {
+        if (endorsement_itr->num_reached_consensus() >= endorsement_itr->provider_validators.size()) {
             utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
             _consensus.send(height, hash);
         }

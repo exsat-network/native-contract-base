@@ -150,20 +150,31 @@ void utxo_manage::consensus(const uint64_t height, const checksum256& hash) {
     auto passed_index_idx = _passed_index.get_index<"byhash"_n>();
     auto passed_index_itr = passed_index_idx.find(hash);
 
+    if (passed_index_itr == passed_index_idx.end()) {
+        return;
+    }
+
     block_endorse::endorsement_table _endorsement(BLOCK_ENDORSE_CONTRACT, height);
     auto endorsement_idx = _endorsement.get_index<"byhash"_n>();
     auto endorsement_itr = endorsement_idx.find(hash);
 
-    if (passed_index_itr == passed_index_idx.end() || endorsement_itr == endorsement_idx.end()
-        || !endorsement_itr->reached_consensus()) {
+    if (endorsement_itr == endorsement_idx.end() || !endorsement_itr->reached_consensus()) {
         return;
     }
 
-    block_sync::block_bucket_table _block_bucket(BLOCK_SYNC_CONTRACT, passed_index_itr->synchronizer.value);
-    auto block_bucket_itr = _block_bucket.find(passed_index_itr->bucket_id);
+    // Verify whether it exceeds the number of blocks miners preferentially produce.
+    if (passed_index_itr->miner && passed_index_itr->synchronizer != passed_index_itr->miner) {
+        block_sync::block_miner_table _block_miner(BLOCK_SYNC_CONTRACT, height);
+        auto block_miner_idx = _block_miner.get_index<"byhash"_n>();
+        auto block_miner_itr = block_miner_idx.require_find(hash);
+
+        if (block_miner_itr->expired_block_num > current_block_number()) {
+            return;
+        }
+    }
 
     // get header
-    auto block_data = block_sync::read_bucket(block_bucket_itr->bucket_id, BLOCK_SYNC_CONTRACT, 0, BLOCK_HEADER_SIZE);
+    auto block_data = block_sync::read_bucket(passed_index_itr->bucket_id, BLOCK_SYNC_CONTRACT, 0, BLOCK_HEADER_SIZE);
     eosio::datastream<const char*> block_stream(block_data.data(), block_data.size());
     bitcoin::core::block_header block_header;
     block_stream >> block_header;
@@ -177,11 +188,10 @@ void utxo_manage::consensus(const uint64_t height, const checksum256& hash) {
         row.timestamp = block_header.timestamp;
         row.bits = block_header.bits;
         row.nonce = block_header.nonce;
-        row.cumulative_work = block_bucket_itr->cumulative_work;
-        row.miner = block_bucket_itr->miner;
+        row.cumulative_work = passed_index_itr->cumulative_work;
+        row.miner = passed_index_itr->miner;
         row.bucket_id = passed_index_itr->bucket_id;
         row.synchronizer = passed_index_itr->synchronizer;
-        row.num_provider_validators = endorsement_itr->provider_validators.size();
     });
 
     // update chain state
@@ -191,8 +201,8 @@ void utxo_manage::consensus(const uint64_t height, const checksum256& hash) {
 
         if (chain_state.head_height - chain_state.irreversible_height >= IRREVERSIBLE_BLOCKS
             && chain_state.parsing_height == 0) {
-            auto config = _config.get();
             find_set_next_block(&chain_state);
+            auto config = _config.get();
             chain_state.parsed_expiration_time = current_time_point() + eosio::seconds(config.parse_timeout_seconds);
         }
         _chain_state.set(chain_state, get_self());
@@ -200,7 +210,7 @@ void utxo_manage::consensus(const uint64_t height, const checksum256& hash) {
 
     // consensus
     block_sync::consensus_action block_sync_consensus(BLOCK_SYNC_CONTRACT, {get_self(), "active"_n});
-    block_sync_consensus.send(height, passed_index_itr->synchronizer, block_bucket_itr->bucket_id);
+    block_sync_consensus.send(height, passed_index_itr->synchronizer, passed_index_itr->bucket_id);
 }
 
 //@auth
@@ -266,7 +276,7 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
         auto del_height = height - config.num_retain_data_blocks;
         block_extra_table _erase_block_extra(get_self(), del_height);
         if (_erase_block_extra.exists()) {
-            _delchunks.send(del_height, _erase_block_extra.get().bucket_id);
+            _delchunks.send(_erase_block_extra.get().bucket_id);
             _erase_block_extra.remove();
         }
 
@@ -276,8 +286,10 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
         auto consensus_block_itr = consensus_block_idx.lower_bound(height);
         auto consensus_block_end = consensus_block_idx.upper_bound(height);
         while (consensus_block_itr != consensus_block_end) {
+            // Without deleting the data of the current latest irreversible block, config.num_retain_data_blocks block
+            // data needs to be retained.
             if (consensus_block_itr->bucket_id != chain_state.parsing_bucket_id) {
-                _delchunks.send(height, consensus_block_itr->bucket_id);
+                _delchunks.send(consensus_block_itr->bucket_id);
             } else {
                 consensus_block = *consensus_block_itr;
             }
@@ -363,7 +375,11 @@ void utxo_manage::find_set_next_block(utxo_manage::chain_state_row* chain_state)
     chain_state->miner = consensus_block.miner;
     chain_state->synchronizer = consensus_block.synchronizer;
     chain_state->parser = consensus_block.synchronizer;
-    chain_state->num_provider_validators = consensus_block.num_provider_validators;
+
+    block_endorse::endorsement_table _endorsement(BLOCK_ENDORSE_CONTRACT, chain_state->parsing_height);
+    auto endorsement_idx = _endorsement.get_index<"byhash"_n>();
+    auto endorsement_itr = endorsement_idx.require_find(chain_state->parsing_hash);
+    chain_state->num_provider_validators = endorsement_itr->provider_validators.size();
 }
 
 utxo_manage::consensus_block_row utxo_manage::find_next_irreversible_block(const uint64_t irreversible_height,
