@@ -155,8 +155,9 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
 
     // logs
     [[eosio::action]]
-    void rewardlog(const uint64_t height, const checksum256& hash, const name& parser, const asset& synchronizer_reward,
-                   const asset& staking_reward, const asset& consensus_reward) {
+    void rewardlog(const uint64_t height, const checksum256& hash, const name& synchronizer, const name& miner,
+                   const name& parser, const asset& synchronizer_reward, const asset& staking_reward,
+                   const asset& consensus_reward) {
         require_auth(get_self());
     }
 

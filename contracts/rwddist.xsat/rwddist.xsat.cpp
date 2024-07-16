@@ -13,7 +13,8 @@ void reward_distribution::distribute(const uint64_t height) {
     require_auth(UTXO_MANAGE_CONTRACT);
 
     auto reward_log_itr = _reward_log.find(height);
-    check(reward_log_itr == _reward_log.end(), "rwddist.xsat::distribute: the height has been allocated a reward");
+    check(reward_log_itr == _reward_log.end(),
+          "rwddist.xsat::distribute: the current block has been allocated rewards");
 
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     auto chain_state = _chain_state.get();
@@ -91,6 +92,9 @@ void reward_distribution::endtreward(const name& parser, const uint64_t height, 
 
     auto reward_log_itr
         = _reward_log.require_find(height, "rwddist.xsat::endtreward: no rewards are being distributed");
+
+    check(reward_log_itr->num_validators_assigned < reward_log_itr->provider_validators.size(),
+          "rwddist.xsat::endtreward: The current block has distributed rewards");
     check(from_index == reward_log_itr->num_validators_assigned, "rwddist.xsat::endtreward: invalid from_index");
     check(to_index > from_index && to_index <= reward_log_itr->provider_validators.size(),
           "rwddist.xsat::endtreward: invalid to_index");
@@ -139,8 +143,9 @@ void reward_distribution::endtreward(const name& parser, const uint64_t height, 
 
         // log
         reward_distribution::rewardlog_action _rewardlog(get_self(), {get_self(), "active"_n});
-        _rewardlog.send(height, reward_log_itr->hash, parser, reward_log_itr->synchronizer_rewards,
-                        reward_log_itr->staking_rewards, reward_log_itr->consensus_rewards);
+        _rewardlog.send(height, reward_log_itr->hash, reward_log_itr->synchronizer, reward_log_itr->miner, parser,
+                        reward_log_itr->synchronizer_rewards, reward_log_itr->staking_rewards,
+                        reward_log_itr->consensus_rewards);
     }
 
     _reward_log.modify(reward_log_itr, same_payer, [&](auto& row) {
