@@ -168,6 +168,26 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
                   const string& financial_account, const std::vector<string>& miners);
 
     /**
+     * ## ACTION `delpool`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Erase synchronizer.
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat delpool '["alice"]' -p poolreg.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void delpool(const name& synchronizer);
+
+    /**
      * ## ACTION `config`
      *
      * - **authority**: `get_self()`
@@ -268,6 +288,11 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     }
 
     [[eosio::action]]
+    void delpoollog(const name& synchronizer) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
     void claimlog(const name& synchronizer, const string& reward_recipient, const asset& quantity) {
         require_auth(get_self());
     }
@@ -276,6 +301,7 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     using buyslot_action = eosio::action_wrapper<"buyslot"_n, &pool::buyslot>;
     using claimlog_action = eosio::action_wrapper<"claimlog"_n, &pool::claimlog>;
     using poollog_action = eosio::action_wrapper<"poollog"_n, &pool::poollog>;
+    using delpoollog_action = eosio::action_wrapper<"delpoollog"_n, &pool::delpoollog>;
 
    private:
     synchronizer_table _synchronizer = synchronizer_table(_self, _self.value);
