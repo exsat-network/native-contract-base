@@ -83,6 +83,12 @@ void reward_distribution::distribute(const uint64_t height) {
         row.synchronizer = chain_state.synchronizer;
         row.num_validators = num_validators;
     });
+
+    auto reward_balance = _reward_balance.get_or_default();
+    reward_balance.synchronizer_rewards_unclaimed = reward_log_itr->synchronizer_rewards;
+    reward_balance.consensus_rewards_unclaimed = reward_log_itr->consensus_rewards;
+    reward_balance.staking_rewards_unclaimed = reward_log_itr->staking_rewards;
+    _reward_balance.set(reward_balance, get_self());
 }
 
 [[eosio::action]]
@@ -104,6 +110,7 @@ void reward_distribution::endtreward(const name& parser, const uint64_t height, 
     vector<endorse_manage::reward_details_row> reward_details;
     reward_details.reserve(to_index - from_index);
 
+    auto reward_balance = _reward_balance.get_or_default();
     asset total_rewards = {0, reward_log_itr->staking_rewards.symbol};
     for (; from_index < to_index; from_index++) {
         auto validator = reward_log_itr->provider_validators[from_index];
@@ -112,10 +119,19 @@ void reward_distribution::endtreward(const name& parser, const uint64_t height, 
         auto consensus_staking = num_reached_consensus > from_index ? validator.staking : 0;
 
         // calculate the number of rewards
-        int64_t staking_reward_amount
-            = uint128_t(reward_log_itr->staking_rewards.amount) * endorse_staking / reward_log_itr->endorsed_staking;
-        int64_t consensus_reward_amount = uint128_t(reward_log_itr->consensus_rewards.amount) * consensus_staking
-                                          / reward_log_itr->reached_consensus_staking;
+        int64_t staking_reward_amount = 0;
+        int64_t consensus_reward_amount = 0;
+
+        // The last one to distribute the remaining rewards
+        if (from_index != reward_log_itr->provider_validators.size() - 1) {
+            staking_reward_amount = uint128_t(reward_log_itr->staking_rewards.amount) * endorse_staking
+                                    / reward_log_itr->endorsed_staking;
+            consensus_reward_amount = uint128_t(reward_log_itr->consensus_rewards.amount) * consensus_staking
+                                      / reward_log_itr->reached_consensus_staking;
+        } else {
+            staking_reward_amount = reward_balance.staking_rewards_unclaimed.amount;
+            consensus_reward_amount = reward_balance.consensus_rewards_unclaimed.amount;
+        }
 
         reward_details.emplace_back(endorse_manage::reward_details_row{
             .validator = validator.account,
@@ -123,6 +139,9 @@ void reward_distribution::endtreward(const name& parser, const uint64_t height, 
             .consensus_rewards = {consensus_reward_amount, reward_log_itr->consensus_rewards.symbol}});
 
         total_rewards.amount += staking_reward_amount + consensus_reward_amount;
+        //
+        reward_balance.staking_rewards_unclaimed.amount -= staking_reward_amount;
+        reward_balance.consensus_rewards_unclaimed.amount -= consensus_reward_amount;
     }
 
     // transfer to endrmng.xsat
@@ -146,7 +165,11 @@ void reward_distribution::endtreward(const name& parser, const uint64_t height, 
         _rewardlog.send(height, reward_log_itr->hash, reward_log_itr->synchronizer, reward_log_itr->miner, parser,
                         reward_log_itr->synchronizer_rewards, reward_log_itr->staking_rewards,
                         reward_log_itr->consensus_rewards);
+
+        reward_balance.synchronizer_rewards_unclaimed.amount = 0;
     }
+
+    _reward_balance.set(reward_balance, get_self());
 
     _reward_log.modify(reward_log_itr, same_payer, [&](auto& row) {
         row.num_validators_assigned = to_index;

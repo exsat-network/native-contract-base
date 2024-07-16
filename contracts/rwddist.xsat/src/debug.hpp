@@ -13,10 +13,13 @@ void reward_distribution::cleartable(const name table_name, const optional<name>
     const uint64_t rows_to_clear = (!max_rows || *max_rows == 0) ? -1 : *max_rows;
     const uint64_t value = scope ? scope->value : get_self().value;
 
-    // tables
+    reward_balance_table _reward_balance(get_self(), value);
 
+    // tables
     if (table_name == "rewardlogs"_n)
         clear_table(_reward_log, rows_to_clear);
+    else if (table_name == "rewardbal"_n)
+        _reward_balance.remove();
     else
         check(false, "rwddist.xsat::cleartable: [table_name] unknown table to clear");
 }
