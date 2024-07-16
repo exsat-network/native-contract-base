@@ -261,14 +261,14 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
     check(block_bucket_itr->in_verifiable(), "blksync.xsat::verify: cannot validate block in the current state ["
                                                  + get_block_status_name(block_bucket_itr->status) + "]");
 
-    if (utxo_manage::check_consensus(height, hash)) {
-        return check_fail(block_bucket_idx, block_bucket_itr, "reached_consensus", hash);
-    }
-
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
     pay.send(height, hash, synchronizer, VERIFY, 1);
     auto status = block_bucket_itr->status;
+
+    if (utxo_manage::check_consensus(height, hash)) {
+        return check_fail(block_bucket_idx, block_bucket_itr, "reached_consensus", hash);
+    }
 
     auto verify_info = block_bucket_itr->verify_info;
     if (status == upload_complete || status == verify_merkle) {
