@@ -65,24 +65,14 @@ static string account_decode(const vector<uint8_t>& hexVec) {
 //  VERSION: 01
 //  ACCOUNT: 1208060d04111f0417120013
 static name get_op_return_eos_account(const vector<uint8_t>& data) {
-    constexpr auto witness_commitment_header = array<uint8_t, 8>{0x6a, 0x12, 0x45, 0x58, 0x53, 0x41, 0x54, 0x01};
-
-    if (0 != memcmp(data.data(), witness_commitment_header.data(), witness_commitment_header.size())) {
+    if (data[0] != 0x6a) {
         return {};
     }
-    vector<uint8_t> account_data(data.begin() + 8, data.end());
-    return parse_name(account_decode(account_data));
-}
+    if (data.size() - 2 != data[1]) return {};
 
-//  OP_RETURN: 6a
-//  DATA_LENGTH: 12
-//  XSAT: 4558534154
-//  VERSION: 01
-//  ACCOUNT: 1208060d04111f0417120013
-static name get_op_return_btc_account(const vector<uint8_t>& data) {
-    constexpr auto witness_commitment_header = array<uint8_t, 8>{0x6a, 0x12, 0x45, 0x58, 0x53, 0x41, 0x54, 0x01};
+    constexpr auto witness_commitment_header = array<uint8_t, 6>{0x45, 0x58, 0x53, 0x41, 0x54, 0x01};
 
-    if (0 != memcmp(data.data(), witness_commitment_header.data(), witness_commitment_header.size())) {
+    if (0 != memcmp(data.data() + 2, witness_commitment_header.data(), witness_commitment_header.size())) {
         return {};
     }
     vector<uint8_t> account_data(data.begin() + 8, data.end());
