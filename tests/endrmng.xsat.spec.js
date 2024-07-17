@@ -581,7 +581,7 @@ describe('endrmng.xsat', () => {
     it('newstake: the number of unstakes exceeds the pledge amount', async () => {
         await expectToThrow(
             contracts.endrmng.actions.newstake(['tony', 'alice', 'brian', Asset.from(100, BTC)]).send('tony@active'),
-            'eosio_assert: endorse_manage::unstake: the number of unstakes exceeds the pledge amount'
+            'eosio_assert: endorse_manage::unstake: the number of unstakes exceeds the staking amount'
         )
     })
 
