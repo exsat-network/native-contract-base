@@ -52,7 +52,7 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
      * ```json
      * {
      *   "id": 1,
-     *   "token": { sym: "8,BTC", contract: "btc.xsat" },
+     *   "token": { "sym": "8,BTC", "contract": "btc.xsat" },
      *   "disabled_staking": false
      * }
      * ```
@@ -145,7 +145,7 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action staking.xsat addtoken '[{ sym: "8,BTC", contract: "btc.xsat" }]' -p staking.xsat
+     * $ cleos push action staking.xsat addtoken '[{ "sym": "8,BTC", "contract": "btc.xsat" }]' -p staking.xsat
      * ```
      */
     [[eosio::action]]
@@ -176,7 +176,7 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
      *
      * - **authority**: `get_self()`
      *
-     * > Delete whitelist token
+     * > Set the token’s disabled staking status.
      *
      * ### params
      *
@@ -197,7 +197,7 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
      *
      * - **authority**: `staker`
      *
-     * > Cancel pledge.
+     * > Cancel the pledge and enter the unlocking period.
      *
      * ### params
      *
@@ -220,7 +220,7 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
      *
      * - **authority**: `staker`
      *
-     * > Withdraw expired pledged tokens.
+     * > Withdraw expired staking tokens.
      *
      * ### params
      *

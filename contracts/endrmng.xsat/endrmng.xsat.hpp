@@ -653,17 +653,6 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
                      const name& new_validator, const asset& quantity);
 
     /**
-     * Evm claim reward action.
-     * @auth scope is `evmcaller` whitelist account
-     *
-     * @param caller - the account that calls the method
-     * @param proxy - proxy account
-     * @param staker - staker account
-     * @param validator - validator account
-     *
-     */
-
-    /**
      * ## ACTION `evmclaim`
      *
      * - **authority**: `caller`

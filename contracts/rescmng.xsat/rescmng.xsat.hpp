@@ -126,14 +126,15 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
     /**
      * ## ACTION `pay`
      *
-     * - **authority**: `blksync.xsat or blkendt.xsat or utxomng.xsat or poolreg.xsat or blkendt.xsat`
+     * - **authority**: `blksync.xsat` or `blkendt.xsat` or `utxomng.xsat` or `poolreg.xsat` or `blkendt.xsat`
      *
      * > Pay the fee.
      *
      * ### params
      *
-     * - `{name} fee_account` - block height after deducting fees
-     * - `{name} owner` - block hash after deducting fees
+     * - `{uint64_t} height` - block height
+     * - `{hash} hash` - block hash
+     * - `{name} owner` - debited account
      * - `{fee_type} type` - types of deductions
      * - `{uint64_t} quantity` - payment quantity
      *

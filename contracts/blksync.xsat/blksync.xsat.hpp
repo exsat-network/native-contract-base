@@ -50,7 +50,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * ### scope `get_self()`
      * ### params
      *
-     * - `{uint64_t} bucket_id` -
+     * - `{uint64_t} bucket_id` - latest bucket_id
      *
      * ### example
      *
@@ -324,7 +324,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     typedef eosio::multi_index<"block.chunk"_n, block_chunk_row> block_chunk_table;
 
     /**
-     * ## TABLE `verify_block_result`
+     * ## STRUCT `verify_block_result`
      *
      * ### params
      *
