@@ -1,42 +1,17 @@
-- [poolreg.xsat](#poolregxsat)
-  - [Actions](#actions)
-  - [Table Information](#table-information)
-  - [TABLE `synchronizer`](#table-synchronizer)
-    - [scope `get_self()`](#scope-get_self)
-    - [params](#params)
-    - [example](#example)
-  - [TABLE `miners`](#table-miners)
-    - [scope `get_self()`](#scope-get_self-1)
-    - [params](#params-1)
-    - [example](#example-1)
-  - [ACTION `updateheight`](#action-updateheight)
-    - [params](#params-2)
-    - [example](#example-2)
-  - [ACTION `initpool`](#action-initpool)
-    - [params](#params-3)
-    - [example](#example-3)
-  - [ACTION `delpool`](#action-delpool)
-    - [params](#params-4)
-    - [example](#example-4)
-  - [ACTION `unbundle`](#action-unbundle)
-    - [params](#params-5)
-    - [example](#example-5)
-  - [ACTION `config`](#action-config)
-    - [params](#params-6)
-    - [example](#example-6)
-  - [ACTION `buyslot`](#action-buyslot)
-    - [params](#params-7)
-    - [example](#example-7)
-  - [ACTION `setfinacct`](#action-setfinacct)
-    - [params](#params-8)
-    - [example](#example-8)
-  - [ACTION `claim`](#action-claim)
-    - [params](#params-9)
-    - [example](#example-9)
-
 # poolreg.xsat
 
 ## Actions
+
+- Initialize the synchronizer
+- Delete the synchronizer
+- Unbind the miner
+- Configure financial account and commission rate for the synchronizer
+- Purchase a slot
+- Claim rewards for validating blocks
+- Update the synchronizer with the latest block height
+
+
+## Quickstart 
 
 ```bash
 # updateheight @blksync.xsat
@@ -71,6 +46,41 @@ $ cleos push action poolreg.xsat claim '{"synchronizer": "alice"}' -p alice
 $ cleos get table poolreg.xsat poolreg.xsat synchronizer
 $ cleos get table poolreg.xsat poolreg.xsat miners
 ```
+
+## Table of Content
+
+- [TABLE `synchronizer`](#table-synchronizer)
+  - [scope `get_self()`](#scope-get_self)
+  - [params](#params)
+  - [example](#example)
+- [TABLE `miners`](#table-miners)
+  - [scope `get_self()`](#scope-get_self-1)
+  - [params](#params-1)
+  - [example](#example-1)
+- [ACTION `updateheight`](#action-updateheight)
+  - [params](#params-2)
+  - [example](#example-2)
+- [ACTION `initpool`](#action-initpool)
+  - [params](#params-3)
+  - [example](#example-3)
+- [ACTION `delpool`](#action-delpool)
+  - [params](#params-4)
+  - [example](#example-4)
+- [ACTION `unbundle`](#action-unbundle)
+  - [params](#params-5)
+  - [example](#example-5)
+- [ACTION `config`](#action-config)
+  - [params](#params-6)
+  - [example](#example-6)
+- [ACTION `buyslot`](#action-buyslot)
+  - [params](#params-7)
+  - [example](#example-7)
+- [ACTION `setfinacct`](#action-setfinacct)
+  - [params](#params-8)
+  - [example](#example-8)
+- [ACTION `claim`](#action-claim)
+  - [params](#params-9)
+  - [example](#example-9)
 
 ## TABLE `synchronizer`
 

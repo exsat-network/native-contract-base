@@ -40,7 +40,7 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     if (endorsement_itr == endorsement_idx.end()) {
         std::vector<validator_info> requested_validators = get_valid_validator();
         check(!requested_validators.empty(),
-              "block_endorse::endorse: no validator with more than 100 BTC pledged was found");
+              "block_endorse::endorse: no validators found with staking amounts exceeding 100 BTC");
         auto itr = std::find_if(requested_validators.begin(), requested_validators.end(), [&](const validator_info& a) {
             return a.account == validator;
         });

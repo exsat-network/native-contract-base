@@ -1,31 +1,14 @@
-- [rescmng.xsat](#rescmngxsat)
-  - [Actions](#actions)
-  - [Table Information](#table-information)
-  - [ENUM `fee_type`](#enum-fee_type)
-  - [TABLE `config`](#table-config)
-    - [scope `get_self()`](#scope-get_self)
-    - [params](#params)
-    - [example](#example)
-  - [TABLE `accounts`](#table-accounts)
-    - [scope `get_self()`](#scope-get_self-1)
-    - [params](#params-1)
-    - [example](#example-1)
-  - [ACTION `init`](#action-init)
-    - [params](#params-2)
-    - [example](#example-2)
-  - [ACTION `setstatus`](#action-setstatus)
-    - [params](#params-3)
-    - [example](#example-3)
-  - [ACTION `pay`](#action-pay)
-    - [params](#params-4)
-    - [example](#example-4)
-  - [ACTION `withdraw`](#action-withdraw)
-    - [params](#params-5)
-    - [example](#example-5)
-
 # rescmng.xsat
 
 ## Actions
+
+- Initialize resource cost configuration
+- Deposit fee 
+- Withdrawal fee
+- Payment for initializing blocks, uploading block data, deleting block data, and validation fees
+- Set disable withdrawal status
+
+## Quickstart 
 
 ```bash
 # init @rescmng.xsat
@@ -50,6 +33,30 @@ $ cleos push action rescmng.xsat withdraw '{"owner","alice", "quantity": "1.0000
 $ cleos get table rescmng.xsat rescmng.xsat config
 $ cleos get table rescmng.xsat rescmng.xsat accounts
 ```
+
+## Table of Content
+
+- [ENUM `fee_type`](#enum-fee_type)
+- [TABLE `config`](#table-config)
+  - [scope `get_self()`](#scope-get_self)
+  - [params](#params)
+  - [example](#example)
+- [TABLE `accounts`](#table-accounts)
+  - [scope `get_self()`](#scope-get_self-1)
+  - [params](#params-1)
+  - [example](#example-1)
+- [ACTION `init`](#action-init)
+  - [params](#params-2)
+  - [example](#example-2)
+- [ACTION `setstatus`](#action-setstatus)
+  - [params](#params-3)
+  - [example](#example-3)
+- [ACTION `pay`](#action-pay)
+  - [params](#params-4)
+  - [example](#example-4)
+- [ACTION `withdraw`](#action-withdraw)
+  - [params](#params-5)
+  - [example](#example-5)
 
 ## ENUM `fee_type`
 ```

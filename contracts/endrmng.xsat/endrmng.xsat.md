@@ -1,96 +1,16 @@
-- [`endrmng.xsat`](#endrmngxsat)
-  - [Actions](#actions)
-  - [Table Information](#table-information)
-  - [CONSTANT `WHITELIST_TYPES`](#constant-whitelist_types)
-  - [TABLE `globalid`](#table-globalid)
-    - [scope `get_self()`](#scope-get_self)
-    - [params](#params)
-    - [example](#example)
-  - [TABLE `whitelist`](#table-whitelist)
-    - [scope `proxyreg` or `evmcaller`](#scope-proxyreg-or-evmcaller)
-    - [params](#params-1)
-    - [example](#example-1)
-  - [TABLE `evmproxys`](#table-evmproxys)
-    - [scope `get_self()`](#scope-get_self-1)
-    - [params](#params-2)
-    - [example](#example-2)
-  - [TABLE `evmstakers`](#table-evmstakers)
-    - [scope `get_self()`](#scope-get_self-2)
-    - [params](#params-3)
-    - [example](#example-3)
-  - [TABLE `stakers`](#table-stakers)
-    - [scope `get_self()`](#scope-get_self-3)
-    - [params](#params-4)
-    - [example](#example-4)
-  - [TABLE `validators`](#table-validators)
-    - [scope `get_self()`](#scope-get_self-4)
-    - [params](#params-5)
-    - [example](#example-5)
-  - [TABLE `stat`](#table-stat)
-    - [scope `get_self()`](#scope-get_self-5)
-    - [params](#params-6)
-    - [example](#example-6)
-  - [ACTION `addwhitelist`](#action-addwhitelist)
-    - [params](#params-7)
-    - [example](#example-7)
-  - [ACTION `delwhitelist`](#action-delwhitelist)
-    - [params](#params-8)
-    - [example](#example-8)
-  - [ACTION `addevmproxy`](#action-addevmproxy)
-    - [params](#params-9)
-    - [example](#example-9)
-  - [ACTION `delevmproxy`](#action-delevmproxy)
-    - [params](#params-10)
-    - [example](#example-10)
-  - [ACTION `setstatus`](#action-setstatus)
-    - [params](#params-11)
-    - [example](#example-11)
-  - [ACTION `regvalidator`](#action-regvalidator)
-    - [params](#params-12)
-    - [example](#example-12)
-  - [ACTION `proxyreg`](#action-proxyreg)
-    - [params](#params-13)
-    - [example](#example-13)
-  - [ACTION `config`](#action-config)
-    - [params](#params-14)
-    - [example](#example-14)
-  - [ACTION `stake`](#action-stake)
-    - [params](#params-15)
-    - [example](#example-15)
-  - [ACTION `unstake`](#action-unstake)
-    - [params](#params-16)
-    - [example](#example-16)
-  - [ACTION `newstake`](#action-newstake)
-    - [params](#params-17)
-    - [example](#example-17)
-  - [ACTION `claim`](#action-claim)
-    - [params](#params-18)
-    - [example](#example-18)
-  - [ACTION `evmstake`](#action-evmstake)
-    - [params](#params-19)
-    - [example](#example-19)
-  - [ACTION `evmunstake`](#action-evmunstake)
-    - [params](#params-20)
-    - [example](#example-20)
-  - [ACTION `evmnewstake`](#action-evmnewstake)
-    - [params](#params-21)
-    - [example](#example-21)
-  - [ACTION `evmclaim`](#action-evmclaim)
-    - [params](#params-22)
-    - [example](#example-22)
-  - [ACTION `vdrclaim`](#action-vdrclaim)
-    - [params](#params-23)
-    - [example](#example-23)
-  - [STRUCT `reward_details_row`](#struct-reward_details_row)
-    - [params](#params-24)
-    - [example](#example-24)
-  - [ACTION `distribute`](#action-distribute)
-    - [params](#params-25)
-    - [example](#example-25)
-
 # `endrmng.xsat`
 
 ## Actions
+
+- Add evm proxy account
+- Delete evm proxy account
+- Add whitelist (`proxyreg` or `evmcaller`)
+- Delete whitelist (`proxyreg` or `evmcaller`)
+- Staking, unstaking, changing staking, and claiming rewards on native chains and EVM
+- Validator claiming rewards
+- Batch allocation of validator rewards from rwddist.xsat
+
+## Quickstart 
 
 ```bash
 # addevmproxy @endrmng.xsat
@@ -116,6 +36,12 @@ $ cleos push action endrmng.xsat proxyreg '{"proxy": "alice", "validator": "alic
 
 # config @validator decimal = 10000
 $ cleos push action endrmng.xsat config '{"validator": "alice", "commission_rate": 2000, "financial_account": "alice"}' -p alice
+
+# stake @staking.xsat
+$ cleos push action endrmng.xsat stake '{"staker": "alice", "validator": "alice", "quantity": "0.00000020 BTC"}' -p staking.xsat
+
+# unstake @staking.xsat
+$ cleos push action endrmng.xsat unstake '{"staker": "alice", "validator": "alice", "quantity": "0.00000020 BTC"}' -p staking.xsat
 
 # newstake @staker
 $ cleos push action endrmng.xsat newstake '{"staker": "alice", "old_validator": "alice", "new_validator": "bob", "quantity": "0.00000020 BTC"}' -p alice
@@ -154,6 +80,95 @@ $ cleos get table endrmng.xsat endrmng.xsat stakers
 $ cleos get table endrmng.xsat endrmng.xsat validators 
 $ cleos get table endrmng.xsat endrmng.xsat stat
 ```
+
+## Table of Content
+
+- [CONSTANT `WHITELIST_TYPES`](#constant-whitelist_types)
+- [TABLE `globalid`](#table-globalid)
+  - [scope `get_self()`](#scope-get_self)
+  - [params](#params)
+  - [example](#example)
+- [TABLE `whitelist`](#table-whitelist)
+  - [scope `proxyreg` or `evmcaller`](#scope-proxyreg-or-evmcaller)
+  - [params](#params-1)
+  - [example](#example-1)
+- [TABLE `evmproxys`](#table-evmproxys)
+  - [scope `get_self()`](#scope-get_self-1)
+  - [params](#params-2)
+  - [example](#example-2)
+- [TABLE `evmstakers`](#table-evmstakers)
+  - [scope `get_self()`](#scope-get_self-2)
+  - [params](#params-3)
+  - [example](#example-3)
+- [TABLE `stakers`](#table-stakers)
+  - [scope `get_self()`](#scope-get_self-3)
+  - [params](#params-4)
+  - [example](#example-4)
+- [TABLE `validators`](#table-validators)
+  - [scope `get_self()`](#scope-get_self-4)
+  - [params](#params-5)
+  - [example](#example-5)
+- [TABLE `stat`](#table-stat)
+  - [scope `get_self()`](#scope-get_self-5)
+  - [params](#params-6)
+  - [example](#example-6)
+- [ACTION `addwhitelist`](#action-addwhitelist)
+  - [params](#params-7)
+  - [example](#example-7)
+- [ACTION `delwhitelist`](#action-delwhitelist)
+  - [params](#params-8)
+  - [example](#example-8)
+- [ACTION `addevmproxy`](#action-addevmproxy)
+  - [params](#params-9)
+  - [example](#example-9)
+- [ACTION `delevmproxy`](#action-delevmproxy)
+  - [params](#params-10)
+  - [example](#example-10)
+- [ACTION `setstatus`](#action-setstatus)
+  - [params](#params-11)
+  - [example](#example-11)
+- [ACTION `regvalidator`](#action-regvalidator)
+  - [params](#params-12)
+  - [example](#example-12)
+- [ACTION `proxyreg`](#action-proxyreg)
+  - [params](#params-13)
+  - [example](#example-13)
+- [ACTION `config`](#action-config)
+  - [params](#params-14)
+  - [example](#example-14)
+- [ACTION `stake`](#action-stake)
+  - [params](#params-15)
+  - [example](#example-15)
+- [ACTION `unstake`](#action-unstake)
+  - [params](#params-16)
+  - [example](#example-16)
+- [ACTION `newstake`](#action-newstake)
+  - [params](#params-17)
+  - [example](#example-17)
+- [ACTION `claim`](#action-claim)
+  - [params](#params-18)
+  - [example](#example-18)
+- [ACTION `evmstake`](#action-evmstake)
+  - [params](#params-19)
+  - [example](#example-19)
+- [ACTION `evmunstake`](#action-evmunstake)
+  - [params](#params-20)
+  - [example](#example-20)
+- [ACTION `evmnewstake`](#action-evmnewstake)
+  - [params](#params-21)
+  - [example](#example-21)
+- [ACTION `evmclaim`](#action-evmclaim)
+  - [params](#params-22)
+  - [example](#example-22)
+- [ACTION `vdrclaim`](#action-vdrclaim)
+  - [params](#params-23)
+  - [example](#example-23)
+- [STRUCT `reward_details_row`](#struct-reward_details_row)
+  - [params](#params-24)
+  - [example](#example-24)
+- [ACTION `distribute`](#action-distribute)
+  - [params](#params-25)
+  - [example](#example-25)
 
 ## CONSTANT `WHITELIST_TYPES`
 ```
@@ -196,7 +211,7 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
 ### params
 
 - `{uint64_t} id` - evm proxy id
-- `{checksum160} proxy` - evm agent account
+- `{checksum160} proxy` - evm proxy account
 
 ### example
 

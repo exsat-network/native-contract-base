@@ -465,7 +465,7 @@ asset endorse_manage::unstake_without_auth(const name& staker, const name& valid
     auto native_staker_itr = native_staker_idx.require_find(compute_staking_id(staker, validator),
                                                             "endorse_manage::unstake: [stakers] does not exists");
     check(native_staker_itr->quantity >= quantity,
-          "endorse_manage::unstake: the number of unstakes exceeds the pledge amount");
+          "endorse_manage::unstake: the number of unstakes exceeds the staking amount");
 
     auto validator_itr = _validator.require_find(native_staker_itr->validator.value,
                                                  "endorse_manage::unstake: [validators] does not exists");

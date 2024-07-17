@@ -17,7 +17,7 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
      * ## STRUCT `validator_info`
      *
      * - `{name} account` - validator account
-     * - `{uint64_t} staking` - the number of validator pledges
+     * - `{uint64_t} staking` - the validator's staking amount
      *
      * ### example
      *
@@ -46,9 +46,9 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
      * - `{asset} staking_rewards` - the validator assigns the number of rewards
      * - `{uint32_t} num_validators` - the number of validators who pledge more than 100 BTC
      * - `{std::vector<validator_info> } provider_validators` - list of endorsed validators
-     * - `{uint64_t} endorsed_staking` - total endorsed pledge amount
-     * - `{uint64_t} reached_consensus_staking` - the total pledge amount to reach consensus is
-     * `(number of validators * 2/3+ 1 pledge amount)`
+     * - `{uint64_t} endorsed_staking` - total endorsed staking amount
+     * - `{uint64_t} reached_consensus_staking` - the total staking amount to reach consensus is
+     * `(number of validators * 2/3+ 1 staking amount)`
      * - `{uint32_t} num_validators_assigned` - the number of validators that have been allocated rewards
      * - `{name} synchronizer` -synchronizer account
      * - `{name} miner` - miner account
