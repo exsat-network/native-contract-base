@@ -68,9 +68,7 @@ void exsat::retire(const asset& quantity, const string& memo) {
 
 void exsat::transfer(const name& from, const name& to, const asset& quantity, const string& memo) {
     check(from != to, "cannot transfer to self");
-    if (!has_auth(from)) {
-        require_auth("eosio"_n);
-    }
+    require_auth(from);
     check(is_account(to), "to account does not exist");
     auto sym = quantity.symbol.code();
     stats statstable(get_self(), sym.raw());
