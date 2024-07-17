@@ -1,22 +1,10 @@
-- [`blkendt.xsat`](#blkendtxsat)
-  - [Actions](#actions)
-  - [Table Information](#table-information)
-  - [STRUCT `validator_info`](#struct-validator_info)
-    - [example](#example)
-  - [TABLE `endorsements`](#table-endorsements)
-    - [scope `height`](#scope-height)
-    - [params](#params)
-    - [example](#example-1)
-  - [ACTION `endorse`](#action-endorse)
-    - [params](#params-1)
-    - [example](#example-2)
-  - [ACTION `erase`](#action-erase)
-    - [params](#params-2)
-    - [example](#example-3)
-
 # `blkendt.xsat`
 
 ## Actions
+
+- Endorse a block
+
+## Quickstart 
 
 ```bash
 # erase @utxomng.xsat
@@ -33,10 +21,25 @@ $ cleos get table endtmng.xsat <height> endorsements
 $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256 -L <hash> -U <hash>
 ```
 
+## Table of Content
+
+- [STRUCT `validator_info`](#struct-validator_info)
+  - [example](#example)
+- [TABLE `endorsements`](#table-endorsements)
+  - [scope `height`](#scope-height)
+  - [params](#params)
+  - [example](#example-1)
+- [ACTION `endorse`](#action-endorse)
+  - [params](#params-1)
+  - [example](#example-2)
+- [ACTION `erase`](#action-erase)
+  - [params](#params-2)
+  - [example](#example-3)
+
 ## STRUCT `validator_info`
 
 - `{name} account` - validator account
-- `{uint64_t} staking` - the number of validator pledges
+- `{uint64_t} staking` - the validator's staking amount
 
 ### example
 

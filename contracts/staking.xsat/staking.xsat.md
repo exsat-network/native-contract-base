@@ -1,41 +1,14 @@
-- [`staking.xsat`](#stakingxsat)
-  - [Actions](#actions)
-  - [Table Information](#table-information)
-  - [TABLE `globalid`](#table-globalid)
-    - [scope `get_self()`](#scope-get_self)
-    - [params](#params)
-    - [example](#example)
-  - [TABLE `tokens`](#table-tokens)
-    - [scope `get_self()`](#scope-get_self-1)
-    - [params](#params-1)
-    - [example](#example-1)
-  - [TABLE `staking`](#table-staking)
-    - [scope `staker`](#scope-staker)
-    - [params](#params-2)
-    - [example](#example-2)
-  - [TABLE `releases`](#table-releases)
-    - [scope `staker`](#scope-staker-1)
-    - [params](#params-3)
-    - [example](#example-3)
-  - [ACTION `addtoken`](#action-addtoken)
-    - [params](#params-4)
-    - [example](#example-4)
-  - [ACTION `deltoken`](#action-deltoken)
-    - [params](#params-5)
-    - [example](#example-5)
-  - [ACTION `setstatus`](#action-setstatus)
-    - [params](#params-6)
-    - [example](#example-6)
-  - [ACTION `release`](#action-release)
-    - [params](#params-7)
-    - [example](#example-7)
-  - [ACTION `withdraw`](#action-withdraw)
-    - [params](#params-8)
-    - [example](#example-8)
-
 # `staking.xsat`
 
 ## Actions
+
+- Add a staking token
+- Remove a staking token
+- Set the token's staking disable status
+- Unstake tokens
+- Withdraw tokens that have reached their expiration time
+
+## Quickstart 
 
 ```bash
 # addtoken @staking.xsat
@@ -62,6 +35,40 @@ $ cleos get table rescmng.xsat staking.xsat tokens
 $ cleos get table rescmng.xsat <staker> staking
 $ cleos get table rescmng.xsat <staker> releases
 ```
+
+## Table of Content
+
+- [TABLE `globalid`](#table-globalid)
+  - [scope `get_self()`](#scope-get_self)
+  - [params](#params)
+  - [example](#example)
+- [TABLE `tokens`](#table-tokens)
+  - [scope `get_self()`](#scope-get_self-1)
+  - [params](#params-1)
+  - [example](#example-1)
+- [TABLE `staking`](#table-staking)
+  - [scope `staker`](#scope-staker)
+  - [params](#params-2)
+  - [example](#example-2)
+- [TABLE `releases`](#table-releases)
+  - [scope `staker`](#scope-staker-1)
+  - [params](#params-3)
+  - [example](#example-3)
+- [ACTION `addtoken`](#action-addtoken)
+  - [params](#params-4)
+  - [example](#example-4)
+- [ACTION `deltoken`](#action-deltoken)
+  - [params](#params-5)
+  - [example](#example-5)
+- [ACTION `setstatus`](#action-setstatus)
+  - [params](#params-6)
+  - [example](#example-6)
+- [ACTION `release`](#action-release)
+  - [params](#params-7)
+  - [example](#example-7)
+- [ACTION `withdraw`](#action-withdraw)
+  - [params](#params-8)
+  - [example](#example-8)
 
 ## TABLE `globalid`
 

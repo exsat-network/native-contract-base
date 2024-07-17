@@ -1,65 +1,17 @@
-- [`utxomng.xsat`](#utxomngxsat)
-  - [Actions](#actions)
-  - [Table Information](#table-information)
-  - [ENUM `parsing_status`](#enum-parsing_status)
-  - [TABLE `chainstate`](#table-chainstate)
-    - [scope `get_self()`](#scope-get_self)
-    - [params](#params)
-    - [example](#example)
-  - [TABLE `config`](#table-config)
-    - [scope `get_self()`](#scope-get_self-1)
-    - [params](#params-1)
-    - [example](#example-1)
-  - [TABLE `utxos`](#table-utxos)
-    - [scope `get_self()`](#scope-get_self-2)
-    - [params](#params-2)
-    - [example](#example-2)
-  - [TABLE `blocks`](#table-blocks)
-    - [scope `get_self()`](#scope-get_self-3)
-    - [params](#params-3)
-    - [example](#example-3)
-  - [TABLE `block.extra`](#table-blockextra)
-    - [scope `height`](#scope-height)
-    - [params](#params-4)
-    - [example](#example-4)
-  - [TABLE `consensusblk`](#table-consensusblk)
-    - [scope `get_self()`](#scope-get_self-4)
-    - [params](#params-5)
-    - [example](#example-5)
-  - [STRUCT `process_block_result`](#struct-process_block_result)
-    - [params](#params-6)
-    - [example](#example-6)
-  - [ACTION `init`](#action-init)
-    - [params](#params-7)
-    - [example](#example-7)
-  - [ACTION `config`](#action-config)
-    - [params](#params-8)
-    - [example](#example-8)
-  - [ACTION `addutxo`](#action-addutxo)
-    - [params](#params-9)
-    - [example](#example-9)
-  - [ACTION `delutxo`](#action-delutxo)
-    - [params](#params-10)
-    - [example](#example-10)
-  - [ACTION `addblock`](#action-addblock)
-    - [params](#params-11)
-    - [example](#example-11)
-  - [ACTION `delblock`](#action-delblock)
-    - [params](#params-12)
-    - [example](#example-12)
-  - [ACTION `processblock`](#action-processblock)
-    - [params](#params-13)
-    - [example](#example-13)
-  - [ACTION `consensus`](#action-consensus)
-    - [params](#params-14)
-    - [example](#example-14)
-
 # `utxomng.xsat`
 
 ## Actions
 
-```bash
+- Initialize configuration
+- Add UTXO
+- Delete UTXO
+- Add block header
+- Delete block header
+- Parse UTXO
 
+## Quickstart 
+
+```bash
 # init @utxomng.xsat
 $ cleos push action utxo.xsat init '{"height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "cumulative_work": "0.00000020 BTC"}' -p utxomng.xsat
 
@@ -91,6 +43,61 @@ $ cleos get table utxomng.xsat utxomng.xsat utxos
 $ cleos get table utxomng.xsat utxomng.xsat blocks
 $ cleos get table utxomng.xsat utxomng.xsat consensusblk
 ```
+
+## Table of Content
+
+- [ENUM `parsing_status`](#enum-parsing_status)
+- [TABLE `chainstate`](#table-chainstate)
+  - [scope `get_self()`](#scope-get_self)
+  - [params](#params)
+  - [example](#example)
+- [TABLE `config`](#table-config)
+  - [scope `get_self()`](#scope-get_self-1)
+  - [params](#params-1)
+  - [example](#example-1)
+- [TABLE `utxos`](#table-utxos)
+  - [scope `get_self()`](#scope-get_self-2)
+  - [params](#params-2)
+  - [example](#example-2)
+- [TABLE `blocks`](#table-blocks)
+  - [scope `get_self()`](#scope-get_self-3)
+  - [params](#params-3)
+  - [example](#example-3)
+- [TABLE `block.extra`](#table-blockextra)
+  - [scope `height`](#scope-height)
+  - [params](#params-4)
+  - [example](#example-4)
+- [TABLE `consensusblk`](#table-consensusblk)
+  - [scope `get_self()`](#scope-get_self-4)
+  - [params](#params-5)
+  - [example](#example-5)
+- [STRUCT `process_block_result`](#struct-process_block_result)
+  - [params](#params-6)
+  - [example](#example-6)
+- [ACTION `init`](#action-init)
+  - [params](#params-7)
+  - [example](#example-7)
+- [ACTION `config`](#action-config)
+  - [params](#params-8)
+  - [example](#example-8)
+- [ACTION `addutxo`](#action-addutxo)
+  - [params](#params-9)
+  - [example](#example-9)
+- [ACTION `delutxo`](#action-delutxo)
+  - [params](#params-10)
+  - [example](#example-10)
+- [ACTION `addblock`](#action-addblock)
+  - [params](#params-11)
+  - [example](#example-11)
+- [ACTION `delblock`](#action-delblock)
+  - [params](#params-12)
+  - [example](#example-12)
+- [ACTION `processblock`](#action-processblock)
+  - [params](#params-13)
+  - [example](#example-13)
+- [ACTION `consensus`](#action-consensus)
+  - [params](#params-14)
+  - [example](#example-14)
 
 ## ENUM `parsing_status`
 ```

@@ -1,58 +1,13 @@
-- [`blksync.xsat`](#blksyncxsat)
-  - [Actions](#actions)
-  - [Table Information](#table-information)
-  - [ENUM `block_status`](#enum-block_status)
-  - [TABLE `globalid`](#table-globalid)
-    - [scope `get_self()`](#scope-get_self)
-    - [params](#params)
-    - [example](#example)
-  - [STRUCT `verify_info_data`](#struct-verify_info_data)
-    - [params](#params-1)
-    - [example](#example-1)
-  - [TABLE `blockbuckets`](#table-blockbuckets)
-    - [scope `validator`](#scope-validator)
-    - [params](#params-2)
-    - [example](#example-2)
-  - [TABLE `passedindexs`](#table-passedindexs)
-    - [scope `height`](#scope-height)
-    - [params](#params-3)
-    - [example](#example-3)
-  - [TABLE `blockminer`](#table-blockminer)
-    - [scope `height`](#scope-height-1)
-    - [params](#params-4)
-    - [example](#example-4)
-  - [TABLE `block.chunk`](#table-blockchunk)
-    - [scope `bucket_id`](#scope-bucket_id)
-    - [params](#params-5)
-    - [example](#example-5)
-  - [STRUCT `verify_block_result`](#struct-verify_block_result)
-    - [params](#params-6)
-    - [example](#example-6)
-  - [ACTION `consensus`](#action-consensus)
-    - [params](#params-7)
-    - [example](#example-7)
-  - [ACTION `delchunks`](#action-delchunks)
-    - [params](#params-8)
-    - [example](#example-8)
-  - [ACTION `initbucket`](#action-initbucket)
-    - [params](#params-9)
-    - [example](#example-9)
-  - [ACTION `pushchunk`](#action-pushchunk)
-    - [params](#params-10)
-    - [example](#example-10)
-  - [ACTION `delchunk`](#action-delchunk)
-    - [params](#params-11)
-    - [example](#example-11)
-  - [ACTION `delbucket`](#action-delbucket)
-    - [params](#params-12)
-    - [example](#example-12)
-  - [ACTION `verify`](#action-verify)
-    - [params](#params-13)
-    - [example](#example-13)
-
 # `blksync.xsat`
 
 ## Actions
+
+- Initialize block bucket
+- Sharding of upload chunks
+- Delete block shards
+- Verify the validity of the block
+
+## Quickstart 
 
 ```bash
 # initbucket @synchronizer
@@ -86,6 +41,57 @@ $ cleos get table blksync.xsat <height> block.chunk  --index 3 --key-type sha256
 
 $ cleos get table blksync.xsat <height> blockminer
 ```
+
+## Table of Content
+
+- [ENUM `block_status`](#enum-block_status)
+- [TABLE `globalid`](#table-globalid)
+  - [scope `get_self()`](#scope-get_self)
+  - [params](#params)
+  - [example](#example)
+- [STRUCT `verify_info_data`](#struct-verify_info_data)
+  - [params](#params-1)
+  - [example](#example-1)
+- [TABLE `blockbuckets`](#table-blockbuckets)
+  - [scope `validator`](#scope-validator)
+  - [params](#params-2)
+  - [example](#example-2)
+- [TABLE `passedindexs`](#table-passedindexs)
+  - [scope `height`](#scope-height)
+  - [params](#params-3)
+  - [example](#example-3)
+- [TABLE `blockminer`](#table-blockminer)
+  - [scope `height`](#scope-height-1)
+  - [params](#params-4)
+  - [example](#example-4)
+- [TABLE `block.chunk`](#table-blockchunk)
+  - [scope `bucket_id`](#scope-bucket_id)
+  - [params](#params-5)
+  - [example](#example-5)
+- [STRUCT `verify_block_result`](#struct-verify_block_result)
+  - [params](#params-6)
+  - [example](#example-6)
+- [ACTION `consensus`](#action-consensus)
+  - [params](#params-7)
+  - [example](#example-7)
+- [ACTION `delchunks`](#action-delchunks)
+  - [params](#params-8)
+  - [example](#example-8)
+- [ACTION `initbucket`](#action-initbucket)
+  - [params](#params-9)
+  - [example](#example-9)
+- [ACTION `pushchunk`](#action-pushchunk)
+  - [params](#params-10)
+  - [example](#example-10)
+- [ACTION `delchunk`](#action-delchunk)
+  - [params](#params-11)
+  - [example](#example-11)
+- [ACTION `delbucket`](#action-delbucket)
+  - [params](#params-12)
+  - [example](#example-12)
+- [ACTION `verify`](#action-verify)
+  - [params](#params-13)
+  - [example](#example-13)
 
 ## ENUM `block_status`
 ```

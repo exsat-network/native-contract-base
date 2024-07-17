@@ -18,7 +18,7 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      * ## STRUCT `validator_info`
      *
      * - `{name} account` - validator account
-     * - `{uint64_t} staking` - the number of validator pledges
+     * - `{uint64_t} staking` - the validator's staking amount
      *
      * ### example
      *

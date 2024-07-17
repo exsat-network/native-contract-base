@@ -67,7 +67,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      * ### params
      *
      * - `{uint64_t} id` - evm proxy id
-     * - `{checksum160} proxy` - evm agent account
+     * - `{checksum160} proxy` - evm proxy account
      *
      * ### example
      *
