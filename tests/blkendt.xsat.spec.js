@@ -104,7 +104,7 @@ describe('blkendt.xsat', () => {
             contracts.blkendt.actions
                 .endorse(['amy', 840000, '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'])
                 .send('amy@active'),
-            'eosio_assert: block_endorse::endorse: no validator with more than 100 BTC pledged was found'
+            'eosio_assert: block_endorse::endorse: no validators found with staking amounts exceeding 100 BTC'
         )
     })
 
