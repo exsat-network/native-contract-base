@@ -450,7 +450,7 @@ void utxo_manage::process_transactions(utxo_manage::chain_state_row* chain_state
         for (; chain_state->processed_vin < transaction.inputs.size() && process_row;
              chain_state->processed_vin++, process_row--) {
             auto vin = transaction.inputs[chain_state->processed_vin];
-            if (!transaction.is_coinbase()) continue;
+            if (transaction.is_coinbase()) continue;
             remove_utxo(bitcoin::be_checksum256_from_uint(vin.previous_output_hash), vin.previous_output_index);
             chain_state->num_utxos -= 1;
         }
