@@ -123,26 +123,6 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
                       const std::vector<string>& miners);
 
     /**
-     * ## ACTION `unbundle`
-     *
-     * - **authority**: `get_self()`
-     *
-     * > Unbind the association between synchronizer and btc miner.
-     *
-     * ### params
-     *
-     * - `{uint64_t} id` - primary key of miners table
-     *
-     * ### example
-     *
-     * ```bash
-     * $ cleos push action poolreg.xsat unbundle '[1]' -p poolreg.xsat
-     * ```
-     */
-    [[eosio::action]]
-    void unbundle(const uint64_t id);
-
-    /**
      * ## ACTION `initpool`
      *
      * - **authority**: `get_self()`
@@ -186,6 +166,26 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
      */
     [[eosio::action]]
     void delpool(const name& synchronizer);
+
+    /**
+     * ## ACTION `unbundle`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Unbind the association between synchronizer and btc miner.
+     *
+     * ### params
+     *
+     * - `{uint64_t} id` - primary key of miners table
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat unbundle '[1]' -p poolreg.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void unbundle(const uint64_t id);
 
     /**
      * ## ACTION `config`
