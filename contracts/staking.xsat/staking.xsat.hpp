@@ -31,7 +31,7 @@ class [[eosio::contract("staking.xsat")]] stake : public contract {
      * }
      * ```
      */
-    struct [[eosio::table()]] global_id_row {
+    struct [[eosio::table]] global_id_row {
         uint64_t staking_id;
         uint64_t release_id;
     };

@@ -88,7 +88,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * }
      * ```
      */
-    struct [[eosio::table("chainstate")]] chain_state_row {
+    struct [[eosio::table]] chain_state_row {
         uint64_t head_height;
         uint64_t irreversible_height;
         checksum256 irreversible_hash;
@@ -138,7 +138,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      *  }
      * ```
      */
-    struct [[eosio::table("config")]] config_row {
+    struct [[eosio::table]] config_row {
         uint16_t parse_timeout_seconds = 600;
         uint16_t num_validators_per_distribution = 100;
         uint16_t num_retain_data_blocks = 100;
