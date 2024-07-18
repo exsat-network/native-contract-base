@@ -35,9 +35,7 @@ beforeAll(async () => {
     await contracts.exsat.actions.issue(['exsat.xsat', '10000000.00000000 XSAT', 'init']).send('exsat.xsat@active')
 
     // transfer XSAT to account
-    await contracts.exsat.actions
-        .transfer(['exsat.xsat', 'bob', '1000000.00000000 XSAT', ''])
-        .send('exsat.xsat@active')
+    await contracts.exsat.actions.transfer(['exsat.xsat', 'bob', '1000000.00000000 XSAT', '']).send('exsat.xsat@active')
     await contracts.exsat.actions
         .transfer(['exsat.xsat', 'rwddist.xsat', '1000000.00000000 XSAT', ''])
         .send('exsat.xsat@active')
@@ -83,9 +81,15 @@ describe('poolreg.xsat', () => {
             'missing required authority poolreg.xsat'
         )
     })
+
     it('initpool', async () => {
         await contracts.poolreg.actions
-            .initpool(['bob', 839999, 'bob', ['12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL']])
+            .initpool([
+                'bob',
+                839999,
+                'bob',
+                ['12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL', '1CGB4JC7iaThXyv1j6PNFx7jUgRhFuPTmx'],
+            ])
             .send('poolreg.xsat@active')
         expect(get_synchronizer('bob')).toEqual({
             synchronizer: 'bob',
@@ -105,10 +109,55 @@ describe('poolreg.xsat', () => {
                 synchronizer: 'bob',
                 miner: '12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL',
             },
+            {
+                id: 1,
+                synchronizer: 'bob',
+                miner: '1CGB4JC7iaThXyv1j6PNFx7jUgRhFuPTmx',
+            },
         ])
     })
 
+    it('unbundle: missing required authority', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.unbundle([1]).send('alice@active'),
+            'missing required authority poolreg.xsat'
+        )
+    })
+
+    it('unbundle', async () => {
+        await contracts.poolreg.actions.unbundle([1]).send('poolreg.xsat@active')
+
+        expect(get_miners()).toEqual([
+            {
+                id: 0,
+                synchronizer: 'bob',
+                miner: '12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL',
+            },
+        ])
+    })
+
+    it('delpool: missing required authority', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.delpool(['bob']).send('alice@active'),
+            'missing required authority poolreg.xsat'
+        )
+    })
+
+    it('delpool', async () => {
+        await contracts.poolreg.actions.delpool(['bob']).send('poolreg.xsat@active')
+        expect(get_synchronizer('bob')).toEqual(undefined)
+        expect(get_miners()).toEqual([])
+    })
+
     it('no balance to claim', async () => {
+        await contracts.poolreg.actions
+            .initpool([
+                'bob',
+                839999,
+                'bob',
+                ['12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL', '1CGB4JC7iaThXyv1j6PNFx7jUgRhFuPTmx'],
+            ])
+            .send('poolreg.xsat@active')
         await expectToThrow(
             contracts.poolreg.actions.claim(['bob']).send('poolreg.xsat@active'),
             'eosio_assert: poolreg.xsat::claim: no balance to claim'
