@@ -21,6 +21,8 @@
 
 ![architecture](./docs/architecture.jpg)
 
+## TLDR
+
 exSat a scaling solution to the critical challenges of trust, functionality, scalability, utility and interoperability faced by the Bitcoin ecosystem. This novel Docking Layer solution, as a first-of-its-kind, aims to build trust by extending the data consensus of the Bitcoin ecosystem with a hybrid consensus mechanism; to achieve functionality by bridging the gap of smart contracts; to enhance utility by unifying BTC across diverse blockchain ecosystems; and to drive multichain interoperability by intent-centric omnichain DApps.
 
 exSat introduces several key innovations to realize its vision including:
