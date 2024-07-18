@@ -451,8 +451,12 @@ void utxo_manage::process_transactions(utxo_manage::chain_state_row* chain_state
              chain_state->processed_vin++, process_row--) {
             auto vin = transaction.inputs[chain_state->processed_vin];
             if (transaction.is_coinbase()) continue;
-            remove_utxo(bitcoin::be_checksum256_from_uint(vin.previous_output_hash), vin.previous_output_index);
-            chain_state->num_utxos -= 1;
+
+            auto hash_prev_utxo
+                = remove_utxo(bitcoin::be_checksum256_from_uint(vin.previous_output_hash), vin.previous_output_index);
+            if (hash_prev_utxo) {
+                chain_state->num_utxos -= 1;
+            }
         }
 
         // next transaction
@@ -467,12 +471,18 @@ void utxo_manage::process_transactions(utxo_manage::chain_state_row* chain_state
     chain_state->processed_position += processed_position;
 }
 
-void utxo_manage::remove_utxo(const checksum256& prev_txid, const uint32_t prev_index) {
+bool utxo_manage::remove_utxo(const checksum256& prev_txid, const uint32_t prev_index) {
     auto utxo_idx = _utxo.get_index<"byutxoid"_n>();
 
     auto utxo_itr = utxo_idx.find(compute_utxo_id(prev_txid, prev_index));
     if (utxo_itr != utxo_idx.end()) {
         utxo_idx.erase(utxo_itr);
+        return true;
+    } else {
+        // log
+        utxo_manage::lostutxolog_action _lostutxolog(get_self(), {get_self(), "active"_n});
+        _lostutxolog.send(prev_txid, prev_index);
+        return false;
     }
 }
 

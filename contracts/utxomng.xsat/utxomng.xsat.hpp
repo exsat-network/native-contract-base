@@ -556,7 +556,14 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     void cleartable(const name table_name, const optional<uint64_t> scope, const optional<uint64_t> max_rows);
 #endif
 
+    // logs
+    [[eosio::action]]
+    void lostutxolog(const checksum256 &tx_id, const uint32_t index) {
+        require_auth(get_self());
+    }
+
     using consensus_action = eosio::action_wrapper<"consensus"_n, &utxo_manage::consensus>;
+    using lostutxolog_action = eosio::action_wrapper<"lostutxolog"_n, &utxo_manage::lostutxolog>;
 
     static checksum256 compute_utxo_id(const checksum256 &tx_id, const uint32_t index) {
         std::vector<char> result;
@@ -612,7 +619,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     void process_transactions(utxo_manage::chain_state_row *chain_state, uint64_t process_row);
 
-    void remove_utxo(const checksum256 &prev_txid, const uint32_t prev_index);
+    bool remove_utxo(const checksum256 &prev_txid, const uint32_t prev_index);
 
     utxo_row save_utxo(const std::vector<uint8_t> &script_data, const uint64_t value, const checksum256 &txid,
                        const uint32_t index);
