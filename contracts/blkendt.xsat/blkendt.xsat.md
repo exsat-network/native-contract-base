@@ -25,16 +25,23 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
 
 - [STRUCT `validator_info`](#struct-validator_info)
   - [example](#example)
-- [TABLE `endorsements`](#table-endorsements)
-  - [scope `height`](#scope-height)
+- [TABLE `config`](#table-config)
+  - [scope `get_self()`](#scope-get_self)
   - [params](#params)
   - [example](#example-1)
-- [ACTION `endorse`](#action-endorse)
+- [TABLE `endorsements`](#table-endorsements)
+  - [scope `height`](#scope-height)
   - [params](#params-1)
   - [example](#example-2)
-- [ACTION `erase`](#action-erase)
+- [ACTION `config`](#action-config)
   - [params](#params-2)
   - [example](#example-3)
+- [ACTION `endorse`](#action-endorse)
+  - [params](#params-3)
+  - [example](#example-4)
+- [ACTION `erase`](#action-erase)
+  - [params](#params-4)
+  - [example](#example-5)
 
 ## STRUCT `validator_info`
 
@@ -47,6 +54,21 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
 {
   "account": "test.xsat",
   "staking": "10200000000"
+}
+```
+
+## TABLE `config`
+
+### scope `get_self()`
+### params
+
+- `{bool} disabled_endorse` - whether to disable endorsement
+
+### example
+
+```json
+{
+  "disabled_endorse": false
 }
 ```
 
@@ -74,6 +96,23 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
   ]
 }
 ```
+
+## ACTION `config`
+
+- **authority**: `get_self()`
+
+> Configure endorsement status
+
+### params
+
+- `{bool} disabled_endorse` - whether to disable endorsement
+
+### example
+
+```bash
+$ cleos push action blkendt.xsat config '[true]' -pblkendt.xsat
+```
+
 
 ## ACTION `endorse`
 

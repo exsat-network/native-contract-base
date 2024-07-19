@@ -15,6 +15,27 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
     using contract::contract;
 
     /**
+     * ## TABLE `config`
+     *
+     * ### scope `get_self()`
+     * ### params
+     *
+     * - `{bool} disabled_endorse` - whether to disable endorsement
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "disabled_endorse": false
+     * }
+     * ```
+     */
+    struct [[eosio::table]] config_row {
+        bool disabled_endorse;
+    };
+    typedef eosio::singleton<"config"_n, config_row> config_table;
+
+    /**
      * ## STRUCT `validator_info`
      *
      * - `{name} account` - validator account
@@ -84,6 +105,26 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
         endorsement_table;
 
     /**
+     * ## ACTION `config`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Configure endorsement status
+     *
+     * ### params
+     *
+     * - `{bool} disabled_endorse` - whether to disable endorsement
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action blkendt.xsat config '[true]' -pblkendt.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void config(const bool disabled_endorse);
+
+    /**
      * ## ACTION `endorse`
      *
      * - **authority**: `validator`
@@ -140,4 +181,6 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
     template <typename T>
     void clear_table(T& table, uint64_t rows_to_clear);
 #endif
+   private:
+    config_table _config = config_table(_self, _self.value);
 };

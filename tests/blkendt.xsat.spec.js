@@ -23,6 +23,10 @@ const get_endorsements = height => {
     return contracts.blkendt.tables.endorsements(BigInt(height)).getTableRows()
 }
 
+const get_config = () => {
+    return contracts.blkendt.tables.config().getTableRows()[0]
+}
+
 // one-time setup
 beforeAll(async () => {
     blockchain.setTime(TimePointSec.from(new Date()))
@@ -124,7 +128,7 @@ describe('blkendt.xsat', () => {
 
         await expectToThrow(
             contracts.blkendt.actions.endorse(['amy', height, hash]).send('amy@active'),
-            'eosio_assert: block_endorse::endorse: the validator has less than 100 BTC staked.'
+            'eosio_assert: block_endorse::endorse: the validator has less than 100 BTC staked'
         )
     })
 
@@ -207,6 +211,27 @@ describe('blkendt.xsat', () => {
         await expectToThrow(
             contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active'),
             'eosio_assert: block_endorse::endorse: validator is on the list of provider validators'
+        )
+    })
+
+    it('config: missing required authority', async () => {
+        await expectToThrow(
+            contracts.blkendt.actions.config([true]).send('alice@active'),
+            'missing required authority blkendt.xsat'
+        )
+    })
+
+    it('config', async () => {
+        await contracts.blkendt.actions.config([true]).send('blkendt.xsat@active')
+        expect(get_config()).toEqual({disabled_endorse: true})
+    })
+
+    it('endorse: the current endorsement status is disabled', async () => {
+        const height = 840000
+        const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
+        await expectToThrow(
+            contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active'),
+            'eosio_assert: block_endorse::endorse: the current endorsement status is disabled'
         )
     })
 })

@@ -20,11 +20,22 @@ void block_endorse::erase(const uint64_t height) {
     }
 }
 
+//@auth get_self()
+[[eosio::action]]
+void block_endorse::config(const bool disabled_endorse) {
+    require_auth(get_self());
+    auto config = _config.get_or_default();
+    config.disabled_endorse = disabled_endorse;
+    _config.set(config, get_self());
+}
+
 //@auth validator
 [[eosio::action]]
 void block_endorse::endorse(const name& validator, const uint64_t height, const checksum256& hash) {
     require_auth(validator);
 
+    check(!_config.get_or_default().disabled_endorse,
+          "block_endorse::endorse: the current endorsement status is disabled");
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     auto chain_state = _chain_state.get();
     check(chain_state.irreversible_height < height && chain_state.parsing_hash != hash,
@@ -44,7 +55,7 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
         auto itr = std::find_if(requested_validators.begin(), requested_validators.end(), [&](const validator_info& a) {
             return a.account == validator;
         });
-        check(itr != requested_validators.end(), "block_endorse::endorse: the validator has less than 100 BTC staked.");
+        check(itr != requested_validators.end(), "block_endorse::endorse: the validator has less than 100 BTC staked");
         auto provider_validator = *itr;
         requested_validators.erase(itr);
         _endorsement.emplace(get_self(), [&](auto& row) {
@@ -66,7 +77,7 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
                                     return a.account == validator;
                                 });
         check(itr != endorsement_itr->requested_validators.end(),
-              "block_endorse::endorse: the validator has less than 100 BTC staked.");
+              "block_endorse::endorse: the validator has less than 100 BTC staked");
         endorsement_idx.modify(endorsement_itr, same_payer, [&](auto& row) {
             auto provider_validator = *itr;
             row.provider_validators.push_back(provider_validator);
