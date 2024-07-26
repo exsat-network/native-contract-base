@@ -65,7 +65,7 @@ describe('utxomng.xsat', () => {
     it('delutxo: [utxos] does not exist', async () => {
         await expectToThrow(
             contracts.utxomng.actions.delutxo([840000]).send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::delutxo: [utxos] does not exist'
+            'eosio_assert: utxomng.xsat::delutxo: [utxos] does not exist'
         )
     })
 
@@ -129,12 +129,12 @@ describe('utxomng.xsat', () => {
                     3205594798,
                 ])
                 .send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::addblock: height must be less than or equal to 839999'
+            'eosio_assert: utxomng.xsat::addblock: height must be less than or equal to 839999'
         )
 
         await expectToThrow(
             contracts.utxomng.actions.delblock([840000]).send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::delblock: height must be less than or equal to 839999'
+            'eosio_assert: utxomng.xsat::delblock: height must be less than or equal to 839999'
         )
     })
 
@@ -164,7 +164,7 @@ describe('utxomng.xsat', () => {
     it('delblock:  [blocks] does not exist', async () => {
         await expectToThrow(
             contracts.utxomng.actions.delblock([1]).send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::delblock: [blocks] does not exist'
+            'eosio_assert: utxomng.xsat::delblock: [blocks] does not exist'
         )
     })
 
@@ -195,7 +195,7 @@ describe('utxomng.xsat', () => {
                     '0000000000000000000000000000000000000000753b8c1eaae701e1f0146360',
                 ])
                 .send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::init: block height must be 839999'
+            'eosio_assert: utxomng.xsat::init: block height must be 839999'
         )
     })
 
@@ -208,7 +208,7 @@ describe('utxomng.xsat', () => {
                     '0000000000000000000000000000000000000000000000000000000000000000',
                 ])
                 .send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::init: invalid hash'
+            'eosio_assert: utxomng.xsat::init: invalid hash'
         )
     })
 
@@ -221,7 +221,7 @@ describe('utxomng.xsat', () => {
                     '0000000000000000000000000000000000000000000000000000000000000000',
                 ])
                 .send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::init: invalid cumulative_work'
+            'eosio_assert: utxomng.xsat::init: invalid cumulative_work'
         )
     })
 

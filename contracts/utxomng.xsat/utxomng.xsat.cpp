@@ -18,10 +18,10 @@ void utxo_manage::init(const uint64_t height, const checksum256& hash, const che
     require_auth(get_self());
 
     check(!_chain_state.exists() || _chain_state.get().irreversible_height == 0,
-          "utxo_manage::init: can only be initialized once");
-    check(height == START_HEIGHT, "utxo_manage::init: block height must be 839999");
-    check(hash > checksum256(), "utxo_manage::init: invalid hash");
-    check(cumulative_work > checksum256(), "utxo_manage::init: invalid cumulative_work");
+          "utxomng.xsat::init: can only be initialized once");
+    check(height == START_HEIGHT, "utxomng.xsat::init: block height must be 839999");
+    check(hash > checksum256(), "utxomng.xsat::init: invalid hash");
+    check(cumulative_work > checksum256(), "utxomng.xsat::init: invalid cumulative_work");
 
     auto chain_state = _chain_state.get_or_default();
     chain_state.head_height = height;
@@ -38,10 +38,10 @@ void utxo_manage::config(const uint16_t parse_timeout_seconds, const uint16_t nu
                          const uint16_t num_miner_priority_blocks) {
     require_auth(get_self());
 
-    check(parse_timeout_seconds > 0, "utxo_manage::config: parse_timeout_seconds must be greater than 0");
+    check(parse_timeout_seconds > 0, "utxomng.xsat::config: parse_timeout_seconds must be greater than 0");
     check(num_validators_per_distribution > 0,
-          "utxo_manage::config: num_validators_per_distribution must be greater than 0");
-    check(num_merkle_layer > 0, "utxo_manage::config: num_merkle_layer must be greater than 0");
+          "utxomng.xsat::config: num_validators_per_distribution must be greater than 0");
+    check(num_merkle_layer > 0, "utxomng.xsat::config: num_merkle_layer must be greater than 0");
 
     auto config = _config.get_or_default();
     config.parse_timeout_seconds = parse_timeout_seconds;
@@ -85,7 +85,7 @@ void utxo_manage::addutxo(const uint64_t id, const checksum256& txid, const uint
 void utxo_manage::delutxo(const uint64_t id) {
     require_auth(get_self());
 
-    auto& utxo = _utxo.get(id, "utxo_manage::delutxo: [utxos] does not exist");
+    auto& utxo = _utxo.get(id, "utxomng.xsat::delutxo: [utxos] does not exist");
     _utxo.erase(utxo);
 
     auto chain_state = _chain_state.get_or_default();
@@ -99,7 +99,7 @@ void utxo_manage::addblock(const uint64_t height, const checksum256& hash, const
                            const uint32_t version, const checksum256& previous_block_hash, const checksum256& merkle,
                            const uint32_t timestamp, const uint32_t bits, const uint32_t nonce) {
     require_auth(get_self());
-    check(height <= START_HEIGHT, "utxo_manage::addblock: height must be less than or equal to 839999");
+    check(height <= START_HEIGHT, "utxomng.xsat::addblock: height must be less than or equal to 839999");
 
     auto block_itr = _block.find(height);
     if (block_itr == _block.end()) {
@@ -133,9 +133,9 @@ void utxo_manage::addblock(const uint64_t height, const checksum256& hash, const
 [[eosio::action]]
 void utxo_manage::delblock(const uint64_t height) {
     require_auth(get_self());
-    check(height <= START_HEIGHT, "utxo_manage::delblock: height must be less than or equal to 839999");
+    check(height <= START_HEIGHT, "utxomng.xsat::delblock: height must be less than or equal to 839999");
 
-    auto block_itr = _block.require_find(height, "utxo_manage::delblock: [blocks] does not exist");
+    auto block_itr = _block.require_find(height, "utxomng.xsat::delblock: [blocks] does not exist");
     _block.erase(block_itr);
 }
 
@@ -224,7 +224,7 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
     // get most work block
     if (chain_state.status == waiting) {
         check(chain_state.head_height - chain_state.irreversible_height >= IRREVERSIBLE_BLOCKS,
-              "utxo_manage::processblock: must be more than " + std::to_string(IRREVERSIBLE_BLOCKS - 1)
+              "utxomng.xsat::processblock: must be more than " + std::to_string(IRREVERSIBLE_BLOCKS - 1)
                   + " blocks to process");
 
         find_set_next_block(&chain_state);
@@ -248,10 +248,10 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
     // verify permissions and whether parsing times out
     if (chain_state.parsed_expiration_time > current_time) {
         check(synchronizer == chain_state.parser,
-              "utxo_manage::processblock: you are not a parser of the current block");
+              "utxomng.xsat::processblock: you are not a parser of the current block");
     } else {
         pool::synchronizer_table _synchronizer(POOL_REGISTER_CONTRACT, POOL_REGISTER_CONTRACT.value);
-        _synchronizer.require_find(synchronizer.value, "utxo_manage::processblock: only synchronizers can parse");
+        _synchronizer.require_find(synchronizer.value, "utxomng.xsat::processblock: only synchronizers can parse");
 
         chain_state.parser = synchronizer;
         chain_state.parsed_expiration_time = current_time + eosio::seconds(config.parse_timeout_seconds);
@@ -384,7 +384,7 @@ void utxo_manage::find_set_next_block(utxo_manage::chain_state_row* chain_state)
 
 utxo_manage::consensus_block_row utxo_manage::find_next_irreversible_block(const uint64_t irreversible_height,
                                                                            const checksum256& irreversible_hash) {
-    const auto err_msg = "utxo_manage::processblock: next irreversible block not found";
+    const auto err_msg = "utxomng.xsat::processblock: next irreversible block not found";
     // If the next block does not fork, return directly
     auto height_idx = _consensus_block.get_index<"byheight"_n>();
     auto consensus_block_itr = height_idx.require_find(irreversible_height + 1, err_msg);
