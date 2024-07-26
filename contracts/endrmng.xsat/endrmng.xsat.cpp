@@ -207,10 +207,10 @@ void endorse_manage::claim(const name& staker, const name& validator) {
     require_auth(staker);
     auto native_staker_idx = _native_stake.get_index<"bystakingid"_n>();
     auto native_staker_itr = native_staker_idx.require_find(compute_staking_id(staker, validator),
-                                                            "endorse_manage::claim: [stakers] does not exists");
+                                                            "endrmng.xsat::claim: [stakers] does not exists");
 
     auto validator_itr = _validator.require_find(native_staker_itr->validator.value,
-                                                 "endorse_manage::claim: [validators] does not exists");
+                                                 "endrmng.xsat::claim: [validators] does not exists");
     // update reward
     update_staking_reward(validator_itr->stake_acc_per_share, validator_itr->consensus_acc_per_share,
                           native_staker_itr->quantity.amount, native_staker_itr->quantity.amount, native_staker_idx,
@@ -219,7 +219,7 @@ void endorse_manage::claim(const name& staker, const name& validator) {
     auto staking_reward_unclaimed = native_staker_itr->staking_reward_unclaimed;
     auto consensus_reward_unclaimed = native_staker_itr->consensus_reward_unclaimed;
     auto claimable = staking_reward_unclaimed + consensus_reward_unclaimed;
-    check(claimable.amount > 0, "endorse_manage::claim: no balance to claim");
+    check(claimable.amount > 0, "endrmng.xsat::claim: no balance to claim");
 
     native_staker_idx.modify(native_staker_itr, same_payer, [&](auto& row) {
         row.staking_reward_claimed += staking_reward_unclaimed;
@@ -301,10 +301,10 @@ void endorse_manage::evmclaim(const name& caller, const checksum160& proxy, cons
 
     auto evm_staker_idx = _evm_stake.get_index<"bystakingid"_n>();
     auto evm_staker_itr = evm_staker_idx.require_find(compute_staking_id(proxy, staker, validator),
-                                                      "endorse_manage::evmclaim: [evmstakers] does not exists");
+                                                      "endrmng.xsat::evmclaim: [evmstakers] does not exists");
 
     auto validator_itr = _validator.require_find(evm_staker_itr->validator.value,
-                                                 "endorse_manage::evmclaim: [validators] does not exists");
+                                                 "endrmng.xsat::evmclaim: [validators] does not exists");
     update_staking_reward(validator_itr->stake_acc_per_share, validator_itr->consensus_acc_per_share,
                           evm_staker_itr->quantity.amount, evm_staker_itr->quantity.amount, evm_staker_idx,
                           evm_staker_itr);
@@ -312,7 +312,7 @@ void endorse_manage::evmclaim(const name& caller, const checksum160& proxy, cons
     auto staking_reward_unclaimed = evm_staker_itr->staking_reward_unclaimed;
     auto consensus_reward_unclaimed = evm_staker_itr->consensus_reward_unclaimed;
     auto claimable = staking_reward_unclaimed + consensus_reward_unclaimed;
-    check(claimable.amount > 0, "endorse_manage::evmclaim: no balance to claim");
+    check(claimable.amount > 0, "endrmng.xsat::evmclaim: no balance to claim");
 
     evm_staker_idx.modify(evm_staker_itr, same_payer, [&](auto& row) {
         row.staking_reward_claimed += staking_reward_unclaimed;
@@ -338,7 +338,7 @@ void endorse_manage::evmclaim(const name& caller, const checksum160& proxy, cons
 [[eosio::action]]
 void endorse_manage::vdrclaim(const name& validator) {
     auto validator_itr
-        = _validator.require_find(validator.value, "endorse_manage::vdrclaim: [validators] does not exists");
+        = _validator.require_find(validator.value, "endrmng.xsat::vdrclaim: [validators] does not exists");
 
     if (validator_itr->reward_recipient == ERC20_CONTRACT) {
         require_auth(EVM_UTIL_CONTRACT);
@@ -349,7 +349,7 @@ void endorse_manage::vdrclaim(const name& validator) {
     auto staking_reward_unclaimed = validator_itr->staking_reward_unclaimed;
     auto consensus_reward_unclaimed = validator_itr->consensus_reward_unclaimed;
     auto claimable = staking_reward_unclaimed + consensus_reward_unclaimed;
-    check(claimable.amount > 0, "endorse_manage::vdrclaim: no balance to claim");
+    check(claimable.amount > 0, "endrmng.xsat::vdrclaim: no balance to claim");
     _validator.modify(validator_itr, same_payer, [&](auto& row) {
         row.staking_reward_claimed += staking_reward_unclaimed;
         row.consensus_reward_claimed += consensus_reward_unclaimed;
@@ -372,18 +372,18 @@ void endorse_manage::vdrclaim(const name& validator) {
 
 asset endorse_manage::evm_stake_without_auth(const checksum160& proxy, const checksum160& staker, const name& validator,
                                              const asset& quantity) {
-    check(quantity.amount > 0, "endorse_manage::evmstake: quantity must be greater than 0");
-    check(quantity.symbol == BTC_SYMBOL, "endorse_manage::evmstake: quantity symbol must be BTC");
+    check(quantity.amount > 0, "endrmng.xsat::evmstake: quantity must be greater than 0");
+    check(quantity.symbol == BTC_SYMBOL, "endrmng.xsat::evmstake: quantity symbol must be BTC");
     check(quantity.amount <= BTC_SUPPLY,
-          "endorse_manage::evmstake: quantity must be less than [btc.xsat/BTC] max_supply");
+          "endrmng.xsat::evmstake: quantity must be less than [btc.xsat/BTC] max_supply");
 
     auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
     auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
                                                     "endrmng.xsat::evmstake: [evmproxys] does not exist");
     auto validator_itr
-        = _validator.require_find(validator.value, "endorse_manage::evmstake: [validators] does not exists");
+        = _validator.require_find(validator.value, "endrmng.xsat::evmstake: [validators] does not exists");
     check(!validator_itr->disabled_staking,
-          "endorse_manage::evmstake: the current validator's staking status is disabled");
+          "endrmng.xsat::evmstake: the current validator's staking status is disabled");
 
     auto evm_staker_idx = _evm_stake.get_index<"bystakingid"_n>();
     auto stake_itr = evm_staker_idx.find(compute_staking_id(proxy, staker, validator));
@@ -410,29 +410,29 @@ asset endorse_manage::evm_stake_without_auth(const checksum160& proxy, const che
 
 asset endorse_manage::evm_unstake_without_auth(const checksum160& proxy, const checksum160& staker,
                                                const name& validator, const asset& quantity) {
-    check(quantity.amount > 0, "endorse_manage::evmunstake: quantity must be greater than 0");
-    check(quantity.symbol == BTC_SYMBOL, "endorse_manage::evmunstake: quantity symbol must be BTC");
+    check(quantity.amount > 0, "endrmng.xsat::evmunstake: quantity must be greater than 0");
+    check(quantity.symbol == BTC_SYMBOL, "endrmng.xsat::evmunstake: quantity symbol must be BTC");
 
     auto evm_staker_idx = _evm_stake.get_index<"bystakingid"_n>();
     auto evm_staker_itr = evm_staker_idx.require_find(compute_staking_id(proxy, staker, validator),
-                                                      "endorse_manage::evmunstake: [evmstakers] does not exists");
-    check(evm_staker_itr->quantity >= quantity, "endorse_manage::evmunstake: insufficient stake");
+                                                      "endrmng.xsat::evmunstake: [evmstakers] does not exists");
+    check(evm_staker_itr->quantity >= quantity, "endrmng.xsat::evmunstake: insufficient stake");
 
     auto validator_itr = _validator.require_find(evm_staker_itr->validator.value,
-                                                 "endorse_manage::evmunstake: [validators] does not exists");
+                                                 "endrmng.xsat::evmunstake: [validators] does not exists");
 
     staking_change(validator_itr, evm_staker_idx, evm_staker_itr, -quantity);
     return validator_itr->quantity;
 }
 
 asset endorse_manage::stake_without_auth(const name& staker, const name& validator, const asset& quantity) {
-    check(quantity.amount > 0, "endorse_manage::stake: quantity must be greater than 0");
-    check(quantity.symbol == BTC_SYMBOL, "endorse_manage::stake: quantity symbol must be BTC");
+    check(quantity.amount > 0, "endrmng.xsat::stake: quantity must be greater than 0");
+    check(quantity.symbol == BTC_SYMBOL, "endrmng.xsat::stake: quantity symbol must be BTC");
 
     auto validator_itr
-        = _validator.require_find(validator.value, "endorse_manage::stake: [validators] does not exists");
+        = _validator.require_find(validator.value, "endrmng.xsat::stake: [validators] does not exists");
     check(!validator_itr->disabled_staking,
-          "endorse_manage::stake: the current validator's staking status is disabled");
+          "endrmng.xsat::stake: the current validator's staking status is disabled");
 
     auto native_staker_idx = _native_stake.get_index<"bystakingid"_n>();
     auto stake_itr = native_staker_idx.find(compute_staking_id(staker, validator));
@@ -458,17 +458,17 @@ asset endorse_manage::stake_without_auth(const name& staker, const name& validat
 }
 
 asset endorse_manage::unstake_without_auth(const name& staker, const name& validator, const asset& quantity) {
-    check(quantity.amount > 0, "endorse_manage::unstake: quantity must be greater than 0");
-    check(quantity.symbol == BTC_SYMBOL, "endorse_manage::unstake: quantity symbol must be BTC");
+    check(quantity.amount > 0, "endrmng.xsat::unstake: quantity must be greater than 0");
+    check(quantity.symbol == BTC_SYMBOL, "endrmng.xsat::unstake: quantity symbol must be BTC");
 
     auto native_staker_idx = _native_stake.get_index<"bystakingid"_n>();
     auto native_staker_itr = native_staker_idx.require_find(compute_staking_id(staker, validator),
-                                                            "endorse_manage::unstake: [stakers] does not exists");
+                                                            "endrmng.xsat::unstake: [stakers] does not exists");
     check(native_staker_itr->quantity >= quantity,
-          "endorse_manage::unstake: the number of unstakes exceeds the staking amount");
+          "endrmng.xsat::unstake: the number of unstakes exceeds the staking amount");
 
     auto validator_itr = _validator.require_find(native_staker_itr->validator.value,
-                                                 "endorse_manage::unstake: [validators] does not exists");
+                                                 "endrmng.xsat::unstake: [validators] does not exists");
 
     staking_change(validator_itr, native_staker_idx, native_staker_itr, -quantity);
     return validator_itr->quantity;

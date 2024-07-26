@@ -20,5 +20,5 @@ void resource_management::cleartable(const name table_name, const optional<name>
     else if (table_name == "accounts"_n)
         clear_table(_account, rows_to_clear);
     else
-        check(false, "resource_management::cleartable: [table_name] unknown table to clear");
+        check(false, "rescmng.xsat::cleartable: [table_name] unknown table to clear");
 }

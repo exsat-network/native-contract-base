@@ -114,7 +114,7 @@ describe('staking.xsat', () => {
         await contracts.staking.actions.addtoken([{ sym: BTC, contract: BTC_CONTRACT }]).send('staking.xsat@active')
         await expectToThrow(
             contracts.btc.actions.transfer(['bob', 'staking.xsat', Asset.from(100, BTC), 'tony']).send('bob@active'),
-            'eosio_assert: endorse_manage::stake: [validators] does not exists'
+            'eosio_assert: endrmng.xsat::stake: [validators] does not exists'
         )
     })
 
