@@ -139,7 +139,7 @@ void reward_distribution::endtreward(const name& parser, const uint64_t height, 
             .consensus_rewards = {consensus_reward_amount, reward_log_itr->consensus_rewards.symbol}});
 
         total_rewards.amount += staking_reward_amount + consensus_reward_amount;
-        //
+
         reward_balance.staking_rewards_unclaimed.amount -= staking_reward_amount;
         reward_balance.consensus_rewards_unclaimed.amount -= consensus_reward_amount;
     }

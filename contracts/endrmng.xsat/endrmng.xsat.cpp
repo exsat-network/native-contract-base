@@ -429,10 +429,8 @@ asset endorse_manage::stake_without_auth(const name& staker, const name& validat
     check(quantity.amount > 0, "endrmng.xsat::stake: quantity must be greater than 0");
     check(quantity.symbol == BTC_SYMBOL, "endrmng.xsat::stake: quantity symbol must be BTC");
 
-    auto validator_itr
-        = _validator.require_find(validator.value, "endrmng.xsat::stake: [validators] does not exists");
-    check(!validator_itr->disabled_staking,
-          "endrmng.xsat::stake: the current validator's staking status is disabled");
+    auto validator_itr = _validator.require_find(validator.value, "endrmng.xsat::stake: [validators] does not exists");
+    check(!validator_itr->disabled_staking, "endrmng.xsat::stake: the current validator's staking status is disabled");
 
     auto native_staker_idx = _native_stake.get_index<"bystakingid"_n>();
     auto stake_itr = native_staker_idx.find(compute_staking_id(staker, validator));
@@ -501,17 +499,17 @@ void endorse_manage::update_validator_reward(const uint64_t height, const name& 
     check(validator_itr->latest_reward_block < height, "endrmng.xsat: the block height has been rewarded");
     uint128_t incr_stake_acc_per_share = 0;
     uint128_t incr_consensus_acc_per_share = 0;
-    uint64_t validator_staking_rewards = 0;
-    uint64_t validator_consensus_rewards = 0;
+    uint64_t validator_staking_rewards = staking_rewards;
+    uint64_t validator_consensus_rewards = consensus_rewards;
     // calculated reward
-    if (staking_rewards > 0) {
+    if (staking_rewards > 0 && validator_itr->quantity.amount > 0) {
         validator_staking_rewards
             = safemath128::muldiv(staking_rewards, validator_itr->commission_rate, COMMISSION_RATE_BASE);
         incr_stake_acc_per_share = safemath128::muldiv(staking_rewards - validator_staking_rewards, RATE_BASE,
                                                        validator_itr->quantity.amount);
     }
 
-    if (consensus_rewards > 0) {
+    if (consensus_rewards > 0 && validator_itr->quantity.amount > 0) {
         validator_consensus_rewards
             = safemath128::muldiv(consensus_rewards, validator_itr->commission_rate, COMMISSION_RATE_BASE);
         incr_consensus_acc_per_share = safemath128::muldiv(consensus_rewards - validator_consensus_rewards, RATE_BASE,
