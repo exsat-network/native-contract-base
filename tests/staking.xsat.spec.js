@@ -177,13 +177,25 @@ describe('staking.xsat', () => {
 
     it('withdraw', async () => {
         blockchain.addTime(TimePointSec.fromInteger(UNLOCKING_DURATION))
+        await contracts.btc.actions.transfer(['bob', 'staking.xsat', Asset.from(1, BTC), 'alice']).send('bob@active')
+        await contracts.staking.actions.release([1, 'bob', 'alice', Asset.from(1, BTC)]).send('bob@active')
+
         const before_balance = getTokenBalance(blockchain, 'bob', 'btc.xsat', BTC.code)
         await contracts.staking.actions.withdraw(['bob']).send('bob@active')
         const after_balance = getTokenBalance(blockchain, 'bob', 'btc.xsat', BTC.code)
         expect(after_balance - before_balance).toEqual(Asset.from(1, BTC).units.toNumber())
 
         expect(get_staking('bob', 1)).toEqual({ id: 1, quantity: { contract: 'btc.xsat', quantity: '0.00000000 BTC' } })
-        expect(get_release('bob')).toEqual([])
+        expect(get_release('bob')).toEqual([
+            {
+                expiration_time: addTime(blockchain.timestamp, TimePointSec.from(UNLOCKING_DURATION)).toString(),
+                id: 2,
+                quantity: {
+                    contract: 'btc.xsat',
+                    quantity: '1.00000000 BTC',
+                },
+            },
+        ])
     })
 
     it('setstatus: missing required authority', async () => {
