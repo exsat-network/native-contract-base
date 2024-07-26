@@ -38,7 +38,7 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
           "blkendt.xsat::endorse: the current endorsement status is disabled");
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     auto chain_state = _chain_state.get();
-    check(chain_state.irreversible_height < height && chain_state.parsing_hash != hash,
+    check(chain_state.irreversible_height < height && chain_state.parsing_height != height,
           "blkendt.xsat::endorse: the block has been parsed and does not need to be endorsed");
 
     // fee deduction
