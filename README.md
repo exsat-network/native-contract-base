@@ -4,234 +4,39 @@
 
 ## Contracts
 
-| name                                                  | description                    |
-| ----------------------------------------------------- | ------------------------------ |
-| [btc.xsat](https://bloks.io/account/btc.xsat)         | Btc Token Contract             |
-| [xsat.xsat](https://bloks.io/account/xsat.xsat)       | Xsat Contract                  |
-| [poolreg.xsat](https://bloks.io/account/poolreg.xsat) | Pool Register Contract         |
-| [rescmng.xsat](https://bloks.io/account/rescmng.xsat) | Resource Manage Contract       |
-| [utxomng.xsat](https://bloks.io/account/utxomng.xsat) | UTXO Manage Contract           |
-| [rwddist.xsat](https://bloks.io/account/rwddist.xsat) | Reward Distribution Contract   |
-| [blkendt.xsat](https://bloks.io/account/blkendt.xsat) | Block Endorse Contract         |
-| [blksync.xsat](https://bloks.io/account/blksync.xsat) | Block Synchronization Contract |
-| [endrmng.xsat](https://bloks.io/account/endrmng.xsat) | Endorsement Manage Contract    |
-| [staking.xsat](https://bloks.io/account/staking.xsat) | Staking Contract               |
+| name                                                  | description                    | docs                                                              |
+| ----------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
+| [btc.xsat](https://bloks.io/account/btc.xsat)         | BTC Token Contract             |                                                                   |
+| [xsat.xsat](https://bloks.io/account/xsat.xsat)       | XSAT Contract                  |                                                                   |
+| [poolreg.xsat](https://bloks.io/account/poolreg.xsat) | Pool Register Contract         | [poolreg.xsat document](./contracts/poolreg.xsat/poolreg.xsat.md) |
+| [rescmng.xsat](https://bloks.io/account/rescmng.xsat) | Resource Manage Contract       | [rescmng.xsat document](./contracts/rescmng.xsat/rescmng.xsat.md) |
+| [utxomng.xsat](https://bloks.io/account/utxomng.xsat) | UTXO Manage Contract           | [utxomng.xsat document](./contracts/utxomng.xsat/utxomng.xsat.md) |
+| [rwddist.xsat](https://bloks.io/account/rwddist.xsat) | Reward Distribution Contract   | [rwddist.xsat document](./contracts/rwddist.xsat/rwddist.xsat.md) |
+| [blkendt.xsat](https://bloks.io/account/blkendt.xsat) | Block Consensus Contract       | [blkendt.xsat document](./contracts/blkendt.xsat/blkendt.xsat.md) |
+| [blksync.xsat](https://bloks.io/account/blksync.xsat) | Block Synchronization Contract | [blksync.xsat document](./contracts/blksync.xsat/blksync.xsat.md) |
+| [endrmng.xsat](https://bloks.io/account/endrmng.xsat) | Validator Manage Contract      | [endrmng.xsat document](./contracts/endrmng.xsat/endrmng.xsat.md) |
+| [staking.xsat](https://bloks.io/account/staking.xsat) | Staking Contract               | [staking.xsat document](./contracts/staking.xsat/staking.xsat.md) |
 
-## Quickstart
+## Contract Architecture
 
-### `poolreg.xsat`
+![architecture](./docs/architecture.jpg)
 
-#### Actions
+## TLDR
 
-```bash
-# initpool @poolreg.xsat
-$ cleos push action poolreg.xsat initpool '{"synchronizer": "alice", "latest_produced_block_height": 839999, "financial_account": "alice", "miners": [""]}' -p poolreg.xsat
+exSat a scaling solution to the critical challenges of trust, functionality, scalability, utility and interoperability faced by the Bitcoin ecosystem. This novel Docking Layer solution, as a first-of-its-kind, aims to build trust by extending the data consensus of the Bitcoin ecosystem with a hybrid consensus mechanism; to achieve functionality by bridging the gap of smart contracts; to enhance utility by unifying BTC across diverse blockchain ecosystems; and to drive multichain interoperability by intent-centric omnichain DApps.
 
-# unbundle @poolreg.xsat
-$ cleos push action poolreg.xsat unbundle '{"id": 1}' -p poolreg.xsat
+exSat introduces several key innovations to realize its vision including:
 
-# config @poolreg.xsat
-$ cleos push action poolreg.xsat config '{"synchronizer": "alice", "produced_block_limit": 432}' -p poolreg.xsat
+Data Consensus + BTC Staking to Extend Trust of BTC: Extends Bitcoin's data consensus through a Hybrid Consensus Mechanism, combining Proof of Work (PoW) and Proof of Stake (PoS).
 
-# setfinacct @synchronizer
-$ cleos push action poolreg.xsat setfinacct '{"synchronizer": "alice", "financial_account": "alice"}' -p alice
+Decentralized State Data Indexing for Easy On-chain Operation: Critical for smart contracts to operate easily, and the support of diverse assets through multi-indexing capabilities including BTC, Ordinals, Runes and more potential protocols.
 
-# buyslot @synchronizer
-$ cleos push action poolreg.xsat buyslot '{"synchronizer": "alice", "receiver": "alice", "num_slots": 2}' -p alice
+Scaling Bitcoin Ecosystem with Smart Contract Platform: Extends full support for Ethereum Virtual Machine-based (EVM) application development, enabling a broader range of decentralized application (DApp) functionalities, further bridging the capabilities between Bitcoin and advanced smart contract platforms.
 
-# claim @evmutil.xsat or @financial_account
-$ cleos push action poolreg.xsat claim '{"synchronizer": "alice"}' -p alice
-```
+The Modular Scaling Solution for the Bitcoin Ecosystem: exSat empowers developers to enhance the scalability of the Bitcoin ecosystem efficiently and securely, leveraging the robust trust and security of exSat. It simplifies the creation of customizable BTC Layer 2 (L2) solutions incorporating Zero-Knowledge (ZK) rollups, or side chains using the latest implementation of the Antelope protocol, facilitating easy, quick, and seamless development
 
-#### Table Information
+exSat forges a trustworthy and secure pathway to enhance Bitcoin's scalability and enable smart contract capabilities, unlocking additional utility value for BTC beyond its role as a store of value. In the long run, exSat aims to streamline the process of deploying a Bitcoin scaling solution, making it as straightforward as deploying a contract on-chain. This pioneering effort will pave the way for a flourishing Bitcoin ecosystem and drive mass adoption of blockchain technology.
 
-```bash
-$ cleos get table poolreg.xsat poolreg.xsat synchronizer
-$ cleos get table poolreg.xsat poolreg.xsat miners
-```
+Through exSat's innovative approach, users and developers from diverse backgrounds will experience the convenience of intent-centric operations and unified liquidity. By abstracting away complexities, exSat empowers a broader audience to leverage the power of Bitcoin and its L2 solutions seamlessly, fostering a more inclusive and accessible blockchain landscape.
 
-### `rescmng.xsat`
-
-#### Actions
-
-```bash
-# config @rescmng.xsat
-$ cleos push action rescmng.xsat init '{"fee_account": "fees.xsat", "cost_per_slot": "0.00000020 BTC", "cost_per_upload": "0.00000020 BTC", "cost_per_verification": "0.00000020 BTC", "cost_per_endorsement": "0.00000020 BTC", "cost_per_parse": "0.00000020 BTC"}' -p rescmng.xsat
-
-# deposit fee @user
-$ cleos push action btc.xsat transfer '["alice","rescmng.xsat","1.00000000 BTC", "<receiver>"]' -p alice
-
-# withdraw fee @user
-$ cleos push action rescmng.xsat withdraw '{"owner","alice", "quantity": "1.00000000 BTC"}' -p alice
-```
-
-#### Table Information
-
-```bash
-$ cleos get table rescmng.xsat rescmng.xsat config
-$ cleos get table rescmng.xsat rescmng.xsat accounts
-```
-
-### `blksync.xsat`
-
-#### Actions
-
-```bash
-# initbucket @synchronizer
-$ cleos push action blksync.xsat initbucket '{"synchronizer": "alice", "height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "block_size": 2325617, "num_chunks": 11}' -p alice
-
-# pushchunk @synchronizer
-$ cleos push action blksync.xsat pushchunk '{"synchronizer": "alice", "height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "chunk_id": 0, "data": "<data>"}' -p alice
-
-# delchunk @synchronizer
-$ cleos push action blksync.xsat delchunk '{"synchronizer": "alice", "height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "chunk_id": 0}' -p alice
-
-# delbucket @synchronizer
-$ cleos push action blksync.xsat delbucket '{"synchronizer": "alice", "height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"}' -p alice
-
-# verify @synchronizer
-$ cleos push action blksync.xsat verify '{"synchronizer": "alice", "height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"}' -p alice
-```
-
-#### Table Information
-
-```bash
-$ cleos get table blksync.xsat <synchronizer> blockbuckets
-# by status
-$ cleos get table blksync.xsat <synchronizer> blockbuckets --index 2 --key-type uint64_t -U <status> -L <status>
-# by blockid
-$ cleos get table blksync.xsat <synchronizer> blockbuckets --index 3 --key-type sha256 -U <blockid> -L <blockid>
-
-$ cleos get table blksync.xsat <height> passedindexs
-# by hash
-$ cleos get table blksync.xsat <height> block.chunk  --index 3 --key-type sha256 -U <hash> -L <hash>
-```
-
-### `blkendt.xsat`
-
-#### Actions
-
-```bash
-# endorse @validator
-$ cleos push action endtmng.xsat endorse '{"validator": "alice", "height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"}' -p alice
-```
-
-#### Table Information
-
-```bash
-$ cleos get table endtmng.xsat <height> endorsements
-# by hash
-$ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256 -L <hash> -U <hash>
-```
-
-### `rwddist.xsat`
-
-#### Table Information
-
-```bash
-$ cleos get table rwddist.xsat rwddist.xsat rewardlogs
-```
-
-### `utxomng.xsat`
-
-#### Actions
-
-```bash
-
-# init @utxomng.xsat
-$ cleos push action utxo.xsat init '{"height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "cumulative_work": "0.00000020 BTC"}' -p utxomng.xsat
-
-# config @utxomng.xsat
-$ cleos push action utxo.xsat config '{"parse_timeout_seconds": 600, "num_validators_per_distribution": 100, "num_retain_data_blocks": 100, "num_merkle_layer": 10}' -p utxomng.xsat
-
-# addutxo @utxomng.xsat
-$ cleos push action utxo.xsat addutxo '{"id": 1, "txid": "76a914536ffa992491508dca0354e52f32a3a7a679a53a88ac", "index": 1, "to": "18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX", "value": 4075061499}' -p utxomng.xsat
-
-# delutxo @utxomng.xsat
-$ cleos push action utxo.xsat delutxo '{"id": 1}' -p utxomng.xsat
-
-# addblock @utxomng.xsat
-$ cleos push action utxo.xsat addblock '{"height":839999,"hash":"000000000000000003e251c7387c2cd5aeac480327a234ec11c9b8382455db0d","cumulative_work":"0000000000000000000000000000000000000000002fa415a1793f473a706960","version":536870912,"previous_block_hash":"000000000000000003e6820666f1a47c7771f18b03f9d24c2896a3d7356a5e3c","merkle":"da1dcebe6d631251a31969b7ed6ba55258d113be3e7ef3ef3343d8f7fc9c1702","timestamp":1479777318,"bits":386089497,"nonce":2635095261}' -p utxomng.xsat
-
-# delblock @utxomng.xsat
-$ cleos push action utxo.xsat delblock '{"height":839999}' -p utxomng.xsat
-
-# processblock @alice
-$ cleos push action utxo.xsat processblock '{"synchronizer": "alice", "process_rows":1024}' -p utxomng.xsat
-```
-
-#### Table Information
-
-```bash
-$ cleos get table utxomng.xsat utxomng.xsat chainstate
-$ cleos get table utxomng.xsat utxomng.xsat config
-$ cleos get table utxomng.xsat utxomng.xsat utxos
-```
-
-### `endrmng.xsat`
-
-#### Actions
-
-```bash
-
-
-# addevmproxy @endrmng.xsat
-$ cleos push action endrmng.xsat addevmproxy '{"proxy": "e4d68a77714d9d388d8233bee18d578559950cf5"}' -p endrmng.xsat
-
-# delevmproxy @endrmng.xsat
-$ cleos push action endrmng.xsat delevmproxy '{"proxy": "e4d68a77714d9d388d8233bee18d578559950cf5"}' -p endrmng.xsat
-
-# addwhitelist @endrmng.xsat type = ["proxyreg", "evmcaller"]
-$ cleos push action endrmng.xsat addwhitelist '{"type": "proxyreg", "account": "alice"}' -p endrmng.xsat
-
-# delwhitelist @endrmng.xsat type = ["proxyreg", "evmcaller"]
-$ cleos push action endrmng.xsat delwhitelist '{"type": "proxyreg", "account": "alice"}' -p endrmng.xsat
-
-# setstatus @endrmng.xsat
-$ cleos push action endrmng.xsat setstatus '{"validator": "alice", "disabled_staking": "alice"}' -p endrmng.xsat
-
-# regvalidator @validator
-$ cleos push action endrmng.xsat regvalidator '{"validator": "alice", "financial_account": "alice"}' -p alice
-
-# proxyreg @proxy
-$ cleos push action endrmng.xsat proxyreg '{"proxy": "alice", "validator": "alice", "financial_account": "alice"}' -p alice
-
-# config @validator decimal= 10000
-$ cleos push action endrmng.xsat config '{"validator": "alice", "commission_rate": 2000, "financial_account": "alice"}' -p alice
-
-# setstatus @endrmng.xsat
-$ cleos push action endrmng.xsat setstatus '{"validator": "alice", "disabled_staking": true}' -p endrmng.xsat
-
-# newstake @staker
-$ cleos push action endrmng.xsat newstake '{"staker": "alice", "old_validator": "alice", "new_validator": "bob", "quantity": "0.00000020 BTC"}' -p alice
-
-# claim @staker
-$ cleos push action endrmng.xsat claim '{"staker": "alice", "validator": "alice"}' -p alice
-
-# evmstake @caller whitelist["evmcaller"]
-$ cleos push action endrmng.xsat evmstake '{"caller": "evmutil.xsat", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5", "staker": "bbbbbbbbbbbbbbbbbbbbbbbb5530ea015b900000",  "validator": "alice", "quantity": "0.00000020 BTC"}' -p alice
-
-# evmunstake @caller whitelist["evmcaller"] 
-$ cleos push action endrmng.xsat evmunstake '{"caller": "evmutil.xsat", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5", "staker": "bbbbbbbbbbbbbbbbbbbbbbbb5530ea015b900000",  "validator": "alice", "quantity": "0.00000020 BTC"}' -p evmutil.xsat 
-
-# evmnewstake @caller whitelist["evmcaller"] 
-$ cleos push action endrmng.xsat evmnewstake '{"caller": "evmutil.xsat", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5", "staker": "bbbbbbbbbbbbbbbbbbbbbbbb5530ea015b900000",  "old_validator": "alice", "new_validator": "bob", "quantity": "0.00000020 BTC"}' -p evmutil.xsat
-
-# evmclaim @caller whitelist["evmcaller"] 
-$ cleos push action endrmng.xsat evmclaim '{"caller": "evmutil.xsat", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5", "staker": "bbbbbbbbbbbbbbbbbbbbbbbb5530ea015b900000",  "validator": "alice"}' -p evmutil.xsat
-
-# vdrclaim @validator
-$ cleos push action endrmng.xsat vdrclaim '{"validator": "alice"}' -p alice 
-```
-
-#### Table Information
-
-```bash
-$ cleos get table endrmng.xsat evmcaller whitelist 
-$ cleos get table endrmng.xsat proxyreg whitelist 
-$ cleos get table endrmng.xsat endrmng.xsat evmproxys 
-$ cleos get table endrmng.xsat endrmng.xsat evmstakers 
-$ cleos get table endrmng.xsat endrmng.xsat stakers 
-$ cleos get table endrmng.xsat endrmng.xsat validators 
-$ cleos get table endrmng.xsat endrmng.xsat stat
-```
+Embracing a modular and extensible architecture, exSat's trustworthy and secure solution lays the foundation for a vibrant ecosystem built upon Bitcoin's robust security model. As the adoption of blockchain technology continues to accelerate, exSat's vision positions Bitcoin at the forefront of this revolution, enabling a vast array of DApps and services to thrive within its decentralized and transparent framework.

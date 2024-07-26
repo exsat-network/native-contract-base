@@ -3,6 +3,10 @@
 #include <btc.xsat/btc.xsat.hpp>
 #include "../internal/defines.hpp"
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth blksync.xsat
 [[eosio::action]]
 void pool::updateheight(const name& synchronizer, const uint64_t latest_produced_block_height,
@@ -23,11 +27,12 @@ void pool::updateheight(const name& synchronizer, const uint64_t latest_produced
             row.unclaimed = asset{0, XSAT_SYMBOL};
         });
     } else {
-        if (synchronizer_itr->latest_produced_block_height < latest_produced_block_height) {
-            _synchronizer.modify(synchronizer_itr, same_payer, [&](auto& row) {
-                row.latest_produced_block_height = latest_produced_block_height;
-            });
+        if (synchronizer_itr->latest_produced_block_height >= latest_produced_block_height) {
+            return;
         }
+        _synchronizer.modify(synchronizer_itr, same_payer, [&](auto& row) {
+            row.latest_produced_block_height = latest_produced_block_height;
+        });
     }
 
     save_miners(synchronizer, miners);
@@ -93,6 +98,28 @@ void pool::initpool(const name& synchronizer, const uint64_t latest_produced_blo
     // log
     pool::poollog_action _poollog(get_self(), {get_self(), "active"_n});
     _poollog.send(synchronizer, latest_produced_block_height, financial_account);
+}
+
+//@auth get_self()
+[[eosio::action]]
+void pool::delpool(const name& synchronizer) {
+    require_auth(get_self());
+
+    auto synchronizer_itr
+        = _synchronizer.require_find(synchronizer.value, "poolreg.xsat::delpool: [synchronizer] does not exists");
+    _synchronizer.erase(synchronizer_itr);
+
+    // erase miners
+    auto miner_idx = _miner.get_index<"bysyncer"_n>();
+    auto miner_itr = miner_idx.lower_bound(synchronizer.value);
+    auto end_miner = miner_idx.upper_bound(synchronizer.value);
+    while (miner_itr != end_miner) {
+        miner_itr = miner_idx.erase(miner_itr);
+    }
+
+    // log
+    pool::delpoollog_action _delpoollog(get_self(), {get_self(), "active"_n});
+    _delpoollog.send(synchronizer);
 }
 
 //@auth get_self()
@@ -214,7 +241,7 @@ void pool::on_transfer(const name& from, const name& to, const asset& quantity, 
     check(contract == EXSAT_CONTRACT && quantity.symbol == XSAT_SYMBOL,
           "poolreg.xsat: only transfer [exsat.xsat/XSAT]");
     auto parts = xsat::utils::split(memo, ",");
-    auto INVALID_MEMO = "poolreg.xsat: invalid memo ex: \"<synchronizer><height>\"";
+    auto INVALID_MEMO = "poolreg.xsat: invalid memo ex: \"<synchronizer>,<height>\"";
     check(parts.size() == 2, INVALID_MEMO);
     auto synchronizer = xsat::utils::parse_name(parts[0]);
     check(xsat::utils::is_digit(parts[1]), INVALID_MEMO);

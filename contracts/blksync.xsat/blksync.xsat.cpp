@@ -7,7 +7,11 @@
 #include <cmath>
 #include "../internal/defines.hpp"
 
-//@auth utxomng.xsat
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
+// @auth utxomng.xsat
 [[eosio::action]]
 void block_sync::consensus(const uint64_t height, const name& synchronizer, const uint64_t bucket_id) {
     require_auth(UTXO_MANAGE_CONTRACT);
@@ -23,11 +27,18 @@ void block_sync::consensus(const uint64_t height, const name& synchronizer, cons
     while (passed_index_itr != _passed_index.end()) {
         passed_index_itr = _passed_index.erase(passed_index_itr);
     }
+
+    // erase block miner
+    block_miner_table _block_miner(get_self(), height);
+    auto block_miner_itr = _block_miner.begin();
+    while (block_miner_itr != _block_miner.end()) {
+        block_miner_itr = _block_miner.erase(block_miner_itr);
+    }
 }
 
 //@auth utxomng.xsat
 [[eosio::action]]
-void block_sync::delchunks(const uint64_t height, const uint64_t bucket_id) {
+void block_sync::delchunks(const uint64_t bucket_id) {
     require_auth(UTXO_MANAGE_CONTRACT);
 
     block_chunk_table _block_chunk = block_chunk_table(get_self(), bucket_id);
@@ -44,15 +55,19 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
     require_auth(synchronizer);
 
     check(height > START_HEIGHT, "blksync.xsat::initbucket: height must be greater than 840000");
-    check(block_size > 80, "blksync.xsat::initbucket: block size must be greater than 80");
+    check(block_size > BLOCK_HEADER_SIZE, "blksync.xsat::initbucket: block size must be greater than 80");
     check(num_chunks > 0, "blksync.xsat::initbucket: the number of chunks must be greater than 0");
 
     // check whether it is a synchronizer
     pool::synchronizer_table _synchronizer(POOL_REGISTER_CONTRACT, POOL_REGISTER_CONTRACT.value);
     auto synchronizer_itr
-        = _synchronizer.require_find(synchronizer.value, "blksync.xsat::initbucket: not an synchronizer address");
+        = _synchronizer.require_find(synchronizer.value, "blksync.xsat::initbucket: not an synchronizer account");
 
     check(!utxo_manage::check_consensus(height, hash), "blksync.xsat::initbucket: the block has reached consensus");
+
+    // fee deduction
+    resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
+    pay.send(height, hash, synchronizer, PUSH_CHUNK, 1);
 
     block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
     auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
@@ -78,7 +93,7 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
             row.status = uploading;
         });
     } else {
-        check(block_bucket_itr->status != verify_pass,
+        check(block_bucket_itr->status == uploading || block_bucket_itr->status == verify_fail,
               "blksync.xsat::initbucket: cannot init bucket in the current state ["
                   + get_block_status_name(block_bucket_itr->status) + "]");
 
@@ -147,6 +162,10 @@ void block_sync::pushchunk(const name& synchronizer, const uint64_t height, cons
             row.status = uploading;
         }
     });
+
+    // log
+    block_sync::chunklog_action _chunklog(get_self(), {get_self(), "active"_n});
+    _chunklog.send(block_bucket_itr->bucket_id, chunk_id, block_bucket_itr->uploaded_num_chunks);
 }
 
 //@auth synchronizer
@@ -165,6 +184,10 @@ void block_sync::delchunk(const name& synchronizer, const uint64_t height, const
     check(status != verify_merkle && status != verify_parent_hash && status != verify_pass,
           "blksync.xsat::delchunk: cannot delete chunk in the current state [" + get_block_status_name(status) + "]");
 
+    // fee deduction
+    resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
+    pay.send(height, hash, synchronizer, PUSH_CHUNK, 1);
+
     block_chunk_table _block_chunk = block_chunk_table(get_self(), block_bucket_itr->bucket_id);
     auto itr = _block_chunk.require_find(chunk_id, "blksync.xsat::delchunk: chunk_id does not exist");
     auto chunk_size = itr->data.size();
@@ -180,6 +203,10 @@ void block_sync::delchunk(const name& synchronizer, const uint64_t height, const
             row.status = uploading;
         }
     });
+
+    // log
+    block_sync::delchunklog_action _delchunklog(get_self(), {get_self(), "active"_n});
+    _delchunklog.send(block_bucket_itr->bucket_id, chunk_id, block_bucket_itr->uploaded_num_chunks);
 }
 
 //@auth synchronizer
@@ -192,6 +219,10 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
     auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
     auto block_bucket_itr = block_bucket_idx.require_find(xsat::utils::compute_block_id(height, hash),
                                                           "blksync.xsat::delbucket: [blockbuckets] does not exists");
+
+    // fee deduction
+    resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
+    pay.send(height, hash, synchronizer, PUSH_CHUNK, 1);
 
     // erase block chunks
     block_chunk_table _block_chunk = block_chunk_table(get_self(), block_bucket_itr->bucket_id);
@@ -210,6 +241,10 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
     if (passed_index_itr != passed_index_idx.end()) {
         passed_index_idx.erase(passed_index_itr);
     }
+
+    // log
+    block_sync::delbucketlog_action _delbucketlog(get_self(), {get_self(), "active"_n});
+    _delbucketlog.send(block_bucket_itr->bucket_id);
 }
 
 //@auth synchronizer
@@ -226,218 +261,283 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
     check(block_bucket_itr->in_verifiable(), "blksync.xsat::verify: cannot validate block in the current state ["
                                                  + get_block_status_name(block_bucket_itr->status) + "]");
 
-    if (utxo_manage::check_consensus(height, hash)) {
-        return check_fail(block_bucket_idx, block_bucket_itr, "reached_consensus", hash);
-    }
-
-    auto verify_info = block_bucket_itr->verify_info;
-    if (!verify_info.has_value()) {
-        verify_info = verify_info_data{};
-    }
-
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
     pay.send(height, hash, synchronizer, VERIFY, 1);
     auto status = block_bucket_itr->status;
 
-    checksum256 cumulative_work = checksum256();
-    name miner;
-    vector<string> btc_miners;
+    if (utxo_manage::check_consensus(height, hash)) {
+        return check_fail(block_bucket_idx, block_bucket_itr, "reached_consensus", hash);
+    }
+
+    auto verify_info = block_bucket_itr->verify_info;
     if (status == upload_complete || status == verify_merkle) {
-        auto block_data = read_bucket(block_bucket_itr->bucket_id, get_self(), verify_info->processed_position,
-                                      block_bucket_itr->size);
-        eosio::datastream<const char*> block_stream(block_data.data(), block_data.size());
-
-        // verify header
-        if (verify_info->processed_position == 0) {
-            bitcoin::core::block_header block_header;
-            block_stream >> block_header;
-
-            auto block_hash = bitcoin::be_checksum256_from_uint(block_header.hash());
-
-            if (block_hash != hash) {
-                return check_fail(block_bucket_idx, block_bucket_itr, "hash_mismatch", block_hash);
-            }
-
-            if (block_header.target_is_valid() == false) {
-                return check_fail(block_bucket_idx, block_bucket_itr, "invalid_target", block_hash);
-            }
-
-            verify_info->previous_block_hash = bitcoin::be_checksum256_from_uint(block_header.previous_block_hash);
-            verify_info->work = bitcoin::be_checksum256_from_uint(block_header.work());
-            // check transactions size
-            verify_info->num_transactions = bitcoin::varint::decode(block_stream);
-            verify_info->header_merkle = bitcoin::le_checksum256_from_uint(block_header.merkle);
-            if (verify_info->num_transactions == 0) {
-                return check_fail(block_bucket_idx, block_bucket_itr, "tx_size_limits", block_hash);
-            }
+        if (!verify_info.has_value()) {
+            verify_info = verify_info_data{};
         }
-        utxo_manage::config_table _config(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
-        auto config = _config.get();
-        auto num_txs_per_verification = config.num_txs_per_verification;
-        // deserialization transaction
-        auto pending_transactions = verify_info->num_transactions - verify_info->processed_transactions;
-        auto rows = num_txs_per_verification;
-        if (rows > pending_transactions) {
-            rows = pending_transactions;
-        }
-
-        std::vector<bitcoin::core::transaction> transactions;
-        transactions.reserve(rows);
-        for (auto i = 0; i < rows; i++) {
-            bitcoin::core::transaction transaction;
-            block_stream >> transaction;
-            transactions.emplace_back(std::move(transaction));
-        }
-
-        if (!verify_info->has_witness) {
-            verify_info->has_witness = std::any_of(transactions.cbegin(), transactions.cend(), [](const auto& trx) {
-                return trx.witness.size() > 0;
-            });
-        }
-
-        // check witness ?
-        if (verify_info->processed_position == 0 && transactions.front().inputs.size() > 0) {
-            if (!transactions.front().is_coinbase()) {
-                return check_fail(block_bucket_idx, block_bucket_itr, "coinbase_missing", hash);
-            }
-            const auto& cbtrx = transactions.front();
-            verify_info->witness_reserve_value = cbtrx.get_witness_reserve_value();
-            verify_info->witness_commitment = cbtrx.get_witness_commitment();
-            find_miner(cbtrx.outputs, miner, btc_miners);
-        }
-
-        auto need_witness_check
-            = verify_info->witness_reserve_value.has_value() && verify_info->witness_commitment.has_value();
-
-        // obtain relay merkle
-        bitcoin::uint256_t header_merkle = bitcoin::core::generate_header_merkle(transactions);
-        bitcoin::uint256_t witness_merkle;
-        if (need_witness_check) {
-            witness_merkle = bitcoin::core::generate_witness_merkle(transactions);
-        }
-        // calculate to the same layer
-        if (verify_info->num_transactions > num_txs_per_verification && rows != num_txs_per_verification) {
-            uint8_t current_layer = static_cast<uint8_t>(std::ceil(std::log2(rows)));
-            vector<bitcoin::uint256_t> cur_hashes;
-            cur_hashes.reserve(2);
-            for (; current_layer < config.num_merkle_layer; current_layer++) {
-                cur_hashes = {header_merkle, header_merkle};
-                header_merkle = bitcoin::generate_merkle_root(cur_hashes);
-                if (need_witness_check) {
-                    cur_hashes = {witness_merkle, witness_merkle};
-                    witness_merkle = bitcoin::generate_merkle_root(cur_hashes);
-                }
-            }
-        }
-
-        // save sub merkle
-        verify_info->relay_header_merkle.emplace_back(bitcoin::le_checksum256_from_uint(header_merkle));
-        if (need_witness_check) {
-            verify_info->relay_witness_merkle.emplace_back(bitcoin::le_checksum256_from_uint(witness_merkle));
-        }
-
-        // save processed position
-        verify_info->processed_transactions += rows;
-        verify_info->processed_position += block_stream.tellp();
-
-        // check data size
-        if (verify_info->num_transactions == verify_info->processed_transactions
-            && verify_info->processed_position < block_bucket_itr->size) {
-            return check_fail(block_bucket_idx, block_bucket_itr, "data_exceeds", hash);
-        }
-
-        if (verify_info->processed_position == block_bucket_itr->size
-            && verify_info->num_transactions > verify_info->processed_transactions) {
-            return check_fail(block_bucket_idx, block_bucket_itr, "not_enough_data", hash);
+        auto error_msg = check_merkle(block_bucket_itr, verify_info);
+        if (error_msg.has_value()) {
+            return check_fail(block_bucket_idx, block_bucket_itr, *error_msg, hash);
         }
 
         if (verify_info->num_transactions == verify_info->processed_transactions
             && verify_info->processed_position == block_bucket_itr->size) {
-            // verify header merkle
-            auto header_merkle_root = bitcoin::generate_merkle_root(verify_info->relay_header_merkle);
-            if (header_merkle_root != bitcoin::le_uint_from_checksum256(verify_info->header_merkle)) {
-                return check_fail(block_bucket_idx, block_bucket_itr, "merkle_invalid", hash);
-            }
-
-            // verify witness merkle
-            if (need_witness_check) {
-                auto witness_merkle_root = bitcoin::core::generate_witness_merkle(verify_info->relay_witness_merkle,
-                                                                                  *verify_info->witness_reserve_value);
-                if (witness_merkle_root != bitcoin::le_uint_from_checksum256(*verify_info->witness_commitment)) {
-                    return check_fail(block_bucket_idx, block_bucket_itr, "witness_merkle_invalid", hash);
-                }
-            } else if (verify_info->has_witness) {
-                return check_fail(block_bucket_idx, block_bucket_itr, "witness_merkle_invalid", hash);
-            }
             // next action
             status = verify_parent_hash;
-
         } else {
             status = verify_merkle;
         }
-    } else if (status == verify_parent_hash) {
+
+        // update block status
+        block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
+            row.status = status;
+            row.verify_info = verify_info;
+        });
+        return {.status = get_block_status_name(status), .block_hash = hash};
+    }
+
+    if (status == verify_parent_hash) {
         // check parent
         auto parent_cumulative_work = utxo_manage::get_cumulative_work(height - 1, verify_info->previous_block_hash);
         check(parent_cumulative_work.has_value(), "blksync.xsat::verify: parent block hash did not reach consensus");
 
-        cumulative_work
+        checksum256 cumulative_work
             = bitcoin::be_checksum256_from_uint(bitcoin::be_uint_from_checksum256(verify_info->work)
                                                 + bitcoin::be_uint_from_checksum256(*parent_cumulative_work));
 
-        verify_info = std::nullopt;
-        // next action
-        status = verify_pass;
-    }
-
-    if (status == verify_pass) {
-        // save passed index
         passed_index_table _passed_index(get_self(), height);
+        auto passed_index_id = _passed_index.available_primary_key();
+
+        status = verify_pass;
+        if (verify_info->miner) {
+            // The first verification passes and the miner’s latest block height is updated.
+            if (passed_index_id == 0) {
+                pool::updateheight_action _updateheight(POOL_REGISTER_CONTRACT, {get_self(), "active"_n});
+                _updateheight.send(verify_info->miner, height, verify_info->btc_miners);
+            }
+
+            // save the miner information that passed for the first time
+            block_miner_table _block_miner(get_self(), height);
+            auto block_miner_idx = _block_miner.get_index<"byhash"_n>();
+            auto block_miner_itr = block_miner_idx.find(hash);
+            uint32_t expired_block_num;
+            if (block_miner_itr == block_miner_idx.end()) {
+                utxo_manage::config_table _config(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+                auto config = _config.get();
+
+                expired_block_num = current_block_number() + config.num_miner_priority_blocks;
+                _block_miner.emplace(get_self(), [&](auto& row) {
+                    row.id = _block_miner.available_primary_key();
+                    row.hash = hash;
+                    row.miner = verify_info->miner;
+                    row.expired_block_num = expired_block_num;
+                });
+            } else {
+                expired_block_num = block_miner_itr->expired_block_num;
+            }
+
+            // miners give priority to index 0
+            if (passed_index_id != 0 && verify_info->miner == synchronizer
+                && expired_block_num > current_block_number()) {
+                passed_index_id = 0;
+            } else if (passed_index_id == 0 && verify_info->miner != synchronizer) {
+                passed_index_id = 1;
+            }
+
+            if (synchronizer != verify_info->miner && expired_block_num > current_block_number()) {
+                status = waiting_miner_verification;
+            }
+        }
+
+        // save passed index
         _passed_index.emplace(get_self(), [&](auto& row) {
-            row.id = _passed_index.available_primary_key();
+            row.id = passed_index_id;
             row.hash = hash;
             row.bucket_id = block_bucket_itr->bucket_id;
             row.synchronizer = synchronizer;
+            row.miner = verify_info->miner;
+            row.cumulative_work = cumulative_work;
         });
 
-        // update latest height
-        if (block_bucket_itr->miner) {
-            pool::updateheight_action _updateheight(POOL_REGISTER_CONTRACT, {get_self(), "active"_n});
-            _updateheight.send(block_bucket_itr->miner, height, block_bucket_itr->btc_miners);
+        if (status == verify_pass) {
+            utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
+            _consensus.send(height, hash);
         }
 
-        utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
-        _consensus.send(height, hash);
+        // update block status
+        block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
+            row.status = status;
+            row.verify_info = std::nullopt;
+        });
+        return {.status = get_block_status_name(status), .block_hash = hash};
     }
 
-    // update block status
+    // waiting_miner_verification
+    block_miner_table _block_miner(get_self(), height);
+    auto block_miner_idx = _block_miner.get_index<"byhash"_n>();
+    auto block_miner_itr = block_miner_idx.require_find(hash, "blksync.xsat::verify: [blockminer] does not exists");
+    check(block_miner_itr->expired_block_num <= current_block_number(),
+          "blksync.xsat::verify: waiting for miners to produce blocks");
+
+    utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
+    _consensus.send(height, hash);
+
     block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
-        row.status = status;
-        row.verify_info = verify_info;
-        if (miner) {
-            row.miner = miner;
-        }
-        if (btc_miners.size() > 0) {
-            row.btc_miners = btc_miners;
-        }
-        if (cumulative_work != checksum256()) {
-            row.cumulative_work = cumulative_work;
-        }
+        row.status = verify_pass;
     });
-    return {.status = get_block_status_name(status), .block_hash = hash};
+    return {.status = get_block_status_name(verify_pass), .block_hash = hash};
+}
+
+//@private
+template <typename ITR>
+optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, optional<verify_info_data>& verify_info) {
+    auto block_data
+        = read_bucket(block_bucket_itr->bucket_id, get_self(), verify_info->processed_position, block_bucket_itr->size);
+    eosio::datastream<const char*> block_stream(block_data.data(), block_data.size());
+
+    auto hash = block_bucket_itr->hash;
+    // verify header
+    if (verify_info->processed_position == 0) {
+        bitcoin::core::block_header block_header;
+        block_stream >> block_header;
+
+        auto block_hash = bitcoin::be_checksum256_from_uint(block_header.hash());
+
+        if (block_hash != hash) {
+            return "hash_mismatch";
+        }
+
+        if (block_header.target_is_valid() == false) {
+            return "invalid_target";
+        }
+
+        verify_info->previous_block_hash = bitcoin::be_checksum256_from_uint(block_header.previous_block_hash);
+        verify_info->work = bitcoin::be_checksum256_from_uint(block_header.work());
+        // check transactions size
+        verify_info->num_transactions = bitcoin::varint::decode(block_stream);
+        verify_info->header_merkle = bitcoin::le_checksum256_from_uint(block_header.merkle);
+        if (verify_info->num_transactions == 0) {
+            return "tx_size_limits";
+        }
+    }
+
+    utxo_manage::config_table _config(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+    auto config = _config.get();
+    auto num_txs_per_verification = config.num_txs_per_verification;
+    // deserialization transaction
+    auto pending_transactions = verify_info->num_transactions - verify_info->processed_transactions;
+    auto rows = num_txs_per_verification;
+    if (rows > pending_transactions) {
+        rows = pending_transactions;
+    }
+
+    std::vector<bitcoin::core::transaction> transactions;
+    transactions.reserve(rows);
+    for (auto i = 0; i < rows; i++) {
+        bitcoin::core::transaction transaction;
+        block_stream >> transaction;
+        transactions.emplace_back(std::move(transaction));
+    }
+
+    if (!verify_info->has_witness) {
+        verify_info->has_witness = std::any_of(transactions.cbegin(), transactions.cend(), [](const auto& trx) {
+            return trx.witness.size() > 0;
+        });
+    }
+
+    // check witness ?
+    if (verify_info->processed_position == 0 && transactions.front().inputs.size() > 0) {
+        if (!transactions.front().is_coinbase()) {
+            return "coinbase_missing";
+        }
+        const auto& cbtrx = transactions.front();
+        verify_info->witness_reserve_value = cbtrx.get_witness_reserve_value();
+        verify_info->witness_commitment = cbtrx.get_witness_commitment();
+
+        find_miner(cbtrx.outputs, verify_info->miner, verify_info->btc_miners);
+    }
+
+    auto need_witness_check
+        = verify_info->witness_reserve_value.has_value() && verify_info->witness_commitment.has_value();
+
+    // obtain relay merkle
+    bitcoin::uint256_t header_merkle = bitcoin::core::generate_header_merkle(transactions);
+    bitcoin::uint256_t witness_merkle;
+    if (need_witness_check) {
+        witness_merkle = bitcoin::core::generate_witness_merkle(transactions);
+    }
+
+    // calculate to the same layer
+    if (verify_info->num_transactions > num_txs_per_verification && rows != num_txs_per_verification) {
+        uint8_t current_layer = static_cast<uint8_t>(std::ceil(std::log2(rows)));
+        vector<bitcoin::uint256_t> cur_hashes;
+        cur_hashes.reserve(2);
+        for (; current_layer < config.num_merkle_layer; current_layer++) {
+            cur_hashes = {header_merkle, header_merkle};
+            header_merkle = bitcoin::generate_merkle_root(cur_hashes);
+            if (need_witness_check) {
+                cur_hashes = {witness_merkle, witness_merkle};
+                witness_merkle = bitcoin::generate_merkle_root(cur_hashes);
+            }
+        }
+    }
+
+    // save sub merkle
+    verify_info->relay_header_merkle.emplace_back(bitcoin::le_checksum256_from_uint(header_merkle));
+    if (need_witness_check) {
+        verify_info->relay_witness_merkle.emplace_back(bitcoin::le_checksum256_from_uint(witness_merkle));
+    }
+
+    // save processed position
+    verify_info->processed_transactions += rows;
+    verify_info->processed_position += block_stream.tellp();
+
+    // check data size
+    if (verify_info->num_transactions == verify_info->processed_transactions
+        && verify_info->processed_position < block_bucket_itr->size) {
+        return "data_exceeds";
+    }
+
+    if (verify_info->processed_position == block_bucket_itr->size
+        && verify_info->num_transactions > verify_info->processed_transactions) {
+        return "missing_block_data";
+    }
+
+    // verify merkle
+    if (verify_info->num_transactions == verify_info->processed_transactions
+        && verify_info->processed_position == block_bucket_itr->size) {
+        // verify header merkle
+        auto header_merkle_root = bitcoin::generate_merkle_root(verify_info->relay_header_merkle);
+        if (header_merkle_root != bitcoin::le_uint_from_checksum256(verify_info->header_merkle)) {
+            return "merkle_invalid";
+        }
+
+        // verify witness merkle
+        if (need_witness_check) {
+            auto witness_merkle_root = bitcoin::core::generate_witness_merkle(verify_info->relay_witness_merkle,
+                                                                              *verify_info->witness_reserve_value);
+            if (witness_merkle_root != bitcoin::le_uint_from_checksum256(*verify_info->witness_commitment)) {
+                return "witness_merkle_invalid";
+            }
+        } else if (verify_info->has_witness) {
+            return "witness_merkle_invalid";
+        }
+    }
+    return std::nullopt;
 }
 
 //@private
 template <typename T, typename ITR>
-block_sync::verify_block_result block_sync::check_fail(T& _block_chunk, const ITR block_chunk_itr, const string& state,
-                                                       const checksum256& block_hash) {
-    _block_chunk.modify(block_chunk_itr, same_payer, [&](auto& row) {
+block_sync::verify_block_result block_sync::check_fail(T& _block_bucket, const ITR block_bucket_itr,
+                                                       const string& state, const checksum256& block_hash) {
+    _block_bucket.modify(block_bucket_itr, same_payer, [&](auto& row) {
         row.status = verify_fail;
         row.reason = state;
         row.verify_info = std::nullopt;
     });
     return block_sync::verify_block_result{
-        .status = state,
+        .status = get_block_status_name(verify_fail),
+        .reason = state,
         .block_hash = block_hash,
     };
 }
@@ -447,7 +547,9 @@ void block_sync::find_miner(std::vector<bitcoin::core::transaction_output> outpu
     pool::miner_table _miner = pool::miner_table(POOL_REGISTER_CONTRACT, POOL_REGISTER_CONTRACT.value);
     auto miner_idx = _miner.get_index<"byminer"_n>();
     for (const auto output : outputs) {
-        miner = xsat::utils::get_op_return_eos_account(output.script.data);
+        if (!miner) {
+            miner = xsat::utils::get_op_return_eos_account(output.script.data);
+        }
 
         std::vector<string> to;
         bitcoin::ExtractDestination(output.script.data, to);

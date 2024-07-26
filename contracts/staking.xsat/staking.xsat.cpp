@@ -3,6 +3,10 @@
 #include <endrmng.xsat/endrmng.xsat.hpp>
 #include "../internal/defines.hpp"
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth get_self()
 [[eosio::action]]
 void stake::addtoken(const extended_symbol& token) {
@@ -40,7 +44,7 @@ void stake::deltoken(const uint64_t id) {
 void stake::setstatus(const uint64_t id, const bool disabled_staking) {
     require_auth(get_self());
 
-    auto itr = _token.require_find(id, "staking.xsat::config: [tokens] does not exists");
+    auto itr = _token.require_find(id, "staking.xsat::setstatus: [tokens] does not exists");
     _token.modify(itr, same_payer, [&](auto& row) {
         row.disabled_staking = disabled_staking;
     });
@@ -54,16 +58,15 @@ void stake::withdraw(const name& staker) {
     time_point_sec now_time = current_time_point();
     auto _release = release_table(get_self(), staker.value);
     auto release_idx = _release.get_index<"byexpire"_n>();
-    auto latest_itr = release_idx.upper_bound(now_time.sec_since_epoch());
     auto release_itr = release_idx.lower_bound(0);
+    auto end_release_itr = release_idx.upper_bound(now_time.sec_since_epoch());
 
-    check(release_itr != latest_itr, "staking.xsat::withdraw: there is no expired token that can be withdrawn");
+    check(release_itr != end_release_itr, "staking.xsat::withdraw: there is no expired token that can be withdrawn");
 
     auto max_row = 30;
-    while (release_itr != latest_itr && max_row--) {
+    while (release_itr != end_release_itr && max_row--) {
         token_transfer(get_self(), staker, release_itr->quantity, "release");
-        release_idx.erase(release_itr);
-        release_itr = release_idx.lower_bound(0);
+        release_itr = release_idx.erase(release_itr);
     }
 }
 

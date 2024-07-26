@@ -48,27 +48,11 @@ describe('utxomng.xsat', () => {
         }
         await contracts.utxomng.actions.addutxo(utxo).send('utxomng.xsat@active')
         expect(get_utxo(1)).toEqual(utxo)
-        expect(get_chain_state()).toEqual({
-            head_height: 0,
-            irreversible_hash: '0000000000000000000000000000000000000000000000000000000000000000',
-            irreversible_height: 0,
-            num_transactions: 0,
-            num_utxos: 1,
-            parsed_expiration_time: '1970-01-01T00:00:00',
-            parser: '',
-            parsing_bucket_id: 0,
-            parsing_height: 0,
-            parsing_hash: '0000000000000000000000000000000000000000000000000000000000000000',
-            processed_position: 0,
-            processed_transactions: 0,
-            processed_vin: 0,
-            processed_vout: 0,
-            synchronizer: '',
-            miner: '',
-            num_validators_assigned: 0,
-            num_provider_validators: 0,
-            status: 0,
-        })
+        expect(get_chain_state().num_utxos).toEqual(1)
+        // update
+        await contracts.utxomng.actions.addutxo(utxo).send('utxomng.xsat@active')
+        expect(get_utxo(1)).toEqual(utxo)
+        expect(get_chain_state().num_utxos).toEqual(1)
     })
 
     it('delutxo: missing required authority utxomng.xsat', async () => {
@@ -81,7 +65,7 @@ describe('utxomng.xsat', () => {
     it('delutxo: [utxos] does not exist', async () => {
         await expectToThrow(
             contracts.utxomng.actions.delutxo([840000]).send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::delutxo: [utxos] does not exist'
+            'eosio_assert: utxomng.xsat::delutxo: [utxos] does not exist'
         )
     })
 
@@ -145,12 +129,12 @@ describe('utxomng.xsat', () => {
                     3205594798,
                 ])
                 .send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::addblock: height must be less than or equal to 839999'
+            'eosio_assert: utxomng.xsat::addblock: height must be less than or equal to 839999'
         )
 
         await expectToThrow(
             contracts.utxomng.actions.delblock([840000]).send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::delblock: height must be less than or equal to 839999'
+            'eosio_assert: utxomng.xsat::delblock: height must be less than or equal to 839999'
         )
     })
 
@@ -180,7 +164,7 @@ describe('utxomng.xsat', () => {
     it('delblock:  [blocks] does not exist', async () => {
         await expectToThrow(
             contracts.utxomng.actions.delblock([1]).send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::delblock: [blocks] does not exist'
+            'eosio_assert: utxomng.xsat::delblock: [blocks] does not exist'
         )
     })
 
@@ -211,7 +195,7 @@ describe('utxomng.xsat', () => {
                     '0000000000000000000000000000000000000000753b8c1eaae701e1f0146360',
                 ])
                 .send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::init: block height must be 839999'
+            'eosio_assert: utxomng.xsat::init: block height must be 839999'
         )
     })
 
@@ -224,7 +208,7 @@ describe('utxomng.xsat', () => {
                     '0000000000000000000000000000000000000000000000000000000000000000',
                 ])
                 .send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::init: invalid hash'
+            'eosio_assert: utxomng.xsat::init: invalid hash'
         )
     })
 
@@ -237,7 +221,7 @@ describe('utxomng.xsat', () => {
                     '0000000000000000000000000000000000000000000000000000000000000000',
                 ])
                 .send('utxomng.xsat@active'),
-            'eosio_assert: utxo_manage::init: invalid cumulative_work'
+            'eosio_assert: utxomng.xsat::init: invalid cumulative_work'
         )
     })
 

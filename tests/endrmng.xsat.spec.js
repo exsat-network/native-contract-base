@@ -215,11 +215,11 @@ describe('endrmng.xsat', () => {
         )
     })
 
-    it('proxyreg: validator address does not exists', async () => {
+    it('proxyreg: validator account does not exists', async () => {
         await contracts.endrmng.actions.addwhitelist(['proxyreg', 'bob']).send('endrmng.xsat@active')
         await expectToThrow(
             contracts.endrmng.actions.proxyreg(['bob', 'brian', 'brian', 2000]).send('bob@active'),
-            'eosio_assert: endrmng.xsat::proxyreg: validator address does not exists'
+            'eosio_assert: endrmng.xsat::proxyreg: validator account does not exists'
         )
     })
 
@@ -420,21 +420,21 @@ describe('endrmng.xsat', () => {
     it('stake: quantity symbol must be BTC', async () => {
         await expectToThrow(
             contracts.endrmng.actions.stake(['tony', 'amy', Asset.from(100, EOS)]).send('staking.xsat@active'),
-            'eosio_assert: endorse_manage::stake: quantity symbol must be BTC'
+            'eosio_assert: endrmng.xsat::stake: quantity symbol must be BTC'
         )
     })
 
     it('stake: quantity must be greater than 0', async () => {
         await expectToThrow(
             contracts.endrmng.actions.stake(['tony', 'amy', Asset.from(0, BTC)]).send('staking.xsat@active'),
-            'eosio_assert: endorse_manage::stake: quantity must be greater than 0'
+            'eosio_assert: endrmng.xsat::stake: quantity must be greater than 0'
         )
     })
 
     it('stake: [validators] does not exists', async () => {
         await expectToThrow(
             contracts.endrmng.actions.stake(['tom', 'tom', Asset.from(100, BTC)]).send('staking.xsat@active'),
-            'eosio_assert: endorse_manage::stake: [validators] does not exists'
+            'eosio_assert: endrmng.xsat::stake: [validators] does not exists'
         )
     })
 
@@ -442,7 +442,7 @@ describe('endrmng.xsat', () => {
         await contracts.endrmng.actions.setstatus(['amy', true]).send('endrmng.xsat@active')
         await expectToThrow(
             contracts.endrmng.actions.stake(['tony', 'amy', Asset.from(100, BTC)]).send('staking.xsat@active'),
-            "eosio_assert: endorse_manage::stake: the current validator's staking status is disabled"
+            "eosio_assert: endrmng.xsat::stake: the current validator's staking status is disabled"
         )
         await contracts.endrmng.actions.setstatus(['amy', false]).send('endrmng.xsat@active')
     })
@@ -494,21 +494,21 @@ describe('endrmng.xsat', () => {
     it('unstake: quantity symbol must be BTC', async () => {
         await expectToThrow(
             contracts.endrmng.actions.unstake(['tony', 'amy', Asset.from(100, EOS)]).send('staking.xsat@active'),
-            'eosio_assert: endorse_manage::unstake: quantity symbol must be BTC'
+            'eosio_assert: endrmng.xsat::unstake: quantity symbol must be BTC'
         )
     })
 
     it('unstake: quantity must be greater than 0', async () => {
         await expectToThrow(
             contracts.endrmng.actions.unstake(['tony', 'amy', Asset.from(0, BTC)]).send('staking.xsat@active'),
-            'eosio_assert: endorse_manage::unstake: quantity must be greater than 0'
+            'eosio_assert: endrmng.xsat::unstake: quantity must be greater than 0'
         )
     })
 
     it('unstake: [stakers] does not exists', async () => {
         await expectToThrow(
             contracts.endrmng.actions.unstake(['bob', 'alice', Asset.from(100, BTC)]).send('staking.xsat@active'),
-            'eosio_assert: endorse_manage::unstake: [stakers] does not exists'
+            'eosio_assert: endrmng.xsat::unstake: [stakers] does not exists'
         )
     })
 
@@ -560,35 +560,35 @@ describe('endrmng.xsat', () => {
     it('newstake: quantity symbol must be BTC', async () => {
         await expectToThrow(
             contracts.endrmng.actions.newstake(['tony', 'alice', 'tony', Asset.from(100, EOS)]).send('tony@active'),
-            'eosio_assert: endorse_manage::unstake: quantity symbol must be BTC'
+            'eosio_assert: endrmng.xsat::unstake: quantity symbol must be BTC'
         )
     })
 
     it('newstake: quantity must be greater than 0', async () => {
         await expectToThrow(
             contracts.endrmng.actions.newstake(['tony', 'alice', 'tony', Asset.from(0, BTC)]).send('tony@active'),
-            'eosio_assert: endorse_manage::unstake: quantity must be greater than 0'
+            'eosio_assert: endrmng.xsat::unstake: quantity must be greater than 0'
         )
     })
 
     it('newstake: [stakers] does not exists', async () => {
         await expectToThrow(
             contracts.endrmng.actions.newstake(['tony', 'bob', 'tony', Asset.from(100, BTC)]).send('tony@active'),
-            'eosio_assert: endorse_manage::unstake: [stakers] does not exists'
+            'eosio_assert: endrmng.xsat::unstake: [stakers] does not exists'
         )
     })
 
     it('newstake: the number of unstakes exceeds the pledge amount', async () => {
         await expectToThrow(
             contracts.endrmng.actions.newstake(['tony', 'alice', 'brian', Asset.from(100, BTC)]).send('tony@active'),
-            'eosio_assert: endorse_manage::unstake: the number of unstakes exceeds the pledge amount'
+            'eosio_assert: endrmng.xsat::unstake: the number of unstakes exceeds the staking amount'
         )
     })
 
     it('newstake: [validators] does not exists', async () => {
         await expectToThrow(
             contracts.endrmng.actions.newstake(['tony', 'alice', 'brian', Asset.from(2, BTC)]).send('tony@active'),
-            'eosio_assert: endorse_manage::stake: [validators] does not exists'
+            'eosio_assert: endrmng.xsat::stake: [validators] does not exists'
         )
     })
 
@@ -676,7 +676,7 @@ describe('endrmng.xsat', () => {
     it('claim: no balance to claim', async () => {
         await expectToThrow(
             contracts.endrmng.actions.claim(['tony', 'alice']).send('tony@active'),
-            'eosio_assert: endorse_manage::claim: no balance to claim'
+            'eosio_assert: endrmng.xsat::claim: no balance to claim'
         )
     })
 
@@ -748,7 +748,7 @@ describe('endrmng.xsat', () => {
     it('claim: [stakers] does not exists', async () => {
         await expectToThrow(
             contracts.endrmng.actions.claim(['tony', 'tom']).send('tony@active'),
-            'eosio_assert: endorse_manage::claim: [stakers] does not exists'
+            'eosio_assert: endrmng.xsat::claim: [stakers] does not exists'
         )
     })
 

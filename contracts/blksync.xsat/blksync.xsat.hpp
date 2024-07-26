@@ -8,7 +8,7 @@
 #include "../internal/utils.hpp"
 
 using namespace eosio;
-using std::string;
+using namespace std;
 
 class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
    public:
@@ -19,37 +19,106 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     static const block_status upload_complete = 2;
     static const block_status verify_merkle = 3;
     static const block_status verify_parent_hash = 4;
-    static const block_status verify_fail = 5;
-    static const block_status verify_pass = 6;
+    static const block_status waiting_miner_verification = 5;
+    static const block_status verify_fail = 6;
+    static const block_status verify_pass = 7;
+
+    static std::string get_block_status_name(const block_status status) {
+        switch (status) {
+            case uploading:
+                return "uploading";
+            case upload_complete:
+                return "upload_complete";
+            case verify_merkle:
+                return "verify_merkle";
+            case verify_parent_hash:
+                return "verify_parent_hash";
+            case waiting_miner_verification:
+                return "waiting_miner_verification";
+            case verify_pass:
+                return "verify_pass";
+            case verify_fail:
+                return "verify_fail";
+            default:
+                return "invalid_status";
+        }
+    }
 
     /**
-     * @brief global id table.
-     * @scope `get_self()`
+     * ## TABLE `globalid`
      *
-     * @field bucket_id - `blockbuckets` Specifies the primary key of the table
+     * ### scope `get_self()`
+     * ### params
+     *
+     * - `{uint64_t} bucket_id` - latest bucket_id
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "bucket_id": 1
+     * }
+     * ```
      */
     struct [[eosio::table]] global_id_row {
-        uint32_t bucket_id;
+        uint64_t bucket_id;
     };
     typedef eosio::singleton<"globalid"_n, global_id_row> global_id_table;
 
     /**
-     * @brief block upload info struct.
+     * ## STRUCT `verify_info_data`
      *
-     * @field previous_block_hash - hash in internal byte order of the previous block’s header.
-     * @field work - block workload
-     * @field witness_reserve_value - witness reserve value in the block
-     * @field witness_commitment -witness commitment in the block
-     * @field has_witness - whether any of the transactions in the block contains witness
-     * @field header_merkle - the merkle root of the block
-     * @field relay_header_merkle - check header merkle relay data
-     * @field relay_witness_merkle - check witness merkle relay data
-     * @field num_transactions - the number of transactions in the block
-     * @field processed_position - the location of the block that has been resolved
-     * @field processed_transactions - the number of processed transactions
+     * ### params
      *
+     * - `{name} miner` - block miner account
+     * - `{vector<string>} btc_miners` - btc miner account
+     * - `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
+     * - `{checksum256} work` - block workload
+     * - `{checksum256} witness_reserve_value` - witness reserve value in the block
+     * - `{std::optional<checksum256>} - witness commitment in the block
+     * - `{bool} has_witness` - whether any of the transactions in the block contains witness
+     * - `{checksum256} header_merkle` - the merkle root of the block
+     * - `{std::vector<checksum256>} relay_header_merkle` - check header merkle relay data
+     * - `{std::vector<checksum256>} relay_witness_merkle` - check witness merkle relay data
+     * - `{uint64_t} num_transactions` - the number of transactions in the block
+     * - `{uint64_t} processed_position` - the location of the block that has been resolved
+     * - `{uint64_t} processed_transactions` - the number of processed transactions
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "miner": "",
+     *   "btc_miners": [
+     *       "1BM1sAcrfV6d4zPKytzziu4McLQDsFC2Qc"
+     *   ],
+     *   "previous_block_hash": "000000000000000000029bfa01a7cee248f85425e0d0b198f4947717d4d3441e",
+     *   "work": "000000000000000000000000000000000000000000004e9235f043634662e0cb",
+     *   "witness_reserve_value": "0000000000000000000000000000000000000000000000000000000000000000",
+     *   "witness_commitment": "aeaa22969e5aac88afd1ac14b19a3ad3a58f5eb0dd151ddddfc749297ebfb020",
+     *   "has_witness": 1,
+     *   "header_merkle": "f3f07d3e4636fa1ae5300b3bc148c361beafd7b3309d30b7ba136d0e59a9a0e5",
+     *   "relay_header_merkle": [
+     *      "d1c9861b0d129b34bb6b733c624bbe0a9b10ff01c6047dced64586ef584987f4",
+     *      "bd95f641a29379f0b5a26961de4bb36bd9568a67ca0615be3fb0a28152ff1806",
+     *      "667eb5d36c67667ae4f10bd30a62e3797e8700e1fbb5e3f754a7526f2b7db1e2",
+     *      "5193ac78b5ef8f570ed24946fbcb96d71284faa27b86296093a93eb5c1cfac06"
+     *   ],
+     *   "relay_witness_merkle": [
+     *      "8a080509ebf6baca260d466c2669200d9b4de750f6a190382c4e8ab6ab6859db",
+     *      "d65d4261be51ca1193e718a6f0cfe6415b6f122f4c3df87861e7452916b45d78",
+     *      "95aa96164225b76afa32a9b2903241067b0ea71228cc2d51b9321148c4e37dd3",
+     *      "0dfca7530a6e950ecdec67c60e5d9574404cc97b333a4e24e3cf2eadd5eb76bd"
+     *   ],
+     *   "num_transactions": 4899,
+     *   "processed_transactions": 4096,
+     *   "processed_position": 1197889
+     * }
+     * ```
      */
     struct verify_info_data {
+        name miner;
+        vector<string> btc_miners;
         checksum256 previous_block_hash;
         checksum256 work;
         std::optional<checksum256> witness_reserve_value;
@@ -64,22 +133,63 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     };
 
     /**
-     * @brief block bucket table.
-     * @scope `synchronizer`
+     * ## TABLE `blockbuckets`
      *
-     * @field bucket_id - primary key, bucket_id is the scope associated with block.bucket
-     * @field height - block height
-     * @field size - block size
-     * @field num_chunks - number of chunks
-     * @field uploaded_size - the size of the uploaded data
-     * @field uploaded_chunks - number of chunks that have been uploaded
-     * @field endorsements - obtain the maximum number of endorsements
-     * @field status - status of pending block (uploading, verify_pass, verify_fail, endorse_parse, endorse_fail)
-     * @field reason - cause of failure
-     * @field cumulative_work - the cumulative workload of the block
-     * @field miner - block miner address
-     * @field verify_info - @see verify_info_data
+     * ### scope `validator`
+     * ### params
      *
+     * - `{uint64_t} bucket_id` - primary key, bucket_id is the scope associated with block.bucket
+     * - `{uint64_t} height` - block height
+     * - `{uint32_t} size` -block size
+     * - `{uint32_t} uploaded_size` - the latest release id
+     * - `{uint8_t} num_chunks` - number of chunks
+     * - `{uint8_t} uploaded_num_chunks` - number of chunks that have been uploaded
+     * - `{block_status} status` - current block status
+     * - `{string} reason` - reason for verification failure
+     * - `{std::optional<verify_info_data>} verify_info` - @see struct `verify_info_data`
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "bucket_id": 81,
+     *   "height": 840062,
+     *   "hash": "00000000000000000002fc5099a59501b26c34819ac52cc16141275f158c3c6a",
+     *   "size": 1434031,
+     *   "uploaded_size": 1434031,
+     *   "num_chunks": 11,
+     *   "uploaded_num_chunks": 11,
+     *   "status": 3,
+     *   "reason": "",
+     *   "verify_info": {
+     *       "miner": "",
+     *       "btc_miners": [
+     *           "1BM1sAcrfV6d4zPKytzziu4McLQDsFC2Qc"
+     *       ],
+     *       "previous_block_hash": "000000000000000000029bfa01a7cee248f85425e0d0b198f4947717d4d3441e",
+     *       "work": "000000000000000000000000000000000000000000004e9235f043634662e0cb",
+     *       "witness_reserve_value": "0000000000000000000000000000000000000000000000000000000000000000",
+     *       "witness_commitment": "aeaa22969e5aac88afd1ac14b19a3ad3a58f5eb0dd151ddddfc749297ebfb020",
+     *       "has_witness": 1,
+     *       "header_merkle": "f3f07d3e4636fa1ae5300b3bc148c361beafd7b3309d30b7ba136d0e59a9a0e5",
+     *       "relay_header_merkle": [
+     *       "d1c9861b0d129b34bb6b733c624bbe0a9b10ff01c6047dced64586ef584987f4",
+     *       "bd95f641a29379f0b5a26961de4bb36bd9568a67ca0615be3fb0a28152ff1806",
+     *       "667eb5d36c67667ae4f10bd30a62e3797e8700e1fbb5e3f754a7526f2b7db1e2",
+     *       "5193ac78b5ef8f570ed24946fbcb96d71284faa27b86296093a93eb5c1cfac06"
+     *       ],
+     *       "relay_witness_merkle": [
+     *       "8a080509ebf6baca260d466c2669200d9b4de750f6a190382c4e8ab6ab6859db",
+     *       "d65d4261be51ca1193e718a6f0cfe6415b6f122f4c3df87861e7452916b45d78",
+     *       "95aa96164225b76afa32a9b2903241067b0ea71228cc2d51b9321148c4e37dd3",
+     *       "0dfca7530a6e950ecdec67c60e5d9574404cc97b333a4e24e3cf2eadd5eb76bd"
+     *       ],
+     *       "num_transactions": 4899,
+     *       "processed_transactions": 4096,
+     *       "processed_position": 1197889
+     *   }
+     * }
+     * ```
      */
     struct [[eosio::table]] block_bucket_row {
         uint64_t bucket_id;
@@ -92,13 +202,11 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         block_status status;
         std::string reason;
 
-        checksum256 cumulative_work;
-        name miner;
-        vector<string> btc_miners;
         std::optional<verify_info_data> verify_info;
 
         bool in_verifiable() const {
-            return status == upload_complete || status == verify_merkle || status == verify_parent_hash;
+            return status == upload_complete || status == verify_merkle || status == verify_parent_hash
+                   || status == waiting_miner_verification;
         }
 
         uint64_t primary_key() const { return bucket_id; }
@@ -112,20 +220,38 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         block_bucket_table;
 
     /**
-     * @brief passed index table.
-     * @scope `height`
+     * ## TABLE `passedindexs`
      *
-     * @field id - primary key
-     * @field hash - block hash
-     * @field bucket_id - primary key of blockbuckets table
-     * @field synchronizer - account for uploading block data
+     * ### scope `height`
+     * ### params
      *
+     * - `{uint64_t} id` - primary key
+     * - `{checksum256} hash` - block hash
+     * - `{checksum256} cumulative_work` - the cumulative workload of the block
+     * - `{uint64_t} bucket_id` - bucket_id is used to obtain block data
+     * - `{name} synchronizer` - synchronizer account
+     * - `{name} miner` - miner account
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 0,
+     *   "hash": "000000000000000000029bfa01a7cee248f85425e0d0b198f4947717d4d3441e",
+     *   "cumulative_work": "0000000000000000000000000000000000000000753f3af9322a2a893cb6ece4",
+     *   "bucket_id": 80,
+     *   "synchronizer": "test.xsat",
+     *   "miner": "alice",
+     * }
+     * ```
      */
     struct [[eosio::table]] passed_index_row {
         uint64_t id;
         checksum256 hash;
+        checksum256 cumulative_work;
         uint64_t bucket_id;
         name synchronizer;
+        name miner;
         uint64_t primary_key() const { return id; }
         uint64_t by_bucket_id() const { return bucket_id; }
         checksum256 by_hash() const { return hash; }
@@ -138,12 +264,57 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         passed_index_table;
 
     /**
-     * @brief block chunk table.
-     * @scope `bucket_id`
+     * ## TABLE `blockminer`
      *
-     * @field id - primary key
-     * @field data - the block chunk for block
+     * ### scope `height`
+     * ### params
      *
+     * - `{uint64_t} id` - primary key
+     * - `{checksum256} hash` - block hash
+     * - `{name} miner` - block miner account
+     * - `{uint32_t} block_num` - the block number that passed the first verification
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 0,
+     *   "hash": "000000000000000000029bfa01a7cee248f85425e0d0b198f4947717d4d3441e",
+     *   "miner": "alice",
+     *   "expired_block_num": 210000
+     * }
+     * ```
+     */
+    struct [[eosio::table]] block_miner_row {
+        uint64_t id;
+        checksum256 hash;
+        name miner;
+        uint32_t expired_block_num;
+        uint64_t primary_key() const { return id; }
+        checksum256 by_hash() const { return hash; }
+    };
+    typedef eosio::multi_index<
+        "blockminer"_n, block_miner_row,
+        eosio::indexed_by<"byhash"_n, const_mem_fun<block_miner_row, checksum256, &block_miner_row::by_hash>>>
+        block_miner_table;
+
+    /**
+     * ## TABLE `block.chunk`
+     *
+     * ### scope `bucket_id`
+     * ### params
+     *
+     * - `{uint64_t} id` - chunk id
+     * - `{std::vector<char>} data` - the block chunk for block
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 0,
+     *   "data": "",
+     * }
+     * ```
      */
     struct [[eosio::table]] block_chunk_row {
         uint64_t id;
@@ -152,99 +323,199 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     };
     typedef eosio::multi_index<"block.chunk"_n, block_chunk_row> block_chunk_table;
 
+    /**
+     * ## STRUCT `verify_block_result`
+     *
+     * ### params
+     *
+     * - `{string} status` - verification status
+     * - `{string} reason` - reason for verification failure
+     * - `{checksum256} block_hash` - block hash
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "status": "verify_pass",
+     *   "reason": "",
+     *   "block_hash": "000000000000000000029bfa01a7cee248f85425e0d0b198f4947717d4d3441e"
+     * }
+     * ```
+     */
     struct verify_block_result {
         std::string status;
+        std::string reason;
         checksum256 block_hash;
     };
 
     /**
-     * consensus action.
-     * @auth `utxomng.xsat`
+     * ## ACTION `consensus`
      *
-     * @param height - height of the consensus block
-     * @param synchronizer - the synchronizer address
-     * @param bucket_id - the block bucket id
+     * - **authority**: `utxomng.xsat`
      *
+     * > Consensus completion processing logic
+     *
+     * ### params
+     *
+     * - `{uint64_t} height` - block height
+     * - `{name} synchronizer` - synchronizer account
+     * - `{uint64_t} bucket_id` - bucket id
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action blksync.xsat consensus '[840000, "alice", 1]' -p utxomng.xsat
+     * ```
      */
     void consensus(const uint64_t height, const name &synchronizer, const uint64_t bucket_id);
 
     /**
-     * delete bucket data action.
-     * @auth `utxomng.xsat`
+     * ## ACTION `delchunks`
      *
-     * @param height - height of the upload block
-     * @param bucket_id - the block bucket id
+     * - **authority**: `utxomng.xsat`
      *
+     * > Deletion of historical block data after parsing is completed
+     *
+     * ### params
+     *
+     * - `{uint64_t} bucket_id` - bucket_id of block data to be deleted
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action blksync.xsat delchunks '[1]' -p utxomng.xsat
+     * ```
      */
-    void delchunks(const uint64_t height, const uint64_t bucket_id);
+    void delchunks(const uint64_t bucket_id);
 
     /**
-     * init bucket action.
-     * @auth `synchronizer`
+     * ## ACTION `initbucket`
      *
-     * @param synchronizer - synchronizer account
-     * @param height - Height of the upload block
-     * @param hash - the hash of the uploaded block
-     * @param block_size - chunk id (Start at 0)
-     * @param num_chunks - the data of chunk
+     * - **authority**: `synchronizer`
      *
+     * > Initialize the block information to be uploaded
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{uint64_t} height` - block height
+     * - `{checksum256} hash` - block hash
+     * - `{uint32_t} size` -block size
+     * - `{uint8_t} num_chunks` - number of chunks
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action blksync.xsat initbucket '["alice", 840000,
+     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9]' -p alice
+     * ```
      */
     [[eosio::action]]
     void initbucket(const name &synchronizer, const uint64_t height, const checksum256 &hash, const uint32_t block_size,
                     const uint8_t num_chunks);
 
     /**
-     * push block chunk action.
-     * @auth `synchronizer`
+     * ## ACTION `pushchunk`
      *
-     * @param synchronizer - synchronizer account
-     * @param height -Height of the upload block
-     * @param hash - the hash of the uploaded block
-     * @param chunk_id - chunk id (Start at 0)
-     * @param data - the data of chunk
+     * - **authority**: `synchronizer`
      *
+     * > Upload block shard data
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{uint64_t} height` - block height
+     * - `{checksum256} hash` - block hash
+     * - `{uint8_t} chunk_id` - chunk id
+     * - `{std::vector<char>} data` - block data to be uploaded
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action blksync.xsat pushchunk '["alice", 840000,
+     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 0, ""]' -p alice
+     * ```
      */
     [[eosio::action]]
     void pushchunk(const name &synchronizer, const uint64_t height, const checksum256 &hash, const uint8_t chunk_id,
                    const std::vector<char> &data);
 
     /**
-     * delete block chunk action.
-     * @auth `from`
+     * ## ACTION `delchunk`
      *
-     * @param synchronizer - synchronizer account
-     * @param height - the height of the block to be deleted
-     * @param hash - the hash of the block to delete
-     * @param chunk_id - the chunk id of the block to be deleted
+     * - **authority**: `synchronizer`
      *
+     * > Delete block shard data
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{uint64_t} height` - block height
+     * - `{checksum256} hash` - block hash
+     * - `{uint8_t} chunk_id` - chunk id
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action blksync.xsat delchunk '["alice", 840000,
+     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 0]' -p alice
+     * ```
      */
     [[eosio::action]]
     void delchunk(const name &synchronizer, const uint64_t height, const checksum256 &hash, const uint8_t chunk_id);
 
     /**
-     * delete block data action.
-     * @auth `synchronizer`
+     * ## ACTION `delbucket`
      *
-     * @param synchronizer - synchronizer account
-     * @param height - the height of the block to be deleted
-     * @param hash - the hash of the block to delete
+     * - **authority**: `synchronizer`
      *
+     * > Delete the entire block data
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{uint64_t} height` - block height
+     * - `{checksum256} hash` - block hash
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action blksync.xsat delbucket '["alice", 840000,
+     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+     * ```
      */
     [[eosio::action]]
     void delbucket(const name &synchronizer, const uint64_t height, const checksum256 &hash);
 
     /**
-     * verify block action.
-     * @auth `from`
-     * @note from => the `uploader` whitelist in config.exsat
+     * ## ACTION `verify`
      *
-     * @param from - Caller account
-     * @param height - the height of the block to be verified
-     * @param hash - the hash of the block to verified
+     * - **authority**: `synchronizer`
      *
+     * > Verify block data
+
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{uint64_t} height` - block height
+     * - `{checksum256} hash` - block hash
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action blksync.xsat verify '["alice", 840000,
+     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+     * ```
      */
     [[eosio::action]]
-    verify_block_result verify(const name &from, const uint64_t height, const checksum256 &hash);
+    verify_block_result verify(const name &synchronizer, const uint64_t height, const checksum256 &hash);
+
+#ifdef DEBUG
+    [[eosio::action]]
+    void cleartable(const name table_name, const name &synchronizer, const uint64_t height,
+                    const optional<uint64_t> max_rows);
+#endif
 
     // logs
     [[eosio::action]]
@@ -253,9 +524,27 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         require_auth(get_self());
     }
 
+    [[eosio::action]]
+    void chunklog(const uint64_t bucket_id, const uint8_t chunk_id, const uint8_t uploaded_num_chunks) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void delchunklog(const uint64_t bucket_id, const uint8_t chunk_id, const uint8_t uploaded_num_chunks) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void delbucketlog(const uint64_t bucket_id) {
+        require_auth(get_self());
+    }
+
     using consensus_action = eosio::action_wrapper<"consensus"_n, &block_sync::consensus>;
     using delchunks_action = eosio::action_wrapper<"delchunks"_n, &block_sync::delchunks>;
     using bucketlog_action = eosio::action_wrapper<"bucketlog"_n, &block_sync::bucketlog>;
+    using chunklog_action = eosio::action_wrapper<"chunklog"_n, &block_sync::chunklog>;
+    using delchunklog_action = eosio::action_wrapper<"delchunklog"_n, &block_sync::delchunklog>;
+    using delbucketlog_action = eosio::action_wrapper<"delbucketlog"_n, &block_sync::delbucketlog>;
 
     // [start, end)
     static std::vector<char> read_bucket(const uint64_t bucket_id, const name &code, const uint64_t start,
@@ -282,25 +571,6 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         return result;
     }
 
-    static std::string get_block_status_name(const block_status status) {
-        switch (status) {
-            case uploading:
-                return "uploading";
-            case upload_complete:
-                return "upload_complete";
-            case verify_merkle:
-                return "verify_merkle";
-            case verify_parent_hash:
-                return "verify_parent_hash";
-            case verify_pass:
-                return "verify_pass";
-            case verify_fail:
-                return "verify_fail";
-            default:
-                return "invalid_status";
-        }
-    }
-
    private:
     // table init
     global_id_table _global_id = global_id_table(_self, _self.value);
@@ -308,7 +578,16 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     uint64_t next_bucket_id();
 
     void find_miner(std::vector<bitcoin::core::transaction_output> outputs, name &miner, vector<string> &btc_miners);
+
+    template <typename ITR>
+    optional<string> check_merkle(const ITR &block_bucket_itr, optional<verify_info_data> &verify_info);
+
     template <typename T, typename ITR>
-    verify_block_result check_fail(T &_block_chunk, const ITR block_chunk_itr, const string &state,
+    verify_block_result check_fail(T &_block_bucket, const ITR block_bucket_itr, const string &state,
                                    const checksum256 &block_hash);
+
+#ifdef DEBUG
+    template <typename T>
+    void clear_table(T &table, uint64_t rows_to_clear);
+#endif
 };

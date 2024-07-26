@@ -4,6 +4,10 @@
 #include <rescmng.xsat/rescmng.xsat.hpp>
 #include "../internal/safemath.hpp"
 
+#ifdef DEBUG
+#include "./src/debug.hpp"
+#endif
+
 //@auth utxomng.xsat
 [[eosio::action]]
 void block_endorse::erase(const uint64_t height) {
@@ -16,15 +20,26 @@ void block_endorse::erase(const uint64_t height) {
     }
 }
 
+//@auth get_self()
+[[eosio::action]]
+void block_endorse::config(const bool disabled_endorse) {
+    require_auth(get_self());
+    auto config = _config.get_or_default();
+    config.disabled_endorse = disabled_endorse;
+    _config.set(config, get_self());
+}
+
 //@auth validator
 [[eosio::action]]
 void block_endorse::endorse(const name& validator, const uint64_t height, const checksum256& hash) {
     require_auth(validator);
 
+    check(!_config.get_or_default().disabled_endorse,
+          "blkendt.xsat::endorse: the current endorsement status is disabled");
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     auto chain_state = _chain_state.get();
-    check(chain_state.irreversible_height < height && chain_state.parsing_hash != hash,
-          "block_endorse::endorse: the block has been parsed and does not need to be endorsed");
+    check(chain_state.irreversible_height < height && chain_state.parsing_height != height,
+          "blkendt.xsat::endorse: the block has been parsed and does not need to be endorsed");
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
@@ -36,11 +51,11 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     if (endorsement_itr == endorsement_idx.end()) {
         std::vector<validator_info> requested_validators = get_valid_validator();
         check(!requested_validators.empty(),
-              "block_endorse::endorse: no validator with more than 100 BTC pledged was found");
+              "blkendt.xsat::endorse: no validators found with staking amounts exceeding 100 BTC");
         auto itr = std::find_if(requested_validators.begin(), requested_validators.end(), [&](const validator_info& a) {
             return a.account == validator;
         });
-        check(itr != requested_validators.end(), "block_endorse::endorse: the validator has less than 100 BTC staked.");
+        check(itr != requested_validators.end(), "blkendt.xsat::endorse: the validator has less than 100 BTC staked");
         auto provider_validator = *itr;
         requested_validators.erase(itr);
         _endorsement.emplace(get_self(), [&](auto& row) {
@@ -55,21 +70,21 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
                                return a.account == validator;
                            })
                   == endorsement_itr->provider_validators.end(),
-              "block_endorse::endorse: validator is on the list of provider validators");
+              "blkendt.xsat::endorse: validator is on the list of provider validators");
 
         auto itr = std::find_if(endorsement_itr->requested_validators.begin(),
                                 endorsement_itr->requested_validators.end(), [&](const validator_info& a) {
                                     return a.account == validator;
                                 });
         check(itr != endorsement_itr->requested_validators.end(),
-              "block_endorse::endorse: the validator has less than 100 BTC staked.");
+              "blkendt.xsat::endorse: the validator has less than 100 BTC staked");
         endorsement_idx.modify(endorsement_itr, same_payer, [&](auto& row) {
             auto provider_validator = *itr;
             row.provider_validators.push_back(provider_validator);
             row.requested_validators.erase(itr);
         });
 
-        if (endorsement_itr->num_reached_consensus() == endorsement_itr->provider_validators.size()) {
+        if (endorsement_itr->num_reached_consensus() >= endorsement_itr->provider_validators.size()) {
             utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
             _consensus.send(height, hash);
         }
