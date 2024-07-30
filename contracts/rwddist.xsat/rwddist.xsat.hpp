@@ -102,8 +102,13 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
         checksum256 tx_id;
         time_point_sec latest_exec_time;
         uint64_t primary_key() const { return height; }
+        uint64_t by_synchronizer() const { return synchronizer.value; }
+        uint64_t by_parser() const { return parser.value; }
     };
-    typedef eosio::multi_index<"rewardlogs"_n, reward_log_row> reward_log_table;
+    typedef eosio::multi_index<"rewardlogs"_n, reward_log_row, 
+        eosio::indexed_by<"bysyncer"_n, const_mem_fun<reward_log_row, uint64_t, &reward_log_row::by_synchronizer>>,
+        eosio::indexed_by<"byparser"_n, const_mem_fun<reward_log_row, uint64_t, &reward_log_row::by_parser>>
+    > reward_log_table;
 
     /**
      * ## TABLE `rewardbal`
