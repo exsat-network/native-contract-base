@@ -228,7 +228,7 @@ bool ConvertBits(const O& outfn, I it, I end) {
 
 #ifdef TESTNET
 const unsigned char PKHashPrefix = 0x6f;      // 0x00 for mainnet,  0x6f for testnet
-const unsigned char ScriptHashPrefix = 0xcf;  // 0x05 for mainnet, 0xc4 for testnet
+const unsigned char ScriptHashPrefix = 0xc4;  // 0x05 for mainnet, 0xc4 for testnet
 const std::string Bech32HRP = "tb";           // "bc" for mainnet, "tb" for testnet
 #endif
 
