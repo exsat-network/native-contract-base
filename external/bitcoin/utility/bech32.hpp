@@ -4,11 +4,10 @@
 #include <string>
 #include <bitcoin/utility/vector.hpp>
 
-namespace bitcoin {
+namespace bitcoin::bech32 {
 typedef std::vector<uint8_t> data;
-namespace bech32 {
 
-enum Encoding {
+enum class Encoding {
     INVALID,  //!< Failed decoding
 
     BECH32,   //!< Bech32 encoding as defined in BIP173
@@ -106,6 +105,13 @@ uint32_t PolyMod(const data& v) {
 /** Convert to lower case. */
 inline unsigned char LowerCase(unsigned char c) { return (c >= 'A' && c <= 'Z') ? (c - 'A') + 'a' : c; }
 
+inline std::string ToLower(std::string_view str) {
+    std::string r;
+    r.reserve(str.size());
+    for (auto ch : str) r += LowerCase(ch);
+    return r;
+}
+
 /** Expand a HRP for use in checksum computation. */
 data ExpandHRP(const std::string& hrp) {
     data ret;
@@ -196,5 +202,4 @@ DecodeResult Decode(const std::string& str) {
     if (result == Encoding::INVALID) return {};
     return {result, std::move(hrp), data(values.begin(), values.end() - 6)};
 }
-}  // namespace bech32
-}  // namespace bitcoin
+}  // namespace bitcoin::bech32

@@ -402,11 +402,21 @@ std::string GetOpName(opcodetype opcode) {
     }
 }
 
-/** Encode/decode small integers: */
+static opcodetype EncodeOP_N(int n) {
+    assert(n >= 0 && n <= 16);
+    if (n == 0) return OP_0;
+    return (opcodetype)(OP_1 + n - 1);
+}
+
 static int DecodeOP_N(opcodetype opcode) {
     if (opcode == OP_0) return 0;
     assert(opcode >= OP_1 && opcode <= OP_16);
     return (int)opcode - (int)(OP_1 - 1);
+}
+
+static opcodetype EncodePushBytes_N(int n) {
+    assert(n > 0 && n < 76);
+    return (opcodetype)(OP_0 + n);
 }
 
 uint16_t ReadLE16(const unsigned char* ptr) {

@@ -1,12 +1,15 @@
-#include <vector>
-#include <string>
 #include <bitcoin/script/script.hpp>
 #include <bitcoin/utility/base58.hpp>
 #include <bitcoin/utility/bech32.hpp>
+#include <string>
+#include <vector>
 
 typedef std::vector<unsigned char> valtype;
 
 namespace bitcoin {
+
+/// Maximum witness length for Bech32 addresses.
+static constexpr std::size_t BECH32_WITNESS_PROG_MAX_LEN = 40;
 
 /** Signature hash sizes */
 static constexpr size_t WITNESS_V0_SCRIPTHASH_SIZE = 32;
@@ -156,7 +159,6 @@ TxoutType Solver(const std::vector<unsigned char>& scriptPubKey,
             return TxoutType::WITNESS_V0_SCRIPTHASH;
         }
         if (witnessversion == 1 && witnessprogram.size() == WITNESS_V1_TAPROOT_SIZE) {
-            vSolutionsRet.push_back(std::vector<unsigned char>{(unsigned char)witnessversion});
             vSolutionsRet.push_back(std::move(witnessprogram));
             return TxoutType::WITNESS_V1_TAPROOT;
         }
@@ -282,7 +284,18 @@ bool ExtractDestination(const std::vector<unsigned char>& scriptPubKey, std::vec
 
         addressRet.push_back(bitcoin::bech32::Encode(bech32::Encoding::BECH32, Bech32HRP, data));
         return true;
-    } else if (whichType == TxoutType::WITNESS_UNKNOWN || whichType == TxoutType::WITNESS_V1_TAPROOT) {
+    } else if (whichType == TxoutType::WITNESS_V1_TAPROOT) {
+        std::vector<unsigned char> data = {1};
+        data.reserve(53);
+        ConvertBits<8, 5, true>(
+            [&](unsigned char c) {
+                data.push_back(c);
+            },
+            vSolutions[0].begin(), vSolutions[0].end());
+
+        addressRet.push_back(bitcoin::bech32::Encode(bech32::Encoding::BECH32M, Bech32HRP, data));
+        return true;
+    } else if (whichType == TxoutType::WITNESS_UNKNOWN) {
         unsigned int version = vSolutions[0][0];
         unsigned int length = vSolutions[1].size();
 
@@ -311,6 +324,150 @@ bool ExtractDestination(const std::vector<unsigned char>& scriptPubKey, std::vec
         if (addressRet.empty()) return false;
     }
     // Multisig txns have more than one address...
+    return false;
+}
+
+bool DecodeDestination(const std::string& str, std::vector<unsigned char>& script, std::string& error_str) {
+    std::vector<unsigned char> data;
+    error_str = "";
+
+    // Note this will be false if it is a valid Bech32 address for a different network
+    bool is_bech32 = (bitcoin::bech32::ToLower(str.substr(0, Bech32HRP.size())) == Bech32HRP);
+
+    if (!is_bech32 && bitcoin::DecodeBase58Check(str, data, 21)) {
+        // base58-encoded Bitcoin addresses.
+        // Public-key-hash-addresses have version 0 (or 111 testnet).
+        // The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
+        const std::vector<unsigned char>& pubkey_prefix = {PKHashPrefix};
+        if (data.size() == 20 + pubkey_prefix.size()
+            && std::equal(pubkey_prefix.begin(), pubkey_prefix.end(), data.begin())) {
+            script.reserve(25);
+            script.emplace_back(OP_DUP);
+            script.emplace_back(OP_HASH160);
+            script.emplace_back(EncodePushBytes_N(20));
+            script.insert(script.begin() + 3, data.begin() + pubkey_prefix.size(), data.end());
+            script.emplace_back(OP_EQUALVERIFY);
+            script.emplace_back(OP_CHECKSIG);
+            return true;
+        }
+        // Script-hash-addresses have version 5 (or 196 testnet).
+        // The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
+        const std::vector<unsigned char>& script_prefix = {ScriptHashPrefix};
+        if (data.size() == 20 + script_prefix.size()
+            && std::equal(script_prefix.begin(), script_prefix.end(), data.begin())) {
+            script.reserve(23);
+            script.emplace_back(OP_HASH160);
+            script.emplace_back(EncodePushBytes_N(20));
+            script.insert(script.begin() + 2, data.begin() + script_prefix.size(), data.end());
+            script.emplace_back(OP_EQUAL);
+            return true;
+        }
+
+        // If the prefix of data matches either the script or pubkey prefix, the length must have been wrong
+        if ((data.size() >= script_prefix.size()
+             && std::equal(script_prefix.begin(), script_prefix.end(), data.begin()))
+            || (data.size() >= pubkey_prefix.size()
+                && std::equal(pubkey_prefix.begin(), pubkey_prefix.end(), data.begin()))) {
+            error_str = "Invalid length for Base58 address (P2PKH or P2SH)";
+        } else {
+            error_str = "Invalid or unsupported Base58-encoded address.";
+        }
+        return false;
+    } else if (!is_bech32) {
+        // Try Base58 decoding without the checksum, using a much larger max length
+        if (!DecodeBase58(str, data, 100)) {
+            error_str = "Invalid or unsupported Segwit (Bech32) or Base58 encoding.";
+        } else {
+            error_str = "Invalid checksum or length of Base58 address (P2PKH or P2SH)";
+        }
+        return false;
+    }
+
+    data.clear();
+    const auto dec = bech32::Decode(str);
+    if (dec.encoding == bech32::Encoding::BECH32 || dec.encoding == bech32::Encoding::BECH32M) {
+        if (dec.data.empty()) {
+            error_str = "Empty Bech32 data section";
+            return false;
+        }
+        // Bech32 decoding
+        if (dec.hrp != Bech32HRP) {
+            error_str = "Invalid or unsupported prefix for Segwit (Bech32) address (expected " + Bech32HRP + ", got "
+                        + dec.hrp + ").";
+            return false;
+        }
+        int version = dec.data[0];  // The first 5 bit symbol is the witness version (0-16)
+        if (version == 0 && dec.encoding != bech32::Encoding::BECH32) {
+            error_str = "Version 0 witness address must use Bech32 checksum";
+            return false;
+        }
+        if (version != 0 && dec.encoding != bech32::Encoding::BECH32M) {
+            error_str = "Version 1+ witness address must use Bech32m checksum";
+            return false;
+        }
+        // The rest of the symbols are converted witness program bytes.
+        data.reserve(((dec.data.size() - 1) * 5) / 8);
+        if (ConvertBits<5, 8, false>(
+                [&](unsigned char c) {
+                    data.push_back(c);
+                },
+                dec.data.begin() + 1, dec.data.end())) {
+            std::string byte_str = data.size() == 1 ? "byte" : "bytes";
+            if (version == 0) {
+                {
+                    if (data.size() == 20) {
+                        script.reserve(22);
+                        script.emplace_back(OP_0);
+                        script.emplace_back(EncodePushBytes_N(20));
+                        script.insert(script.begin() + 2, data.begin(), data.end());
+                        return true;
+                    }
+                }
+                {
+                    if (data.size() == 32) {
+                        script.reserve(34);
+                        script.emplace_back(OP_0);
+                        script.emplace_back(EncodePushBytes_N(32));
+                        script.insert(script.begin() + 2, data.begin(), data.end());
+                        return true;
+                    }
+                }
+
+                error_str = "Invalid Bech32 v0 address program size (" + std::to_string(data.size()) + " " + byte_str
+                            + "), per BIP141";
+                return false;
+            }
+            if (version == 1 && data.size() == WITNESS_V1_TAPROOT_SIZE) {
+                script.reserve(34);
+                script.emplace_back(OP_1);
+                script.emplace_back(EncodePushBytes_N(32));
+                script.insert(script.begin() + 2, data.begin(), data.end());
+                return true;
+            }
+
+            if (version > 16) {
+                error_str = "Invalid Bech32 address witness version";
+                return false;
+            }
+
+            if (data.size() < 2 || data.size() > BECH32_WITNESS_PROG_MAX_LEN) {
+                error_str
+                    = "Invalid Bech32 address program size (" + std::to_string(data.size()) + " " + byte_str + ")";
+                return false;
+            }
+
+            script.reserve(data.size() + 1);
+            script.emplace_back(bitcoin::EncodeOP_N(version));
+            script.insert(script.begin() + 1, data.begin(), data.end());
+            return true;
+        } else {
+            error_str = "Invalid padding in Bech32 data section";
+            return false;
+        }
+    }
+
+    // Perform Bech32 error location
+    error_str = "Invalid address";
     return false;
 }
 }  // namespace bitcoin
