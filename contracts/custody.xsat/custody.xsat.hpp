@@ -108,6 +108,8 @@ public:
     void addr2pubkey(const string& address);
     [[eosio::action]]
     void pubkey2addr(const vector<uint8_t> data);
+    [[eosio::action]]
+    void updateheight(const uint64_t height);
 #endif
 
 private:
@@ -169,6 +171,7 @@ private:
         name validator;
         string btc_address;
         std::vector<uint8_t> scriptpubkey;
+        time_point_sec latest_stake_time;
         uint64_t primary_key() const { return id; }
         checksum256 by_staker() const { return xsat::utils::compute_id(staker); }
         checksum256 by_scriptpubkey() const { return xsat::utils::hash(scriptpubkey); }

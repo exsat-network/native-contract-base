@@ -11,17 +11,17 @@
 ## Quickstart
 
 ```bash
-# addcustody @admin.xsat
-$ cleos push action custody.xsat addcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "0000000000000000000000000000000000000001", "chen.sat", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", null ]' -p admin.xsat
+# addcustody @custody.xsat
+$ cleos push action custody.xsat addcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "0000000000000000000000000000000000000001", "chen.sat", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", null ]' -p custody.xsat
 
-# updatecusty @admin.xsat
-$ cleos push action custody.xsat updatecusty '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "chen2.sat"]' -p admin.xsat
+# updatecusty @custody.xsat
+$ cleos push action custody.xsat updatecusty '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "chen2.sat"]' -p custody.xsat
 
-# delcustody @admin.xsat
-$ cleos push action custody.xsat delcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3"]' -p admin.xsat
+# delcustody @custody.xsat
+$ cleos push action custody.xsat delcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3"]' -p custody.xsat
 
-# syncstake @admin.xsat
-$ cleos push action custody.xsat syncstake '[100]' -p admin.xsat
+# syncstake @custody.xsat
+$ cleos push action custody.xsat syncstake '[100]' -p custody.xsat
 
 ## Table Information
 
