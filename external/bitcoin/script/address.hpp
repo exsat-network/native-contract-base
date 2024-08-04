@@ -226,17 +226,16 @@ bool ConvertBits(const O& outfn, I it, I end) {
     return true;
 }
 
-#ifdef TESTNET
+#if defined(TESTNET)
 const unsigned char PKHashPrefix = 0x6f;      // 0x00 for mainnet,  0x6f for testnet
 const unsigned char ScriptHashPrefix = 0xcf;  // 0x05 for mainnet, 0xc4 for testnet
 const std::string Bech32HRP = "tb";           // "bc" for mainnet, "tb" for testnet
-#endif
-
-#ifdef MAINNET
+#elif defined(MAINNET) || !defined(TESTNET)
 const unsigned char PKHashPrefix = 0x00;      // 0x00 for mainnet,  0x6f for testnet
 const unsigned char ScriptHashPrefix = 0x05;  // 0x05 for mainnet, 0xc4 for testnet
 const std::string Bech32HRP = "bc";           // "bc" for mainnet, "tb" for testnet
 #endif
+
 bool ExtractDestination(const std::vector<unsigned char>& scriptPubKey, std::vector<std::string>& addressRet) {
     std::vector<valtype> vSolutions;
     TxoutType whichType = Solver(scriptPubKey, vSolutions);

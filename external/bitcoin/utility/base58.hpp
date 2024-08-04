@@ -38,7 +38,7 @@ bool DecodeBase58(const char* psz, std::vector<unsigned char>& vch, int max_ret_
     std::vector<unsigned char> b256(size);
 
     // Process the characters.
-    if (sizeof(mapBase58) / sizeof(mapBase58[0]) == 256) {  // guarantee not out of range
+    if (sizeof(mapBase58) != 256) {  // guarantee not out of range
         return false;
     }
     while (*psz && !bitcoin::IsSpace(*psz)) {

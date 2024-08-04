@@ -194,4 +194,24 @@ static string sha1_to_hex(const checksum160& sha1) {
     return to_hex((char*)buffer.data(), buffer.size());
 }
 
+static vector<unsigned char> hex_to_bytes(const string& hex) {
+    vector<unsigned char> result;
+    unsigned char byte;
+    for (size_t i = 0; i < hex.length(); i += 2) {
+        sscanf(hex.c_str() + i, "%2hhx", &byte);
+        result.push_back(byte);
+    }
+    return result;
+}
+
+static string bytes_to_hex(const std::vector<unsigned char>& data) {
+    std::string result;
+    const char* hex_chars = "0123456789abcdef";
+    for (auto byte : data) {
+        result.push_back(hex_chars[(byte >> 4) & 0x0F]);
+        result.push_back(hex_chars[byte & 0x0F]);
+    }
+    return result;
+}
+
 }  // namespace xsat::utils
