@@ -813,6 +813,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     using unstake_action = eosio::action_wrapper<"unstake"_n, &endorse_manage::unstake>;
     using evm_staker_action = eosio::action_wrapper<"evmstake"_n, &endorse_manage::evmstake>;
     using evm_unstake_action = eosio::action_wrapper<"evmunstake"_n, &endorse_manage::evmunstake>;
+    using evm_newstake_action = eosio::action_wrapper<"evmnewstake"_n, &endorse_manage::evmnewstake>;
     using distribute_action = eosio::action_wrapper<"distribute"_n, &endorse_manage::distribute>;
     using validatorlog_action = eosio::action_wrapper<"validatorlog"_n, &endorse_manage::validatorlog>;
     using stakelog_action = eosio::action_wrapper<"stakelog"_n, &endorse_manage::stakelog>;
