@@ -480,7 +480,7 @@ describe('blksync.xsat', () => {
     it('processblock: must be more than 6 blocks to process', async () => {
         await expectToThrow(
             contracts.utxomng.actions.processblock(['alice', 1]).send('alice@active'),
-            'eosio_assert_message: utxo_manage::processblock: must be more than 6 blocks to process'
+            'eosio_assert_message: utxomng.xsat::processblock: must be more than 6 blocks to process'
         )
     })
 
@@ -605,7 +605,7 @@ describe('blksync.xsat', () => {
             parsing_height: 840000,
             parsing_hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
             num_transactions: 3050,
-            num_utxos: 3919,
+            num_utxos: 6683,
             parsed_expiration_time: addTime(blockchain.timestamp, TimePointSec.from(10 * 60)).toString(),
             parser: 'bob',
             parsing_bucket_id: 3,
@@ -627,7 +627,7 @@ describe('blksync.xsat', () => {
             irreversible_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
             irreversible_height: 839999,
             num_transactions: 3050,
-            num_utxos: 3919,
+            num_utxos: 6683,
             parsed_expiration_time: addTime(blockchain.timestamp, TimePointSec.from(10 * 60)).toString(),
             parsing_height: 840000,
             parsing_hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
@@ -651,7 +651,7 @@ describe('blksync.xsat', () => {
             irreversible_hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
             irreversible_height: 840000,
             num_transactions: 0,
-            num_utxos: 3919,
+            num_utxos: 6683,
             parsed_expiration_time: addTime(blockchain.timestamp, TimePointSec.from(10 * 60)).toString(),
             parser: 'alice',
             parsing_bucket_id: 4,
