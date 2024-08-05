@@ -149,6 +149,8 @@ private:
      * - `{name} validator` - the validator account
      * - `{string} btc_address` - the bitcoin address
      * - `{vector<uint8_t>} scriptpubkey` - the scriptpubkey
+     * - `{uint64_t} value` - the total utxo value
+     * - `{time_point_sec} latest_stake_time` - the latest stake time
      *
      * ### example
      *
@@ -160,6 +162,8 @@ private:
      *   "validator": "val1.xsat",
      *   "btc_address": "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN",
      *   "scriptpubkey": "a914cac3a79a829c31b07e6a8450c4e05c4289ab95b887"
+     *   "value": 100000000,
+     *   "latest_stake_time": "2021-09-01T00:00:00"
      * }
      * ```
      *
@@ -171,6 +175,7 @@ private:
         name validator;
         string btc_address;
         std::vector<uint8_t> scriptpubkey;
+        uint64_t value;
         time_point_sec latest_stake_time;
         uint64_t primary_key() const { return id; }
         checksum256 by_staker() const { return xsat::utils::compute_id(staker); }

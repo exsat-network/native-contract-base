@@ -71,6 +71,8 @@ $ cleos get table custody.xsat custody.xsat custodies
 - `{name} validator` - the validator account
 - `{string} btc_address` - the bitcoin address
 - `{vector<uint8_t>} scriptpubkey` - the scriptpubkey
+- `{uint64_t} value` - the total utxo value
+- `{time_point_sec} latest_stake_time` - the latest stake time
 
 ### example
 
@@ -81,6 +83,8 @@ $ cleos get table custody.xsat custody.xsat custodies
   "proxy": "0000000000000000000000000000000000000001",
   "validator": "chen.sat",
   "btc_address": "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN",
-  "scriptpubkey": "a914cac3a79a829c31b07e6a8450c4e05c4289ab95b887"
+  "scriptpubkey": "a914cac3a79a829c31b07e6a8450c4e05c4289ab95b887",
+  "value": 100000000,
+  "latest_stake_time": "2021-09-01T00:00:00"
 }
 ```
