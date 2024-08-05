@@ -40,3 +40,12 @@ void custody::pubkey2addr(const vector<uint8_t> data) {
     }
 }
 
+[[eosio::action]]
+void custody::updateheight(const uint64_t height) {
+    require_auth(get_self());
+    global_id_row global_id = _global_id.get_or_default();
+    global_id.last_height = height;
+    _global_id.set(global_id, get_self());
+}
+
+
