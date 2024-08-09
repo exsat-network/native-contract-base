@@ -68,6 +68,24 @@ static constexpr fee_type ENDORSE = 4;
 static constexpr fee_type PARSE = 5;
 ```
 
+## STRUCT `CheckResult`
+
+### params
+
+- `{bool} has_auth` - the client's permission correct?
+- `{bool} is_exists` - does the client account exist?
+- `{asset} balance` - client balance
+
+### example
+
+```json
+{
+  "has_auth": true,
+  "is_exists": true,
+  "balance": "0.99999219 BTC"
+}
+```
+
 ## TABLE `config`
 
 ### scope `get_self()`
@@ -110,6 +128,23 @@ static constexpr fee_type PARSE = 5;
   "owner": "test.xsat",
   "balance": "0.99999765 BTC"
 }
+```
+
+## ACTION `checkclient`
+
+- **authority**: `anyone`
+
+> Verify that the client is ready.
+
+### params
+
+- `{name} client` - client account
+- `{uint8_t} type` - client type 1: synchronizer 2: validator
+
+### example
+
+```bash
+$ cleos push action rescmng.xsat checkclient '["alice", 1]' -p alice 
 ```
 
 ## ACTION `init`
