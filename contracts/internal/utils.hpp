@@ -23,7 +23,7 @@ namespace xsat::utils {
         return (uint128_t{token.get_contract().value} << 64) | token.get_symbol().code().raw();
     }
 
-    static checksum256 compute_block_id(const uint64_t height, checksum256 hash) {
+    static checksum256 compute_block_id(const uint64_t height, const checksum256& hash) {
         vector<char> result;
         result.resize(40);
         datastream<char*> ds(result.data(), result.size());

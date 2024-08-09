@@ -1,3 +1,5 @@
+#pragma once
+
 #include <bitcoin/script/script.hpp>
 #include <bitcoin/utility/base58.hpp>
 #include <bitcoin/utility/bech32.hpp>
