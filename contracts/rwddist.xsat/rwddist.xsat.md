@@ -11,7 +11,7 @@
 $ cleos push action rwddist.xsat distribute '{"height": 840000}' -p utxomng.xsat
 
 # endtreward @utxomng.xsat
-$ cleos push action rwddist.xsat endtreward '{"parser": "alice", "height": 840000, "from_index": 0, "to_index": 10}' -p utxomng.xsat
+$ cleos push action rwddist.xsat endtreward '{"height": 840000, "from_index": 0, "to_index": 10}' -p utxomng.xsat
 ```
 
 ## Table Information
@@ -150,7 +150,6 @@ $ cleos push action rwddist.xsat distribute '[840000]' -p utxomng.xsat
 
 ### params
 
-- `{name} parser` - parse account
 - `{uint64_t} height` - block height
 - `{uint32_t} from_index` - the starting reward index of provider_validators
 - `{uint32_t} to_index` - end reward index of provider_validators
@@ -158,5 +157,5 @@ $ cleos push action rwddist.xsat distribute '[840000]' -p utxomng.xsat
 ### example
 
 ```bash
-$ cleos push action rwddist.xsat endtreward '["alice", 840000, 0, 10]' -p utxomng.xsat
+$ cleos push action rwddist.xsat endtreward '[840000, 0, 10]' -p utxomng.xsat
 ```
