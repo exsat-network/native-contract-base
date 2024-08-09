@@ -137,26 +137,6 @@ static constexpr fee_type PARSE = 5;
 }
 ```
 
-## ACTION `checkclient`
-
-- **authority**: `anyone`
-
-> Verify that the client is ready.
-
-### params
-
-- `{name} client` - client account
-- `{uint8_t} type` - client type 1: synchronizer 2: validator
-
-### result 
-@see [CheckResult](#struct-checkresult)
-
-### example
-
-```bash
-$ cleos push action rescmng.xsat checkclient '["alice", 1]' -p alice 
-```
-
 ## ACTION `init`
 
 - **authority**: `get_self()`
