@@ -11,6 +11,9 @@
 ## Quickstart 
 
 ```bash
+# checkclient  type 1: synchronizer 2: validator
+$ cleos push action rescmng.xsat checkclient '{"client": "test.sat", "type": 1}' -p test.sat
+
 # init @rescmng.xsat
 $ cleos push action rescmng.xsat init '{"fee_account": "fees.xsat", "cost_per_slot": "0.00000020 BTC", "cost_per_upload": "0.00000020 BTC", "cost_per_verification": "0.00000020 BTC", "cost_per_endorsement": "0.00000020 BTC", "cost_per_parse": "0.00000020 BTC"}' -p rescmng.xsat
 
@@ -135,6 +138,26 @@ static constexpr fee_type PARSE = 5;
   "owner": "test.xsat",
   "balance": "0.99999765 BTC"
 }
+```
+
+## ACTION `checkclient`
+
+- **authority**: `anyone`
+
+> Verify that the client is ready.
+
+### params
+
+- `{name} client` - client account
+- `{uint8_t} type` - client type 1: synchronizer 2: validator
+
+### result 
+@see [CheckResult](#struct-checkresult)
+
+### example
+
+```bash
+$ cleos push action rescmng.xsat checkclient '["alice", 1]' -p alice 
 ```
 
 ## ACTION `init`
