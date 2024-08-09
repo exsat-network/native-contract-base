@@ -13,6 +13,31 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
     using contract::contract;
 
     /**
+     * ## STRUCT `CheckResult`
+     *
+     * ### params
+     *
+     * - `{bool} has_auth` - the client's permission correct?
+     * - `{bool} is_exists` - does the client account exist?
+     * - `{asset} balance` - client balance
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "has_auth": true,
+     *   "is_exists": true,
+     *   "balance": "0.99999219 BTC"
+     * }
+     * ```
+     */
+    struct CheckResult {
+        bool has_auth;
+        bool is_exists;
+        asset balance;
+    };
+
+    /**
      * ## TABLE `config`
      *
      * ### scope `get_self()`
@@ -75,6 +100,27 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
         uint64_t primary_key() const { return owner.value; }
     };
     typedef eosio::multi_index<"accounts"_n, account_row> account_table;
+
+    /**
+     * ## ACTION `checkclient`
+     *
+     * - **authority**: `anyone`
+     *
+     * > Verify that the client is ready.
+     *
+     * ### params
+     *
+     * - `{name} client` - client account
+     * - `{uint8_t} type` - client type 1: synchronizer 2: validator
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action rescmng.xsat checkclient '["alice", 1]' -p alice 
+     * ```
+     */
+    [[eosio::action]]
+    CheckResult checkclient(const name& client, const uint8_t type);
 
     /**
      * ## ACTION `init`
@@ -180,6 +226,11 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
 
     // logs
     [[eosio::action]]
+    void checklog(const name& client, const uint8_t& type, const bool success, const CheckResult& result) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
     void depositlog(const name& owner, const asset& quantity, const asset& balance) {
         require_auth(get_self());
     }
@@ -196,6 +247,7 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
     }
 
     using pay_action = eosio::action_wrapper<"pay"_n, &resource_management::pay>;
+    using checklog_action = eosio::action_wrapper<"checklog"_n, &resource_management::checklog>;
     using depositlog_action = eosio::action_wrapper<"depositlog"_n, &resource_management::depositlog>;
     using withdrawlog_action = eosio::action_wrapper<"withdrawlog"_n, &resource_management::withdrawlog>;
     using paylog_action = eosio::action_wrapper<"paylog"_n, &resource_management::paylog>;
