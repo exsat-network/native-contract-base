@@ -227,23 +227,26 @@ void utxo_manage::consensus(const uint64_t height, const checksum256& hash) {
 
 //@auth
 [[eosio::action]]
-utxo_manage::process_block_result utxo_manage::processblock(const name& synchronizer, const uint64_t height,
-                                                            const checksum256& hash, uint64_t process_row) {
+utxo_manage::process_block_result utxo_manage::processblock(const name& synchronizer, uint64_t process_row) {
     require_auth(synchronizer);
+
+    auto chain_state = _chain_state.get();
+    auto height = chain_state.parsing_height;
+    check(height > chain_state.irreversible_height, "utxomng.xsat::processblock: the block has been parsed");
+
+    auto current_time = current_time_point();
+    checksum256 hash;
+    for (const auto& it : chain_state.parsing_progress_of) {
+        if (it.second.parser == synchronizer || it.second.parse_expiration_time <= current_time) {
+            hash = it.first;
+        }
+    }
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
     pay.send(height, hash, synchronizer, PARSE, 1);
 
-    auto chain_state = _chain_state.get();
-
-    check(height > chain_state.irreversible_height, "utxomng.xsat::processblock: the block has been parsed");
-    check(height == chain_state.parsing_height
-              && chain_state.parsing_progress_of.find(hash) != chain_state.parsing_progress_of.end(),
-          "utxomng.xsat::processblock: the block has not yet reached parsing conditions");
-
     auto config = _config.get();
-    auto current_time = current_time_point();
     auto& parsing_progress = chain_state.parsing_progress_of[hash];
 
     // verify permissions and whether parsing times out

@@ -16,10 +16,10 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     typedef uint8_t parsing_status;
     static const parsing_status waiting = 1;
-    static const parsing_status parsing = 2;
+    static const parsing_status migrating = 2;
     static const parsing_status deleting_data = 3;
     static const parsing_status distributing_rewards = 4;
-    static const parsing_status migrating = 5;
+    static const parsing_status parsing = 5;
 
     static std::string get_parsing_status_name(const parsing_status status) {
         switch (status) {
@@ -633,19 +633,16 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * ### params
      *
      * - `{name} synchronizer` - synchronizer account
-     * - `{uint64_t} height` - block height
-     * - `{checksum256} hash` - block hash
      * - `{uint64_t} process_rows` - number of vins and vouts to be parsed
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action utxomng.xsat processblock '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 1000]' -p alice
+     * $ cleos push action utxomng.xsat processblock '["alice", 1000]' -p alice
      * ```
      */
     [[eosio::action]]
-    process_block_result processblock(const name &synchronizer, const uint64_t height, const checksum256 &hash,
-                                      uint64_t process_rows);
+    process_block_result processblock(const name &synchronizer, uint64_t process_rows);
 
     /**
      * ## ACTION `consensus`

@@ -522,14 +522,12 @@ $ cleos push action utxomng.xsat delblock '[840000]' -p utxomng.xsat
 ### params
 
 - `{name} synchronizer` - synchronizer account
-- `{uint64_t} height` - block height
-- `{checksum256} hash` - block hash
 - `{uint64_t} process_rows` - number of vins and vouts to be parsed
 
 ### example
 
 ```bash
-$ cleos push action utxomng.xsat processblock '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 1000]' -p alice
+$ cleos push action utxomng.xsat processblock '["alice", 1000]' -p alice
 ```
 
 ## ACTION `consensus`
