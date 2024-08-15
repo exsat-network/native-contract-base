@@ -1,10 +1,47 @@
 #include <rescmng.xsat/rescmng.xsat.hpp>
+#include <poolreg.xsat/poolreg.xsat.hpp>
+#include <endrmng.xsat/endrmng.xsat.hpp>
 #include <btc.xsat/btc.xsat.hpp>
 #include "../internal/utils.hpp"
 
 #ifdef DEBUG
 #include "./src/debug.hpp"
 #endif
+
+//@auth client
+[[eosio::action]]
+resource_management::CheckResult resource_management::checkclient(const name& client, const uint8_t type) {
+    check(type == 1 || type == 2, "rescmng.xsat::check: invalid type [1: synchronizer 2: validator]");
+    check(client.suffix() == "sat"_n, "rescmng.xsat::check: client must be suffixed with sat");
+
+    CheckResult result;
+    result.has_auth = has_auth(client);
+    if (type == 1) {
+        pool::synchronizer_table _synchronizer(POOL_REGISTER_CONTRACT, POOL_REGISTER_CONTRACT.value);
+        auto synchronizer_itr = _synchronizer.find(client.value);
+        result.is_exists = synchronizer_itr != _synchronizer.end();
+    }
+
+    // validator
+    if (type == 2) {
+        endorse_manage::validator_table _validator(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);
+        auto validator_itr = _validator.find(client.value);
+        result.is_exists = validator_itr != _validator.end();
+    }
+    result.balance = {0, BTC_SYMBOL};
+    auto account_itr = _account.find(client.value);
+    if (account_itr != _account.end()) {
+        result.balance = account_itr->balance;
+    }
+
+    bool success = result.has_auth && result.is_exists && result.balance.amount > 0;
+
+    // log
+    resource_management::checklog_action _checklog(get_self(), {get_self(), "active"_n});
+    _checklog.send(client, type, success, result);
+
+    return result;
+}
 
 //@auth get_self()
 [[eosio::action]]

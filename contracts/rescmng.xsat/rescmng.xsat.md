@@ -11,6 +11,9 @@
 ## Quickstart 
 
 ```bash
+# checkclient  type 1: synchronizer 2: validator
+$ cleos push action rescmng.xsat checkclient '{"client": "test.sat", "type": 1}' -p test.sat
+
 # init @rescmng.xsat
 $ cleos push action rescmng.xsat init '{"fee_account": "fees.xsat", "cost_per_slot": "0.00000020 BTC", "cost_per_upload": "0.00000020 BTC", "cost_per_verification": "0.00000020 BTC", "cost_per_endorsement": "0.00000020 BTC", "cost_per_parse": "0.00000020 BTC"}' -p rescmng.xsat
 
@@ -37,26 +40,33 @@ $ cleos get table rescmng.xsat rescmng.xsat accounts
 ## Table of Content
 
 - [ENUM `fee_type`](#enum-fee_type)
-- [TABLE `config`](#table-config)
-  - [scope `get_self()`](#scope-get_self)
+- [STRUCT `CheckResult`](#struct-checkresult)
   - [params](#params)
   - [example](#example)
-- [TABLE `accounts`](#table-accounts)
-  - [scope `get_self()`](#scope-get_self-1)
+- [TABLE `config`](#table-config)
+  - [scope `get_self()`](#scope-get_self)
   - [params](#params-1)
   - [example](#example-1)
-- [ACTION `init`](#action-init)
+- [TABLE `accounts`](#table-accounts)
+  - [scope `get_self()`](#scope-get_self-1)
   - [params](#params-2)
   - [example](#example-2)
-- [ACTION `setstatus`](#action-setstatus)
+- [ACTION `checkclient`](#action-checkclient)
   - [params](#params-3)
+  - [result](#result)
   - [example](#example-3)
-- [ACTION `pay`](#action-pay)
+- [ACTION `init`](#action-init)
   - [params](#params-4)
   - [example](#example-4)
-- [ACTION `withdraw`](#action-withdraw)
+- [ACTION `setstatus`](#action-setstatus)
   - [params](#params-5)
   - [example](#example-5)
+- [ACTION `pay`](#action-pay)
+  - [params](#params-6)
+  - [example](#example-6)
+- [ACTION `withdraw`](#action-withdraw)
+  - [params](#params-7)
+  - [example](#example-7)
 
 ## ENUM `fee_type`
 ```
@@ -66,6 +76,24 @@ static constexpr fee_type PUSH_CHUNK = 2;
 static constexpr fee_type VERIFY = 3;
 static constexpr fee_type ENDORSE = 4;
 static constexpr fee_type PARSE = 5;
+```
+
+## STRUCT `CheckResult`
+
+### params
+
+- `{bool} has_auth` - the client's permission correct?
+- `{bool} is_exists` - does the client account exist?
+- `{asset} balance` - client balance
+
+### example
+
+```json
+{
+  "has_auth": true,
+  "is_exists": true,
+  "balance": "0.99999219 BTC"
+}
 ```
 
 ## TABLE `config`
@@ -110,6 +138,26 @@ static constexpr fee_type PARSE = 5;
   "owner": "test.xsat",
   "balance": "0.99999765 BTC"
 }
+```
+
+## ACTION `checkclient`
+
+- **authority**: `anyone`
+
+> Verify that the client is ready.
+
+### params
+
+- `{name} client` - client account
+- `{uint8_t} type` - client type 1: synchronizer 2: validator
+
+### result 
+@see [CheckResult](#struct-checkresult)
+
+### example
+
+```bash
+$ cleos push action rescmng.xsat checkclient '["alice", 1]' -p alice 
 ```
 
 ## ACTION `init`

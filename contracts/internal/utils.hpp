@@ -12,186 +12,206 @@ using namespace std;
 
 namespace xsat::utils {
 
-static checksum256 compute_id(const checksum160& data) {
-    array<uint8_t, 32U> output = {};
-    auto input_bytes = data.extract_as_byte_array();
-    copy(begin(input_bytes), end(input_bytes), begin(output) + 12);
-    return checksum256(output);
-}
-
-static uint128_t compute_id(const extended_symbol& token) {
-    return (uint128_t{token.get_contract().value} << 64) | token.get_symbol().code().raw();
-}
-
-static checksum256 compute_block_id(const uint64_t height, checksum256 hash) {
-    vector<char> result;
-    result.resize(40);
-    datastream<char*> ds(result.data(), result.size());
-    ds << height;
-    ds << hash;
-    return sha256((char*)result.data(), result.size());
-}
-
-static checksum256 hash(const string& data) { return sha256(data.c_str(), data.size()); }
-
-static checksum256 hash(const vector<uint8_t>& data) { return sha256((char*)data.data(), data.size()); }
-
-static name parse_name(const string& str) {
-    if (str.length() == 0 || str.length() > 13) return {};
-    int i = -1;
-    for (const auto c : str) {
-        i++;
-        if (islower(c) || (isdigit(c) && c <= '6') || c == '.') {
-            if (i == 0 && !islower(c)) return {};
-            if (i == 12 && (c < 'a' || c > 'j')) return {};
-        } else
-            return {};
+    static checksum256 compute_id(const checksum160& data) {
+        array<uint8_t, 32U> output = {};
+        auto input_bytes = data.extract_as_byte_array();
+        copy(begin(input_bytes), end(input_bytes), begin(output) + 12);
+        return checksum256(output);
     }
-    return name{str};
-}
 
-static string account_decode(const vector<uint8_t>& hexVec) {
-    static const char* charmap = "abcdefghijklmnopqrstuvwxyz12345.";
-    string result;
-    for (const uint8_t c : hexVec) {
-        result.push_back(charmap[c]);
+    static uint128_t compute_id(const extended_symbol& token) {
+        return (uint128_t{token.get_contract().value} << 64) | token.get_symbol().code().raw();
+    }
+
+    static checksum256 compute_block_id(const uint64_t height, checksum256 hash) {
+        vector<char> result;
+        result.resize(40);
+        datastream<char*> ds(result.data(), result.size());
+        ds << height;
+        ds << hash;
+        return sha256((char*)result.data(), result.size());
+    }
+
+    static checksum256 hash(const string& data) { return sha256(data.c_str(), data.size()); }
+
+    static checksum256 hash(const vector<uint8_t>& data) { return sha256((char*)data.data(), data.size()); }
+
+    static name parse_name(const string& str) {
+        if (str.length() == 0 || str.length() > 13) return {};
+        int i = -1;
+        for (const auto c : str) {
+            i++;
+            if (islower(c) || (isdigit(c) && c <= '6') || c == '.') {
+                if (i == 0 && !islower(c)) return {};
+                if (i == 12 && (c < 'a' || c > 'j')) return {};
+            } else
+                return {};
+        }
+        return name{str};
+    }
+
+    static string account_decode(const vector<uint8_t>& hexVec) {
+        static const char* charmap = "abcdefghijklmnopqrstuvwxyz12345.";
+        string result;
+        for (const uint8_t c : hexVec) {
+            result.push_back(charmap[c]);
+        }
+        return result;
+    }
+
+    //  OP_RETURN: 6a
+    //  DATA_LENGTH: 12
+    //  XSAT: 4558534154
+    //  VERSION: 01
+    //  ACCOUNT: 1208060d04111f0417120013
+    static name get_op_return_eos_account(const vector<uint8_t>& data) {
+        if (data[0] != 0x6a) {
+            return {};
+        }
+        if (data.size() - 2 != data[1]) return {};
+
+        constexpr auto witness_commitment_header = array<uint8_t, 6>{0x45, 0x58, 0x53, 0x41, 0x54, 0x01};
+
+        if (0 != memcmp(data.data() + 2, witness_commitment_header.data(), witness_commitment_header.size())) {
+            return {};
+        }
+        vector<uint8_t> account_data(data.begin() + 8, data.end());
+        return parse_name(account_decode(account_data));
+    }
+
+    template <typename T>
+    static bool is_valid_evm_address(const T& address) {
+        bool hasPrefix = address.size() >= 2 && address[0] == '0' && address[1] == 'x';
+        size_t expectedLength = hasPrefix ? 42 : 40;
+
+        if (address.size() != expectedLength) {
+            return false;
+        }
+
+        for (size_t i = hasPrefix ? 2 : 0; i < address.size(); ++i) {
+            char c = address[i];
+            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static vector<string> split(const string str, const string delim) {
+        vector<string> tokens;
+        if (str.size() == 0) return tokens;
+
+        size_t prev = 0, pos = 0;
+        do {
+            pos = str.find(delim, prev);
+            if (pos == string::npos) pos = str.length();
+            string token = str.substr(prev, pos - prev);
+            if (token.length() > 0) tokens.push_back(token);
+            prev = pos + delim.length();
+        } while (pos < str.length() && prev < str.length());
+        return tokens;
+    }
+
+    static bool is_digit(const string str) {
+        if (!str.size()) return false;
+        for (const auto c : str) {
+            if (!isdigit(c)) return false;
+        }
+        return true;
+    }
+
+    static symbol_code parse_symbol_code(const string& str) {
+        if (str.size() > 7) return {};
+
+        for (const auto c : str) {
+            if (c < 'A' || c > 'Z') return {};
+        }
+        const symbol_code sym_code = symbol_code{str};
+
+        return sym_code.is_valid() ? sym_code : symbol_code{};
+    }
+
+    static asset parse_asset(const string& str) {
+        auto tokens = utils::split(str, " ");
+        if (tokens.size() != 2) return {};
+
+        auto sym_code = parse_symbol_code(tokens[1]);
+        if (!sym_code.is_valid()) return {};
+
+        int64_t amount = 0;
+        uint8_t precision = 0, digits = 0;
+        bool seen_dot = false, neg = false;
+        for (const auto c : tokens[0]) {
+            if (c == '-') {
+                if (digits > 0) return {};
+                neg = true;
+                continue;
+            }
+            if (c == '.') {
+                if (seen_dot || digits == 0) return {};
+                seen_dot = true;
+                continue;
+            }
+            if (!isdigit(c)) return {};
+            digits++;
+            if (seen_dot) precision++;
+            amount = amount * 10 + (c - '0');
+        }
+        if (precision > 16 || (seen_dot && precision == 0)) return {};
+
+        asset out = asset{neg ? -amount : amount, symbol{sym_code, precision}};
+        if (!out.is_valid()) return {};
+
+        return out;
+    }
+
+    static checksum256 get_trx_id() {
+        auto size = transaction_size();
+        char buf[size];
+        uint32_t read = read_transaction(buf, size);
+        check(size == read, "read_transaction failed");
+        return sha256(buf, read);
+    }
+
+    static string to_hex(const char* d, uint32_t s) {
+        string r;
+        const char* to_hex = "0123456789abcdef";
+        uint8_t* c = (uint8_t*)d;
+        for (uint32_t i = 0; i < s; ++i) (r += to_hex[(c[i] >> 4)]) += to_hex[(c[i] & 0x0f)];
+        return r;
+    }
+
+    static uint32_t num_reached_consensus(const uint32_t nums) { return nums * 2 / 3 + 1; }
+
+    static string sha256_to_hex(const checksum256& sha256) {
+        auto buffer = sha256.extract_as_byte_array();
+        return to_hex((char*)buffer.data(), buffer.size());
+    }
+
+    static string sha1_to_hex(const checksum160& sha1) {
+        auto buffer = sha1.extract_as_byte_array();
+        return to_hex((char*)buffer.data(), buffer.size());
+    }
+
+static vector<unsigned char> hex_to_bytes(const string& hex) {
+    vector<unsigned char> result;
+    unsigned char byte;
+    for (size_t i = 0; i < hex.length(); i += 2) {
+        sscanf(hex.c_str() + i, "%2hhx", &byte);
+        result.push_back(byte);
     }
     return result;
 }
 
-//  OP_RETURN: 6a
-//  DATA_LENGTH: 12
-//  XSAT: 4558534154
-//  VERSION: 01
-//  ACCOUNT: 1208060d04111f0417120013
-static name get_op_return_eos_account(const vector<uint8_t>& data) {
-    if (data[0] != 0x6a) {
-        return {};
+static string bytes_to_hex(const std::vector<unsigned char>& data) {
+    std::string result;
+    const char* hex_chars = "0123456789abcdef";
+    for (auto byte : data) {
+        result.push_back(hex_chars[(byte >> 4) & 0x0F]);
+        result.push_back(hex_chars[byte & 0x0F]);
     }
-    if (data.size() - 2 != data[1]) return {};
-
-    constexpr auto witness_commitment_header = array<uint8_t, 6>{0x45, 0x58, 0x53, 0x41, 0x54, 0x01};
-
-    if (0 != memcmp(data.data() + 2, witness_commitment_header.data(), witness_commitment_header.size())) {
-        return {};
-    }
-    vector<uint8_t> account_data(data.begin() + 8, data.end());
-    return parse_name(account_decode(account_data));
-}
-
-template <typename T>
-static bool is_valid_evm_address(const T& address) {
-    bool hasPrefix = address.size() >= 2 && address[0] == '0' && address[1] == 'x';
-    size_t expectedLength = hasPrefix ? 42 : 40;
-
-    if (address.size() != expectedLength) {
-        return false;
-    }
-
-    for (size_t i = hasPrefix ? 2 : 0; i < address.size(); ++i) {
-        char c = address[i];
-        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-static vector<string> split(const string str, const string delim) {
-    vector<string> tokens;
-    if (str.size() == 0) return tokens;
-
-    size_t prev = 0, pos = 0;
-    do {
-        pos = str.find(delim, prev);
-        if (pos == string::npos) pos = str.length();
-        string token = str.substr(prev, pos - prev);
-        if (token.length() > 0) tokens.push_back(token);
-        prev = pos + delim.length();
-    } while (pos < str.length() && prev < str.length());
-    return tokens;
-}
-
-static bool is_digit(const string str) {
-    if (!str.size()) return false;
-    for (const auto c : str) {
-        if (!isdigit(c)) return false;
-    }
-    return true;
-}
-
-static symbol_code parse_symbol_code(const string& str) {
-    if (str.size() > 7) return {};
-
-    for (const auto c : str) {
-        if (c < 'A' || c > 'Z') return {};
-    }
-    const symbol_code sym_code = symbol_code{str};
-
-    return sym_code.is_valid() ? sym_code : symbol_code{};
-}
-
-static asset parse_asset(const string& str) {
-    auto tokens = utils::split(str, " ");
-    if (tokens.size() != 2) return {};
-
-    auto sym_code = parse_symbol_code(tokens[1]);
-    if (!sym_code.is_valid()) return {};
-
-    int64_t amount = 0;
-    uint8_t precision = 0, digits = 0;
-    bool seen_dot = false, neg = false;
-    for (const auto c : tokens[0]) {
-        if (c == '-') {
-            if (digits > 0) return {};
-            neg = true;
-            continue;
-        }
-        if (c == '.') {
-            if (seen_dot || digits == 0) return {};
-            seen_dot = true;
-            continue;
-        }
-        if (!isdigit(c)) return {};
-        digits++;
-        if (seen_dot) precision++;
-        amount = amount * 10 + (c - '0');
-    }
-    if (precision > 16 || (seen_dot && precision == 0)) return {};
-
-    asset out = asset{neg ? -amount : amount, symbol{sym_code, precision}};
-    if (!out.is_valid()) return {};
-
-    return out;
-}
-
-static checksum256 get_trx_id() {
-    auto size = transaction_size();
-    char buf[size];
-    uint32_t read = read_transaction(buf, size);
-    check(size == read, "read_transaction failed");
-    return sha256(buf, read);
-}
-
-static string to_hex(const char* d, uint32_t s) {
-    string r;
-    const char* to_hex = "0123456789abcdef";
-    uint8_t* c = (uint8_t*)d;
-    for (uint32_t i = 0; i < s; ++i) (r += to_hex[(c[i] >> 4)]) += to_hex[(c[i] & 0x0f)];
-    return r;
-}
-
-static uint32_t num_reached_consensus(const uint32_t nums) { return nums * 2 / 3 + 1; }
-
-static string sha256_to_hex(const checksum256& sha256) {
-    auto buffer = sha256.extract_as_byte_array();
-    return to_hex((char*)buffer.data(), buffer.size());
-}
-
-static string sha1_to_hex(const checksum160& sha1) {
-    auto buffer = sha1.extract_as_byte_array();
-    return to_hex((char*)buffer.data(), buffer.size());
+    return result;
 }
 
 }  // namespace xsat::utils
