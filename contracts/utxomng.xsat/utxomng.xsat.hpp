@@ -284,6 +284,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         checksum256 by_scriptpubkey() const { return compute_scriptpubkey_id_for_block(height, hash, scriptpubkey); }
         checksum256 by_block_id() const { return xsat::utils::compute_block_id(height, hash); }
         checksum256 by_utxo_id() const { return compute_utxo_id_for_block(height, hash, txid, index); }
+        checksum256 by_type() const { return compute_type_id_for_block(height, hash, type); }
     };
     typedef eosio::multi_index<
         "pendingutxos"_n, pending_utxo_row,
@@ -291,7 +292,8 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         eosio::indexed_by<"scriptpubkey"_n,
                           const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_scriptpubkey>>,
         eosio::indexed_by<"byblockid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_block_id>>,
-        eosio::indexed_by<"byutxoid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_utxo_id>>>
+        eosio::indexed_by<"byutxoid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_utxo_id>>,
+        eosio::indexed_by<"bytype"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_type>>>
         pending_utxo_table;
 
     /**
@@ -689,10 +691,19 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         return eosio::sha256((char *)result.data(), result.size());
     }
 
+    static checksum256 compute_type_id_for_block(const uint64_t height, const checksum256 &hash, const name &type) {
+        std::vector<char> result;
+        result.resize(48);
+        eosio::datastream<char *> ds(result.data(), result.size());
+        ds << height;
+        ds << hash;
+        ds << type;
+    }
+
     static checksum256 compute_scriptpubkey_id_for_block(const uint64_t height, const checksum256 &hash,
                                                          const vector<uint8_t> &scriptpubkey) {
         std::vector<char> result;
-        result.resize(44 + scriptpubkey.size());
+        result.resize(40 + scriptpubkey.size());
         eosio::datastream<char *> ds(result.data(), result.size());
         ds << height;
         ds << hash;
