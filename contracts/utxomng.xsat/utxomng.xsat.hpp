@@ -698,12 +698,13 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         ds << height;
         ds << hash;
         ds << type;
+        return eosio::sha256((char *)result.data(), result.size());
     }
 
     static checksum256 compute_scriptpubkey_id_for_block(const uint64_t height, const checksum256 &hash,
                                                          const vector<uint8_t> &scriptpubkey) {
         std::vector<char> result;
-        result.resize(40 + scriptpubkey.size());
+        result.resize(44 + scriptpubkey.size());
         eosio::datastream<char *> ds(result.data(), result.size());
         ds << height;
         ds << hash;
