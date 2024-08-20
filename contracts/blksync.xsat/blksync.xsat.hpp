@@ -144,6 +144,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * - `{uint32_t} uploaded_size` - the latest release id
      * - `{uint8_t} num_chunks` - number of chunks
      * - `{uint8_t} uploaded_num_chunks` - number of chunks that have been uploaded
+     * - `{uint32_t} chunk_size` - the size of each chunk
      * - `{vector<uint8_t>} chunk_ids` - the uploaded chunk_id
      * - `{string} reason` - reason for verification failure
      * - `{block_status} status` - current block status
@@ -161,6 +162,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *   "uploaded_size": 1434031,
      *   "num_chunks": 11,
      *   "uploaded_num_chunks": 11,
+     *   "chunk_size": 256000,
      *   "chunk_ids": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
      *   "reason": "",
      *   "status": 3,
@@ -203,6 +205,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         uint32_t uploaded_size;
         uint8_t num_chunks;
         uint8_t uploaded_num_chunks;
+        uint32_t chunk_size;
         std::set<uint8_t> chunk_ids;
         std::string reason;
         block_status status;
@@ -423,17 +426,18 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * - `{checksum256} hash` - block hash
      * - `{uint32_t} size` -block size
      * - `{uint8_t} num_chunks` - number of chunks
+     * - `{uint32_t} chunk_size` - the size of each chunk
      *
      * ### example
      *
      * ```bash
      * $ cleos push action blksync.xsat initbucket '["alice", 840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9]' -p alice
+     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9, 25600]' -p alice
      * ```
      */
     [[eosio::action]]
     void initbucket(const name &synchronizer, const uint64_t height, const checksum256 &hash, const uint32_t block_size,
-                    const uint8_t num_chunks);
+                    const uint8_t num_chunks, const uint32_t chunk_size);
 
     /**
      * ## ACTION `pushchunk`
@@ -541,7 +545,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     // logs
     [[eosio::action]]
     void bucketlog(const uint64_t bucket_id, const name &synchronizer, const uint64_t height, const checksum256 &hash,
-                   const uint32_t block_size, const uint8_t num_chunks) {
+                   const uint32_t block_size, const uint8_t num_chunks, const uint32_t chunk_size) {
         require_auth(get_self());
     }
 
