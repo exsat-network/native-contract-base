@@ -577,15 +577,16 @@ void block_sync::find_miner(std::vector<bitcoin::core::transaction_output> outpu
         std::vector<string> to;
         bitcoin::ExtractDestination(output.script.data, to);
         if (to.size() == 1) {
+            btc_miners.push_back(to[0]);
             if (!miner) {
                 auto miner_itr = miner_idx.find(xsat::utils::hash(to[0]));
                 if (miner_itr != miner_idx.end()) {
                     miner = miner_itr->synchronizer;
-                    btc_miners.push_back(to[0]);
                 }
             }
         }
     }
+    if (!miner) btc_miners.clear();
 }
 
 uint64_t block_sync::next_bucket_id() {
