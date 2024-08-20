@@ -356,20 +356,6 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         checksum256 block_hash;
     };
 
-    [[eosio::action]]
-    void reset(const name &synchronizer, const uint64_t height, const checksum256 &hash) {
-        require_auth(get_self());
-
-        block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
-        auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
-        auto block_bucket_itr = block_bucket_idx.find(xsat::utils::compute_block_id(height, hash));
-
-        block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto &row) {
-            row.verify_info = std::nullopt;
-            row.status = upload_complete;
-        });
-    }
-
     /**
      * ## ACTION `consensus`
      *
@@ -540,6 +526,13 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     [[eosio::action]]
     void cleartable(const name table_name, const name &synchronizer, const uint64_t height, const uint64_t bucket_id,
                     const optional<uint64_t> max_rows);
+
+    [[eosio::action]]
+    void reset(const name &synchronizer, const uint64_t height, const checksum256 &hash);
+
+    [[eosio::action]]
+    void pass(const name &synchronizer, const uint64_t height, const checksum256 &hash, const checksum256 &parent);
+
 #endif
 
     // logs
