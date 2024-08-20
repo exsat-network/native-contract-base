@@ -18,19 +18,22 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
      *
      * - `{name} account` - validator account
      * - `{uint64_t} staking` - the validator's staking amount
+     * - `{time_point_sec} created_at` - created at time
      *
      * ### example
      *
      * ```json
      * {
      *   "account": "test.xsat",
-     *   "staking": "10200000000"
+     *   "staking": "10200000000",
+     *   "created_at": "2024-08-13T00:00:00"
      * }
      * ```
      */
     struct validator_info {
         name account;
         uint64_t staking;
+        time_point_sec created_at;
     };
 
     /**

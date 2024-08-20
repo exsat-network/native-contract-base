@@ -392,6 +392,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{name} parser` - the last parser of the parsing block
      * - `{uint64_t} num_utxos` - the total number of vin and vout of the block
      * - `{bool} irreversible` - is it an irreversible block
+     * - `{time_point_sec} created_at` - created at time
      *
      * ### example
      *
@@ -411,7 +412,8 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      *   "synchronizer": "alice",
      *   "parser": "alice",
      *   "num_utxos": 16278,
-     *   "irreversible": 1
+     *   "irreversible": 1,
+     *   "created_at": "2024-08-13T00:00:00"
      * }
      * ```
      */
@@ -431,6 +433,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         name parser;
         uint64_t num_utxos;
         bool irreversible;
+        time_point_sec created_at;
         uint64_t primary_key() const { return bucket_id; }
         uint64_t by_height() const { return height; }
         checksum256 by_block_id() const { return xsat::utils::compute_block_id(height, hash); }

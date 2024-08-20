@@ -49,38 +49,40 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     auto endorsement_idx = _endorsement.get_index<"byhash"_n>();
     auto endorsement_itr = endorsement_idx.find(hash);
     if (endorsement_itr == endorsement_idx.end()) {
-        std::vector<validator_info> requested_validators = get_valid_validator();
+        std::vector<requested_validator_info> requested_validators = get_valid_validator();
         check(!requested_validators.empty(),
               "blkendt.xsat::endorse: no validators found with staking amounts exceeding 100 BTC");
-        auto itr = std::find_if(requested_validators.begin(), requested_validators.end(), [&](const validator_info& a) {
-            return a.account == validator;
-        });
+        auto itr = std::find_if(requested_validators.begin(), requested_validators.end(),
+                                [&](const requested_validator_info& a) {
+                                    return a.account == validator;
+                                });
         check(itr != requested_validators.end(), "blkendt.xsat::endorse: the validator has less than 100 BTC staked");
-        auto provider_validator = *itr;
+        provider_validator_info provider_info{
+            .account = itr->account, .staking = itr->staking, .created_at = current_time_point()};
         requested_validators.erase(itr);
         _endorsement.emplace(get_self(), [&](auto& row) {
             row.id = _endorsement.available_primary_key();
             row.hash = hash;
+            row.provider_validators.push_back(provider_info);
             row.requested_validators = requested_validators;
-            row.provider_validators.push_back(provider_validator);
         });
     } else {
         check(std::find_if(endorsement_itr->provider_validators.begin(), endorsement_itr->provider_validators.end(),
-                           [&](const validator_info& a) {
+                           [&](const provider_validator_info& a) {
                                return a.account == validator;
                            })
                   == endorsement_itr->provider_validators.end(),
               "blkendt.xsat::endorse: validator is on the list of provider validators");
 
         auto itr = std::find_if(endorsement_itr->requested_validators.begin(),
-                                endorsement_itr->requested_validators.end(), [&](const validator_info& a) {
+                                endorsement_itr->requested_validators.end(), [&](const requested_validator_info& a) {
                                     return a.account == validator;
                                 });
         check(itr != endorsement_itr->requested_validators.end(),
               "blkendt.xsat::endorse: the validator has less than 100 BTC staked");
         endorsement_idx.modify(endorsement_itr, same_payer, [&](auto& row) {
-            auto provider_validator = *itr;
-            row.provider_validators.push_back(provider_validator);
+            row.provider_validators.push_back(
+                {.account = itr->account, .staking = itr->staking, .created_at = current_time_point()});
             row.requested_validators.erase(itr);
         });
 
@@ -91,15 +93,15 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     }
 }
 
-std::vector<block_endorse::validator_info> block_endorse::get_valid_validator() {
+std::vector<block_endorse::requested_validator_info> block_endorse::get_valid_validator() {
     endorse_manage::validator_table _validator
         = endorse_manage::validator_table(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);
     auto idx = _validator.get_index<"bystaked"_n>();
     auto itr = idx.lower_bound(MIN_STAKE_FOR_ENDORSEMENT);
-    std::vector<validator_info> result;
+    std::vector<requested_validator_info> result;
     while (itr != idx.end()) {
         result.emplace_back(
-            validator_info{.account = itr->owner, .staking = static_cast<uint64_t>(itr->quantity.amount)});
+            requested_validator_info{.account = itr->owner, .staking = static_cast<uint64_t>(itr->quantity.amount)});
         itr++;
     }
     return result;

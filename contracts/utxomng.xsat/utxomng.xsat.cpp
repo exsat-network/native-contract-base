@@ -194,6 +194,7 @@ void utxo_manage::consensus(const uint64_t height, const checksum256& hash) {
         row.bucket_id = passed_index_itr->bucket_id;
         row.miner = passed_index_itr->miner;
         row.synchronizer = passed_index_itr->synchronizer;
+        row.created_at = current_time_point();
     });
 
     auto chain_state = _chain_state.get_or_default();
