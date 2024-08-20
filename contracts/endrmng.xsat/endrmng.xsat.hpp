@@ -473,8 +473,8 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      * ### params
      *
      * - `{name} validator` - validator account
-     * - `{uint64_t} commission_rate` - commission ratio, decimal is 10^4
-     * - `{string} financial_account` - financial accounts
+     * - `{optional<uint64_t>} commission_rate` - commission ratio, decimal is 10^4
+     * - `{optional<string>} financial_account` - financial accounts
      *
      * ### example
      *
@@ -483,7 +483,8 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      * ```
      */
     [[eosio::action]]
-    void config(const name& validator, const uint64_t commission_rate, const string& financial_account);
+    void config(const name& validator, const optional<uint64_t>& commission_rate,
+                const optional<string>& financial_account);
 
     /**
      * ## ACTION `stake`

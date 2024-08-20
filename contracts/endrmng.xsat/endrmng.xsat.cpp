@@ -126,28 +126,32 @@ void endorse_manage::register_validator(const name& proxy, const name& validator
 
 //@auth validator
 [[eosio::action]]
-void endorse_manage::config(const name& validator, const uint64_t commission_rate, const string& financial_account) {
+void endorse_manage::config(const name& validator, const optional<uint64_t>& commission_rate,
+                            const optional<string>& financial_account) {
     require_auth(validator);
+    check(commission_rate.has_value() || financial_account.has_value(),
+          "endrmng.xsat::config: commissionrate and financial account cannot be empty at the same time");
     check(
-        commission_rate <= COMMISSION_RATE_BASE,
+        !commission_rate.has_value() || *commission_rate <= COMMISSION_RATE_BASE,
         "endrmng.xsat::config: commission_rate must be less than or equal to " + std::to_string(COMMISSION_RATE_BASE));
-
-    bool is_eos_address = financial_account.size() <= 12;
-    if (is_eos_address) {
-        check(is_account(name(financial_account)), "endrmng.xsat::config: financial account does not exists");
-    } else {
-        check(xsat::utils::is_valid_evm_address(financial_account), "endrmng.xsat::config: invalid financial account");
-    }
 
     auto validator_itr = _validator.require_find(validator.value, "endrmng.xsat::config: [validators] does not exists");
     _validator.modify(validator_itr, same_payer, [&](auto& row) {
-        row.commission_rate = commission_rate;
-        if (is_eos_address) {
-            row.reward_recipient = name(financial_account);
-            row.memo = "";
-        } else {
-            row.reward_recipient = ERC20_CONTRACT;
-            row.memo = financial_account;
+        if (commission_rate.has_value()) {
+            row.commission_rate = *commission_rate;
+        }
+        if (financial_account.has_value()) {
+            bool is_eos_account = financial_account->size() <= 12;
+            if (is_eos_account) {
+                check(is_account(name(*financial_account)), "endrmng.xsat::config: financial account does not exists");
+                row.reward_recipient = name(*financial_account);
+                row.memo = "";
+            } else {
+                check(xsat::utils::is_valid_evm_address(*financial_account),
+                      "endrmng.xsat::config: invalid financial account");
+                row.reward_recipient = ERC20_CONTRACT;
+                row.memo = *financial_account;
+            }
         }
     });
 }
