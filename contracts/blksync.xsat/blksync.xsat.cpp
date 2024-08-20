@@ -54,7 +54,7 @@ void block_sync::delchunks(const uint64_t bucket_id) {
 //@auth synchronizer
 [[eosio::action]]
 void block_sync::initbucket(const name& synchronizer, const uint64_t height, const checksum256& hash,
-                            const uint32_t block_size, const uint8_t num_chunks) {
+                            const uint32_t block_size, const uint8_t num_chunks, const uint32_t chunk_size) {
     require_auth(synchronizer);
 
     check(height > START_HEIGHT, "blksync.xsat::initbucket: height must be greater than 840000");
@@ -93,6 +93,7 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
             row.hash = hash;
             row.size = block_size;
             row.num_chunks = num_chunks;
+            row.chunk_size = chunk_size;
             row.status = uploading;
             row.updated_at = current_time_point();
         });
@@ -105,6 +106,7 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
         block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
             row.size = block_size;
             row.num_chunks = num_chunks;
+            row.chunk_size = chunk_size;
             row.status = uploading;
             row.updated_at = current_time_point();
         });
@@ -112,7 +114,7 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
 
     // log
     block_sync::bucketlog_action _bucketlog(get_self(), {get_self(), "active"_n});
-    _bucketlog.send(bucket_id, synchronizer, height, hash, block_size, num_chunks);
+    _bucketlog.send(bucket_id, synchronizer, height, hash, block_size, num_chunks, chunk_size);
 }
 
 //@auth synchronizer
