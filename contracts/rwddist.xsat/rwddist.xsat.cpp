@@ -62,7 +62,8 @@ void reward_distribution::distribute(const uint64_t height) {
     provider_validators.reserve(endorsement_itr->provider_validators.size());
     for (size_t i = 0; i < endorsement_itr->provider_validators.size(); ++i) {
         const auto validator = endorsement_itr->provider_validators[i];
-        provider_validators.emplace_back(validator_info{.account = validator.account, .staking = validator.staking});
+        provider_validators.emplace_back(validator_info{
+            .account = validator.account, .staking = validator.staking, .created_at = validator.created_at});
 
         endorsed_staking += validator.staking;
         if (i < num_reached_consensus) {

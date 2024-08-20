@@ -147,6 +147,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * - `{vector<uint8_t>} chunk_ids` - the uploaded chunk_id
      * - `{string} reason` - reason for verification failure
      * - `{block_status} status` - current block status
+     * - `{time_point_sec} updated_at` - updated at time
      * - `{std::optional<verify_info_data>} verify_info` - @see struct `verify_info_data`
      *
      * ### example
@@ -163,6 +164,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *   "chunk_ids": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
      *   "reason": "",
      *   "status": 3,
+     *   "updated_at": "2024-08-19T00:00:00",
      *   "verify_info": {
      *       "miner": "",
      *       "btc_miners": [
@@ -204,6 +206,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         std::set<uint8_t> chunk_ids;
         std::string reason;
         block_status status;
+        time_point_sec updated_at;
 
         std::optional<verify_info_data> verify_info;
 
@@ -234,6 +237,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * - `{uint64_t} bucket_id` - bucket_id is used to obtain block data
      * - `{name} synchronizer` - synchronizer account
      * - `{name} miner` - miner account
+     * - `{time_point_sec} created_at` - created at time
      *
      * ### example
      *
@@ -245,6 +249,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *   "bucket_id": 80,
      *   "synchronizer": "test.xsat",
      *   "miner": "alice",
+     *   "created_at": "2024-08-13T00:00:00"
      * }
      * ```
      */
@@ -255,6 +260,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         uint64_t bucket_id;
         name synchronizer;
         name miner;
+        time_point_sec created_at;
         uint64_t primary_key() const { return id; }
         uint64_t by_bucket_id() const { return bucket_id; }
         checksum256 by_hash() const { return hash; }
@@ -346,6 +352,20 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         std::string reason;
         checksum256 block_hash;
     };
+
+    [[eosio::action]]
+    void reset(const name &synchronizer, const uint64_t height, const checksum256 &hash) {
+        require_auth(get_self());
+
+        block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
+        auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
+        auto block_bucket_itr = block_bucket_idx.find(xsat::utils::compute_block_id(height, hash));
+
+        block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto &row) {
+            row.verify_info = std::nullopt;
+            row.status = upload_complete;
+        });
+    }
 
     /**
      * ## ACTION `consensus`

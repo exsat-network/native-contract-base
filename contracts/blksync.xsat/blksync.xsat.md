@@ -184,6 +184,7 @@ static const block_status verify_pass = 7;
 - `{vector<uint8_t>} chunk_ids` - the uploaded chunk_id
 - `{string} reason` - reason for verification failure
 - `{block_status} status` - current block status
+- `{time_point_sec} updated_at` - updated at time
 - `{std::optional<verify_info_data>} verify_info` - @see struct `verify_info_data`
 
 ### example
@@ -200,6 +201,7 @@ static const block_status verify_pass = 7;
   "chunk_ids": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   "reason": "",
   "status": 3,
+  "updated_at": "2024-08-19T00:00:00",
   "verify_info": {
       "miner": "",
       "btc_miners": [
@@ -241,6 +243,7 @@ static const block_status verify_pass = 7;
 - `{uint64_t} bucket_id` - bucket_id is used to obtain block data
 - `{name} synchronizer` - synchronizer account
 - `{name} miner` - miner account
+- `{time_point_sec} created_at` - created at time
 
 ### example
 
@@ -252,6 +255,7 @@ static const block_status verify_pass = 7;
   "bucket_id": 80,
   "synchronizer": "test.xsat",
   "miner": "alice",
+  "created_at": "2024-08-13T00:00:00"
 }
 ```
 

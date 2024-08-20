@@ -94,6 +94,7 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
             row.size = block_size;
             row.num_chunks = num_chunks;
             row.status = uploading;
+            row.updated_at = current_time_point();
         });
     } else {
         check(block_bucket_itr->status == uploading || block_bucket_itr->status == verify_fail,
@@ -105,6 +106,7 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
             row.size = block_size;
             row.num_chunks = num_chunks;
             row.status = uploading;
+            row.updated_at = current_time_point();
         });
     }
 
@@ -205,6 +207,7 @@ void block_sync::delchunk(const name& synchronizer, const uint64_t height, const
         row.uploaded_num_chunks -= 1;
         row.uploaded_size -= chunk_size;
         row.chunk_ids.erase(chunk_id);
+        row.updated_at = current_time_point();
 
         if (row.uploaded_size == row.size && row.uploaded_num_chunks == row.num_chunks) {
             row.status = upload_complete;
@@ -302,6 +305,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
         block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
             row.status = status;
             row.verify_info = verify_info;
+            row.updated_at = current_time_point();
         });
         return {.status = get_block_status_name(status), .block_hash = hash};
     }
@@ -367,6 +371,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
             row.synchronizer = synchronizer;
             row.miner = miner;
             row.cumulative_work = cumulative_work;
+            row.created_at = current_time_point();
         });
 
         if (status == verify_pass) {
@@ -378,6 +383,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
         block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
             row.status = status;
             row.verify_info = std::nullopt;
+            row.updated_at = current_time_point();
         });
         return {.status = get_block_status_name(status), .block_hash = hash};
     }
@@ -394,6 +400,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
 
     block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
         row.status = verify_pass;
+        row.updated_at = current_time_point();
     });
     return {.status = get_block_status_name(verify_pass), .block_hash = hash};
 }

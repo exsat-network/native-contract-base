@@ -346,6 +346,7 @@ less than or
 - `{name} parser` - the last parser of the parsing block
 - `{uint64_t} num_utxos` - the total number of vin and vout of the block
 - `{bool} irreversible` - is it an irreversible block
+- `{time_point_sec} created_at` - created at time
 
 ### example
 
@@ -365,7 +366,8 @@ less than or
   "synchronizer": "alice",
   "parser": "alice",
   "num_utxos": 16278,
-  "irreversible": 1
+  "irreversible": 1,
+  "created_at": "2024-08-13T00:00:00"
 }
 ```
 
