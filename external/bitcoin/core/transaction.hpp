@@ -44,6 +44,14 @@ namespace bitcoin::core {
         std::vector<transaction_output> outputs;
         std::vector<transaction_witness> witness;
         uint32_t locktime;
+        // Location of auxiliary data recording tx
+        std::vector<char>* data;
+        uint32_t from;
+        uint32_t to;
+        //If Witness is not used, it can be set to false to speed up deserialization
+        bool allow_witness;
+
+        transaction(std::vector<char>* data, bool allow_witness = false) : data(data), allow_witness(allow_witness) {}
 
         template <typename Stream>
         void serialize_for_merkle(eosio::datastream<Stream>& ds) const {
@@ -72,9 +80,10 @@ namespace bitcoin::core {
         }
 
         uint256_t hash() const {
-            auto hash_data = eosio::pack(*this);
-            return bitcoin::dhash(hash_data);
+            const size_t len = to - from;
+            return bitcoin::dhash(data->data() + from, len);
         }
+
         bool is_coinbase() const { return (inputs.size() == 1 && inputs[0].previous_output_hash == uint256_t(0)); }
 
         std::optional<eosio::checksum256> get_witness_reserve_value() const {
@@ -175,6 +184,7 @@ namespace eosio {
  */
     template <typename Stream>
     datastream<Stream>& operator>>(datastream<Stream>& ds, bitcoin::core::transaction& v) {
+        v.from = ds.tellp();
         ds >> v.version;
         auto rewind = ds.tellp();
         uint16_t has_witness;
@@ -200,15 +210,27 @@ namespace eosio {
         }
 
         if (has_witness == 0x0100) {
-            v.witness.reserve(input_count);
-            for (auto i = 0; i < input_count; i++) {
-                bitcoin::core::transaction_witness witness;
-                ds >> witness;
-                v.witness.push_back(witness);
+            if (v.allow_witness) {
+                v.witness.reserve(input_count);
+                for (auto i = 0; i < input_count; i++) {
+                    bitcoin::core::transaction_witness witness;
+                    ds >> witness;
+                    v.witness.emplace_back(std::move(witness));
+                }
+            } else {
+                v.witness.resize(input_count);
+                for (auto i = 0; i < input_count; i++) {
+                    auto length = bitcoin::varint::decode(ds);
+                    for (auto j = 0; j < length; j++) {
+                        auto size = bitcoin::varint::decode(ds);
+                        ds.skip(size);
+                    }
+                }
             }
         }
 
         ds >> v.locktime;
+        v.to = ds.tellp();
         return ds;
     }
 

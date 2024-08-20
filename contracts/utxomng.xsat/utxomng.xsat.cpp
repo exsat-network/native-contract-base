@@ -175,7 +175,8 @@ void utxo_manage::consensus(const uint64_t height, const checksum256& hash) {
     }
 
     // get header
-    auto block_data = block_sync::read_bucket(passed_index_itr->bucket_id, BLOCK_SYNC_CONTRACT, 0, BLOCK_HEADER_SIZE);
+    auto block_data
+        = block_sync::read_bucket(BLOCK_SYNC_CONTRACT, passed_index_itr->bucket_id, BLOCK_CHUNK, 0, BLOCK_HEADER_SIZE);
     eosio::datastream<const char*> block_stream(block_data.data(), block_data.size());
     bitcoin::core::block_header block_header;
     block_stream >> block_header;
@@ -365,7 +366,7 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
 
 void utxo_manage::parsing_transactions(const uint64_t height, const checksum256& hash,
                                        parsing_progress_row* parsing_progress, uint64_t process_row) {
-    auto block_data = block_sync::read_bucket(parsing_progress->bucket_id, BLOCK_SYNC_CONTRACT,
+    auto block_data = block_sync::read_bucket(BLOCK_SYNC_CONTRACT, parsing_progress->bucket_id, BLOCK_CHUNK,
                                               BLOCK_HEADER_SIZE + parsing_progress->parsed_position,
                                               std::numeric_limits<uint64_t>::max());
     eosio::datastream<const char*> block_stream(block_data.data(), block_data.size());
@@ -380,7 +381,7 @@ void utxo_manage::parsing_transactions(const uint64_t height, const checksum256&
     uint64_t parsed_position = 0;
     auto pending_transactions = parsing_progress->num_transactions - parsing_progress->parsed_transactions;
     while (pending_transactions-- && process_row) {
-        bitcoin::core::transaction transaction;
+        bitcoin::core::transaction transaction(&block_data);
         block_stream >> transaction;
         auto txid = bitcoin::be_checksum256_from_uint(transaction.merkle_hash());
 

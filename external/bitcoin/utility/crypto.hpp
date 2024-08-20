@@ -16,6 +16,14 @@ namespace bitcoin {
     }
 
     template <typename T>
+    bitcoin::uint256_t dhash(T* data, size_t len) {
+        auto h = eosio::sha256(data, len);
+        auto buffer = h.extract_as_byte_array();
+        h = eosio::sha256((char*)buffer.data(), buffer.size());
+        return bitcoin::le_uint_from_checksum256(h);
+    }
+
+    template <typename T>
     auto dhash(const std::vector<T>& data) -> std::enable_if_t<sizeof(T) == 1, bitcoin::uint256_t> {
         auto h = eosio::sha256((char*)data.data(), data.size());
         auto buffer = h.extract_as_byte_array();
@@ -32,6 +40,7 @@ namespace bitcoin {
     }
 
     bitcoin::uint256_t generate_merkle_root(std::vector<bitcoin::uint256_t>& hashes) {
+        if (hashes.size() == 0) return bitcoin::uint256_t(0);
         // this loop ends
         while (hashes.size() > 1) {
             if (hashes.size() % 2 == 1) {
@@ -53,7 +62,6 @@ namespace bitcoin {
 
             hashes = std::move(new_hashes);
         }
-        if (hashes.size() == 0) return bitcoin::uint256_t(0);
         return hashes[0];
     }
 
