@@ -21,6 +21,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     static const parsing_status distributing_rewards = 4;
     static const parsing_status parsing = 5;
 
+    //@notice parsing_progress.num_transactions == parsing_progress.parsed_transactions => return status `parsing_completed`
     static std::string get_parsing_status_name(const parsing_status status) {
         switch (status) {
             // Because wait starts from a new block, the return name is parsing completed.
