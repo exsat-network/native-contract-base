@@ -20,6 +20,9 @@ static constexpr name UTXO_MANAGE_CONTRACT = "utxomng.xsat"_n;
 static constexpr name RESOURCE_MANAGE_CONTRACT = "rescmng.xsat"_n;
 static constexpr name REWARD_DISTRIBUTION_CONTRACT = "rwddist.xsat"_n;
 
+// TABLE
+static constexpr name BLOCK_CHUNK = "block.chunk"_n;
+
 // SYMBOLS
 static constexpr symbol XSAT_SYMBOL = {"XSAT", 8};
 static constexpr symbol BTC_SYMBOL = {"BTC", 8};

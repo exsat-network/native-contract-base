@@ -41,10 +41,13 @@ void block_sync::consensus(const uint64_t height, const name& synchronizer, cons
 void block_sync::delchunks(const uint64_t bucket_id) {
     require_auth(UTXO_MANAGE_CONTRACT);
 
-    block_chunk_table _block_chunk = block_chunk_table(get_self(), bucket_id);
-    auto block_chunk_itr = _block_chunk.begin();
-    while (block_chunk_itr != _block_chunk.end()) {
-        block_chunk_itr = _block_chunk.erase(block_chunk_itr);
+    // erase block.chunk
+    auto iter = eosio::internal_use_do_not_use::db_find_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
+    while (iter >= 0) {
+        uint64_t ignored;
+        auto next_iter = eosio::internal_use_do_not_use::db_next_i64(iter, &ignored);
+        eosio::internal_use_do_not_use::db_remove_i64(iter);
+        iter = next_iter;
     }
 }
 
@@ -113,13 +116,17 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
 //@auth synchronizer
 [[eosio::action]]
 void block_sync::pushchunk(const name& synchronizer, const uint64_t height, const checksum256& hash,
-                           const uint8_t chunk_id, const std::vector<char>& data) {
+                           const uint8_t chunk_id, const eosio::ignore<std::vector<char>>& data) {
     require_auth(synchronizer);
 
     check(!utxo_manage::check_consensus(height, hash), "blksync.xsat::pushchunk: the block has reached consensus");
 
     // check
-    check(data.size() > 0, "blksync.xsat::pushchunk: data size must be greater than 0");
+    eosio::unsigned_int size;
+    _ds >> size;
+    auto data_size = _ds.remaining();
+    eosio::check(data_size == (size_t)size, "blksync.xsat::pushchunk: data size does not match");
+    check(data_size > 0, "blksync.xsat::pushchunk: data size must be greater than 0");
 
     block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
     auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
@@ -136,25 +143,22 @@ void block_sync::pushchunk(const name& synchronizer, const uint64_t height, cons
 
     uint32_t pre_size = 0;
     // emplace/modify chunk
-    block_chunk_table _block_chunk = block_chunk_table(get_self(), block_bucket_itr->bucket_id);
-    auto chunk_itr = _block_chunk.find(chunk_id);
-    if (chunk_itr != _block_chunk.end()) {
-        pre_size = chunk_itr->data.size();
-        _block_chunk.modify(chunk_itr, get_self(), [&](auto& row) {
-            row.data = data;
-        });
+    auto bucket_id = block_bucket_itr->bucket_id;
+    auto chunk_itr
+        = eosio::internal_use_do_not_use::db_find_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, chunk_id);
+    if (chunk_itr >= 0) {
+        pre_size = eosio::internal_use_do_not_use::db_get_i64(chunk_itr, nullptr, 0);
+        eosio::internal_use_do_not_use::db_update_i64(chunk_itr, get_self().value, _ds.pos(), data_size);
     } else {
-        _block_chunk.emplace(get_self(), [&](auto& row) {
-            row.id = chunk_id;
-            row.data = data;
-        });
+        eosio::internal_use_do_not_use::db_store_i64(bucket_id, BLOCK_CHUNK.value, get_self().value, chunk_id,
+                                                     _ds.pos(), data_size);
     }
-
     block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
-        if (chunk_itr == _block_chunk.end()) {
+        if (chunk_itr < 0) {
             row.uploaded_num_chunks += 1;
+            row.chunk_ids.insert(chunk_id);
         }
-        row.uploaded_size = row.uploaded_size + data.size() - pre_size;
+        row.uploaded_size = row.uploaded_size + data_size - pre_size;
 
         if (row.uploaded_size == row.size && row.uploaded_num_chunks == row.num_chunks) {
             row.status = upload_complete;
@@ -188,14 +192,19 @@ void block_sync::delchunk(const name& synchronizer, const uint64_t height, const
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
     pay.send(height, hash, synchronizer, PUSH_CHUNK, 1);
 
-    block_chunk_table _block_chunk = block_chunk_table(get_self(), block_bucket_itr->bucket_id);
-    auto itr = _block_chunk.require_find(chunk_id, "blksync.xsat::delchunk: chunk_id does not exist");
-    auto chunk_size = itr->data.size();
-    _block_chunk.erase(itr);
+    auto bucket_id = block_bucket_itr->bucket_id;
+
+    auto chunk_itr
+        = eosio::internal_use_do_not_use::db_find_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, chunk_id);
+    check(chunk_itr >= 0, "blksync.xsat::delchunk: chunk_id does not exist");
+
+    auto chunk_size = eosio::internal_use_do_not_use::db_get_i64(chunk_itr, nullptr, 0);
+    eosio::internal_use_do_not_use::db_remove_i64(chunk_itr);
 
     block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
         row.uploaded_num_chunks -= 1;
         row.uploaded_size -= chunk_size;
+        row.chunk_ids.erase(chunk_id);
 
         if (row.uploaded_size == row.size && row.uploaded_num_chunks == row.num_chunks) {
             row.status = upload_complete;
@@ -206,7 +215,7 @@ void block_sync::delchunk(const name& synchronizer, const uint64_t height, const
 
     // log
     block_sync::delchunklog_action _delchunklog(get_self(), {get_self(), "active"_n});
-    _delchunklog.send(block_bucket_itr->bucket_id, chunk_id, block_bucket_itr->uploaded_num_chunks);
+    _delchunklog.send(bucket_id, chunk_id, block_bucket_itr->uploaded_num_chunks);
 }
 
 //@auth synchronizer
@@ -224,11 +233,14 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
     pay.send(height, hash, synchronizer, PUSH_CHUNK, 1);
 
-    // erase block chunks
-    block_chunk_table _block_chunk = block_chunk_table(get_self(), block_bucket_itr->bucket_id);
-    auto block_chunk_itr = _block_chunk.begin();
-    while (block_chunk_itr != _block_chunk.end()) {
-        block_chunk_itr = _block_chunk.erase(block_chunk_itr);
+    // erase block.chunk
+    auto iter = eosio::internal_use_do_not_use::db_find_i64(get_self().value, block_bucket_itr->bucket_id,
+                                                            BLOCK_CHUNK.value, 0);
+    while (iter >= 0) {
+        uint64_t ignored;
+        auto next_iter = eosio::internal_use_do_not_use::db_next_i64(iter, &ignored);
+        eosio::internal_use_do_not_use::db_remove_i64(iter);
+        iter = next_iter;
     }
 
     // erase block bucket
@@ -270,19 +282,17 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
         return check_fail(block_bucket_idx, block_bucket_itr, "reached_consensus", hash);
     }
 
-    auto verify_info = block_bucket_itr->verify_info;
+    auto verify_info = block_bucket_itr->verify_info.value_or(verify_info_data{});
     if (status == upload_complete || status == verify_merkle) {
-        if (!verify_info.has_value()) {
-            verify_info = verify_info_data{};
-        }
+        // check merkle
         auto error_msg = check_merkle(block_bucket_itr, verify_info);
         if (error_msg.has_value()) {
             return check_fail(block_bucket_idx, block_bucket_itr, *error_msg, hash);
         }
 
-        if (verify_info->num_transactions == verify_info->processed_transactions
-            && verify_info->processed_position == block_bucket_itr->size) {
-            // next action
+        // next action
+        if (verify_info.num_transactions == verify_info.processed_transactions
+            && verify_info.processed_position == block_bucket_itr->size) {
             status = verify_parent_hash;
         } else {
             status = verify_merkle;
@@ -298,22 +308,23 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
 
     if (status == verify_parent_hash) {
         // check parent
-        auto parent_cumulative_work = utxo_manage::get_cumulative_work(height - 1, verify_info->previous_block_hash);
+        auto parent_cumulative_work = utxo_manage::get_cumulative_work(height - 1, verify_info.previous_block_hash);
         check(parent_cumulative_work.has_value(), "blksync.xsat::verify: parent block hash did not reach consensus");
 
         checksum256 cumulative_work
-            = bitcoin::be_checksum256_from_uint(bitcoin::be_uint_from_checksum256(verify_info->work)
+            = bitcoin::be_checksum256_from_uint(bitcoin::be_uint_from_checksum256(verify_info.work)
                                                 + bitcoin::be_uint_from_checksum256(*parent_cumulative_work));
 
         passed_index_table _passed_index(get_self(), height);
         auto passed_index_id = _passed_index.available_primary_key();
 
         status = verify_pass;
-        if (verify_info->miner) {
+        auto miner = verify_info.miner;
+        if (miner) {
             // The first verification passes and the miner’s latest block height is updated.
             if (passed_index_id == 0) {
                 pool::updateheight_action _updateheight(POOL_REGISTER_CONTRACT, {get_self(), "active"_n});
-                _updateheight.send(verify_info->miner, height, verify_info->btc_miners);
+                _updateheight.send(miner, height, verify_info.btc_miners);
             }
 
             // save the miner information that passed for the first time
@@ -329,7 +340,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
                 _block_miner.emplace(get_self(), [&](auto& row) {
                     row.id = _block_miner.available_primary_key();
                     row.hash = hash;
-                    row.miner = verify_info->miner;
+                    row.miner = miner;
                     row.expired_block_num = expired_block_num;
                 });
             } else {
@@ -337,14 +348,13 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
             }
 
             // miners give priority to index 0
-            if (passed_index_id != 0 && verify_info->miner == synchronizer
-                && expired_block_num > current_block_number()) {
+            if (passed_index_id != 0 && miner == synchronizer && expired_block_num > current_block_number()) {
                 passed_index_id = 0;
-            } else if (passed_index_id == 0 && verify_info->miner != synchronizer) {
+            } else if (passed_index_id == 0 && miner != synchronizer) {
                 passed_index_id = 1;
             }
 
-            if (synchronizer != verify_info->miner && expired_block_num > current_block_number()) {
+            if (synchronizer != miner && expired_block_num > current_block_number()) {
                 status = waiting_miner_verification;
             }
         }
@@ -355,7 +365,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
             row.hash = hash;
             row.bucket_id = block_bucket_itr->bucket_id;
             row.synchronizer = synchronizer;
-            row.miner = verify_info->miner;
+            row.miner = miner;
             row.cumulative_work = cumulative_work;
         });
 
@@ -390,14 +400,16 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
 
 //@private
 template <typename ITR>
-optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, optional<verify_info_data>& verify_info) {
-    auto block_data
-        = read_bucket(block_bucket_itr->bucket_id, get_self(), verify_info->processed_position, block_bucket_itr->size);
+optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_info_data& verify_info) {
+    const auto block_size = block_bucket_itr->size;
+    const auto bucket_id = block_bucket_itr->bucket_id;
+
+    auto block_data = read_bucket(get_self(), bucket_id, BLOCK_CHUNK, verify_info.processed_position, block_size);
     eosio::datastream<const char*> block_stream(block_data.data(), block_data.size());
 
     auto hash = block_bucket_itr->hash;
     // verify header
-    if (verify_info->processed_position == 0) {
+    if (verify_info.processed_position == 0) {
         bitcoin::core::block_header block_header;
         block_stream >> block_header;
 
@@ -411,54 +423,56 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, optional<
             return "invalid_target";
         }
 
-        verify_info->previous_block_hash = bitcoin::be_checksum256_from_uint(block_header.previous_block_hash);
-        verify_info->work = bitcoin::be_checksum256_from_uint(block_header.work());
+        verify_info.previous_block_hash = bitcoin::be_checksum256_from_uint(block_header.previous_block_hash);
+        verify_info.work = bitcoin::be_checksum256_from_uint(block_header.work());
+        verify_info.num_transactions = bitcoin::varint::decode(block_stream);
+        verify_info.header_merkle = bitcoin::le_checksum256_from_uint(block_header.merkle);
+
         // check transactions size
-        verify_info->num_transactions = bitcoin::varint::decode(block_stream);
-        verify_info->header_merkle = bitcoin::le_checksum256_from_uint(block_header.merkle);
-        if (verify_info->num_transactions == 0) {
+        if (verify_info.num_transactions == 0) {
             return "tx_size_limits";
         }
     }
 
+    // deserialization transaction
     utxo_manage::config_table _config(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     auto config = _config.get();
     auto num_txs_per_verification = config.num_txs_per_verification;
-    // deserialization transaction
-    auto pending_transactions = verify_info->num_transactions - verify_info->processed_transactions;
+    auto pending_transactions = verify_info.num_transactions - verify_info.processed_transactions;
     auto rows = num_txs_per_verification;
     if (rows > pending_transactions) {
         rows = pending_transactions;
     }
-
     std::vector<bitcoin::core::transaction> transactions;
     transactions.reserve(rows);
     for (auto i = 0; i < rows; i++) {
-        bitcoin::core::transaction transaction;
+        // Coinbase needs to obtain witness data
+        bool allow_witness = verify_info.processed_position == 0 && i == 0;
+        bitcoin::core::transaction transaction(&block_data, true);
         block_stream >> transaction;
         transactions.emplace_back(std::move(transaction));
     }
 
-    if (!verify_info->has_witness) {
-        verify_info->has_witness = std::any_of(transactions.cbegin(), transactions.cend(), [](const auto& trx) {
+    if (!verify_info.has_witness) {
+        verify_info.has_witness = std::any_of(transactions.cbegin(), transactions.cend(), [](const auto& trx) {
             return trx.witness.size() > 0;
         });
     }
 
     // check witness ?
-    if (verify_info->processed_position == 0 && transactions.front().inputs.size() > 0) {
+    if (verify_info.processed_position == 0 && transactions.front().inputs.size() > 0) {
         if (!transactions.front().is_coinbase()) {
             return "coinbase_missing";
         }
         const auto& cbtrx = transactions.front();
-        verify_info->witness_reserve_value = cbtrx.get_witness_reserve_value();
-        verify_info->witness_commitment = cbtrx.get_witness_commitment();
+        verify_info.witness_reserve_value = cbtrx.get_witness_reserve_value();
+        verify_info.witness_commitment = cbtrx.get_witness_commitment();
 
-        find_miner(cbtrx.outputs, verify_info->miner, verify_info->btc_miners);
+        find_miner(cbtrx.outputs, verify_info.miner, verify_info.btc_miners);
     }
 
     auto need_witness_check
-        = verify_info->witness_reserve_value.has_value() && verify_info->witness_commitment.has_value();
+        = verify_info.witness_reserve_value.has_value() && verify_info.witness_commitment.has_value();
 
     // obtain relay merkle
     bitcoin::uint256_t header_merkle = bitcoin::core::generate_header_merkle(transactions);
@@ -468,7 +482,7 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, optional<
     }
 
     // calculate to the same layer
-    if (verify_info->num_transactions > num_txs_per_verification && rows != num_txs_per_verification) {
+    if (verify_info.num_transactions > num_txs_per_verification && rows != num_txs_per_verification) {
         uint8_t current_layer = static_cast<uint8_t>(std::ceil(std::log2(rows)));
         vector<bitcoin::uint256_t> cur_hashes;
         cur_hashes.reserve(2);
@@ -483,49 +497,48 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, optional<
     }
 
     // save sub merkle
-    verify_info->relay_header_merkle.emplace_back(bitcoin::le_checksum256_from_uint(header_merkle));
+    verify_info.relay_header_merkle.emplace_back(bitcoin::le_checksum256_from_uint(header_merkle));
     if (need_witness_check) {
-        verify_info->relay_witness_merkle.emplace_back(bitcoin::le_checksum256_from_uint(witness_merkle));
+        verify_info.relay_witness_merkle.emplace_back(bitcoin::le_checksum256_from_uint(witness_merkle));
     }
 
     // save processed position
-    verify_info->processed_transactions += rows;
-    verify_info->processed_position += block_stream.tellp();
+    verify_info.processed_transactions += rows;
+    verify_info.processed_position += block_stream.tellp();
 
     // check data size
-    if (verify_info->num_transactions == verify_info->processed_transactions
-        && verify_info->processed_position < block_bucket_itr->size) {
+    if (verify_info.num_transactions == verify_info.processed_transactions
+        && verify_info.processed_position < block_size) {
         return "data_exceeds";
     }
 
-    if (verify_info->processed_position == block_bucket_itr->size
-        && verify_info->num_transactions > verify_info->processed_transactions) {
+    if (verify_info.processed_position == block_size
+        && verify_info.num_transactions > verify_info.processed_transactions) {
         return "missing_block_data";
     }
 
     // verify merkle
-    if (verify_info->num_transactions == verify_info->processed_transactions
-        && verify_info->processed_position == block_bucket_itr->size) {
+    if (verify_info.num_transactions == verify_info.processed_transactions
+        && verify_info.processed_position == block_size) {
         // verify header merkle
-        auto header_merkle_root = bitcoin::generate_merkle_root(verify_info->relay_header_merkle);
-        if (header_merkle_root != bitcoin::le_uint_from_checksum256(verify_info->header_merkle)) {
+        auto header_merkle_root = bitcoin::generate_merkle_root(verify_info.relay_header_merkle);
+        if (header_merkle_root != bitcoin::le_uint_from_checksum256(verify_info.header_merkle)) {
             return "merkle_invalid";
         }
 
         // verify witness merkle
         if (need_witness_check) {
-            auto witness_merkle_root = bitcoin::core::generate_witness_merkle(verify_info->relay_witness_merkle,
-                                                                              *verify_info->witness_reserve_value);
-            if (witness_merkle_root != bitcoin::le_uint_from_checksum256(*verify_info->witness_commitment)) {
+            auto witness_merkle_root = bitcoin::core::generate_witness_merkle(verify_info.relay_witness_merkle,
+                                                                              *verify_info.witness_reserve_value);
+            if (witness_merkle_root != bitcoin::le_uint_from_checksum256(*verify_info.witness_commitment)) {
                 return "witness_merkle_invalid";
             }
-        } else if (verify_info->has_witness) {
+        } else if (verify_info.has_witness) {
             return "witness_merkle_invalid";
         }
     }
     return std::nullopt;
 }
-
 //@private
 template <typename T, typename ITR>
 block_sync::verify_block_result block_sync::check_fail(T& _block_bucket, const ITR block_bucket_itr,
@@ -554,11 +567,11 @@ void block_sync::find_miner(std::vector<bitcoin::core::transaction_output> outpu
         std::vector<string> to;
         bitcoin::ExtractDestination(output.script.data, to);
         if (to.size() == 1) {
-            btc_miners.push_back(to[0]);
             if (!miner) {
                 auto miner_itr = miner_idx.find(xsat::utils::hash(to[0]));
                 if (miner_itr != miner_idx.end()) {
                     miner = miner_itr->synchronizer;
+                    btc_miners.push_back(to[0]);
                 }
             }
         }
