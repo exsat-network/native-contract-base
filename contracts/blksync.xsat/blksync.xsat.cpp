@@ -457,7 +457,7 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_in
     for (auto i = 0; i < rows; i++) {
         // Coinbase needs to obtain witness data
         bool allow_witness = verify_info.processed_position == 0 && i == 0;
-        bitcoin::core::transaction transaction(&block_data, true);
+        bitcoin::core::transaction transaction(&block_data, allow_witness);
         block_stream >> transaction;
         transactions.emplace_back(std::move(transaction));
     }
@@ -555,6 +555,7 @@ block_sync::verify_block_result block_sync::check_fail(T& _block_bucket, const I
     _block_bucket.modify(block_bucket_itr, same_payer, [&](auto& row) {
         row.status = verify_fail;
         row.reason = state;
+        row.updated_at = current_time_point();
         row.verify_info = std::nullopt;
     });
     return block_sync::verify_block_result{

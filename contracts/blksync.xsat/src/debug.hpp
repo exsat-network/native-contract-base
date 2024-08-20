@@ -1,5 +1,5 @@
 template <typename T>
-void block_sync::clear_table(T& table, uint64_t rows_to_clear) {
+void block_sync::clear_table(T &table, uint64_t rows_to_clear) {
     auto itr = table.begin();
     while (itr != table.end() && rows_to_clear--) {
         itr = table.erase(itr);
@@ -7,7 +7,7 @@ void block_sync::clear_table(T& table, uint64_t rows_to_clear) {
 }
 
 [[eosio::action]]
-void block_sync::cleartable(const name table_name, const name& synchronizer, const uint64_t height,
+void block_sync::cleartable(const name table_name, const name &synchronizer, const uint64_t height,
                             const uint64_t bucket_id, const optional<uint64_t> max_rows) {
     require_auth(get_self());
     const uint64_t rows_to_clear = (!max_rows || *max_rows == 0) ? -1 : *max_rows;
@@ -34,4 +34,32 @@ void block_sync::cleartable(const name table_name, const name& synchronizer, con
         clear_table(_block_miner, rows_to_clear);
     else
         check(false, "blksync.xsat::cleartable: [table_name] unknown table to clear");
+}
+
+[[eosio::action]]
+void block_sync::reset(const name &synchronizer, const uint64_t height, const checksum256 &hash) {
+    require_auth(get_self());
+
+    block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
+    auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
+    auto block_bucket_itr = block_bucket_idx.require_find(xsat::utils::compute_block_id(height, hash));
+
+    block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto &row) {
+        row.verify_info = std::nullopt;
+        row.status = upload_complete;
+    });
+}
+
+[[eosio::action]]
+void block_sync::updateparent(const name &synchronizer, const uint64_t height, const checksum256 &hash,
+                              const checksum256 &parent) {
+    require_auth(get_self());
+
+    block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
+    auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
+    auto block_bucket_itr = block_bucket_idx.require_find(xsat::utils::compute_block_id(height, hash));
+
+    block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto &row) {
+        row.verify_info->previous_block_hash = parent;
+    });
 }
