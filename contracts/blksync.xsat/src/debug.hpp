@@ -51,8 +51,8 @@ void block_sync::reset(const name &synchronizer, const uint64_t height, const ch
 }
 
 [[eosio::action]]
-void block_sync::pass(const name &synchronizer, const uint64_t height, const checksum256 &hash,
-                      const checksum256 &parent) {
+void block_sync::updateparent(const name &synchronizer, const uint64_t height, const checksum256 &hash,
+                              const checksum256 &parent) {
     require_auth(get_self());
 
     block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
@@ -61,6 +61,5 @@ void block_sync::pass(const name &synchronizer, const uint64_t height, const che
 
     block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto &row) {
         row.verify_info->previous_block_hash = parent;
-        row.status = verify_pass;
     });
 }

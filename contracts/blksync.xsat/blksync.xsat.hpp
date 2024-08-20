@@ -531,7 +531,8 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     void reset(const name &synchronizer, const uint64_t height, const checksum256 &hash);
 
     [[eosio::action]]
-    void pass(const name &synchronizer, const uint64_t height, const checksum256 &hash, const checksum256 &parent);
+    void updateparent(const name &synchronizer, const uint64_t height, const checksum256 &hash,
+                      const checksum256 &parent);
 
 #endif
 
