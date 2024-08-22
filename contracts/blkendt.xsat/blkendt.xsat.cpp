@@ -22,10 +22,10 @@ void block_endorse::erase(const uint64_t height) {
 
 //@auth get_self()
 [[eosio::action]]
-void block_endorse::config(const bool disabled_endorse) {
+void block_endorse::config(const uint64_t limit_endorse_height) {
     require_auth(get_self());
     auto config = _config.get_or_default();
-    config.disabled_endorse = disabled_endorse;
+    config.limit_endorse_height = limit_endorse_height;
     _config.set(config, get_self());
 }
 
@@ -34,8 +34,10 @@ void block_endorse::config(const bool disabled_endorse) {
 void block_endorse::endorse(const name& validator, const uint64_t height, const checksum256& hash) {
     require_auth(validator);
 
-    check(!_config.get_or_default().disabled_endorse,
+    auto config = _config.get_or_default();
+    check(config.limit_endorse_height == 0 || config.limit_endorse_height >= height,
           "blkendt.xsat::endorse: the current endorsement status is disabled");
+
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     auto chain_state = _chain_state.get();
     check(chain_state.irreversible_height < height && chain_state.migrating_height != height,
