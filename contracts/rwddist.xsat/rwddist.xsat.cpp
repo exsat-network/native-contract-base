@@ -87,6 +87,7 @@ void reward_distribution::distribute(const uint64_t height) {
     });
 
     auto reward_balance = _reward_balance.get_or_default();
+    reward_balance.height = height;
     reward_balance.synchronizer_rewards_unclaimed = reward_log_itr->synchronizer_rewards;
     reward_balance.consensus_rewards_unclaimed = reward_log_itr->consensus_rewards;
     reward_balance.staking_rewards_unclaimed = reward_log_itr->staking_rewards;

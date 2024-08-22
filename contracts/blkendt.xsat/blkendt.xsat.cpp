@@ -48,6 +48,7 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     block_endorse::endorsement_table _endorsement(get_self(), height);
     auto endorsement_idx = _endorsement.get_index<"byhash"_n>();
     auto endorsement_itr = endorsement_idx.find(hash);
+    bool reached_consensus = false;
     if (endorsement_itr == endorsement_idx.end()) {
         std::vector<requested_validator_info> requested_validators = get_valid_validator();
         check(!requested_validators.empty(),
@@ -60,12 +61,13 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
         provider_validator_info provider_info{
             .account = itr->account, .staking = itr->staking, .created_at = current_time_point()};
         requested_validators.erase(itr);
-        _endorsement.emplace(get_self(), [&](auto& row) {
+        auto endt_itr = _endorsement.emplace(get_self(), [&](auto& row) {
             row.id = _endorsement.available_primary_key();
             row.hash = hash;
             row.provider_validators.push_back(provider_info);
             row.requested_validators = requested_validators;
         });
+        reached_consensus = endt_itr->num_reached_consensus() <= endt_itr->provider_validators.size();
     } else {
         check(std::find_if(endorsement_itr->provider_validators.begin(), endorsement_itr->provider_validators.end(),
                            [&](const provider_validator_info& a) {
@@ -85,11 +87,12 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
                 {.account = itr->account, .staking = itr->staking, .created_at = current_time_point()});
             row.requested_validators.erase(itr);
         });
+        reached_consensus = endorsement_itr->num_reached_consensus() <= endorsement_itr->provider_validators.size();
+    }
 
-        if (endorsement_itr->num_reached_consensus() >= endorsement_itr->provider_validators.size()) {
+    if (reached_consensus) {
             utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
             _consensus.send(height, hash);
-        }
     }
 }
 

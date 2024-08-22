@@ -234,6 +234,7 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
 
     auto chain_state = _chain_state.get();
     auto height = chain_state.parsing_height;
+    check(height > 0, "utxomng.xsat::processblock: there are currently no block to parse");
     check(height > chain_state.irreversible_height, "utxomng.xsat::processblock: the block has been parsed");
 
     auto current_time = current_time_point();
@@ -243,6 +244,8 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
             hash = it.first;
         }
     }
+
+    check(hash != checksum256(), "utxomng.xsat::processblock: you are not a parser of the current block");
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
