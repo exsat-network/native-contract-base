@@ -20,18 +20,18 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      * ### scope `get_self()`
      * ### params
      *
-     * - `{bool} disabled_endorse` - whether to disable endorsement
+     * - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
      *
      * ### example
      *
      * ```json
      * {
-     *   "disabled_endorse": false
+     *   "limit_endorse_height": 840000
      * }
      * ```
      */
     struct [[eosio::table]] config_row {
-        bool disabled_endorse;
+        uint64_t limit_endorse_height;
     };
     typedef eosio::singleton<"config"_n, config_row> config_table;
 
@@ -95,10 +95,10 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      * {
      *   "id": 0,
      *   "hash": "00000000000000000000da20f7d8e9e6412d4f1d8b62d88264cddbdd48256ba0",
-     *   "requested_validators": [
+     *   "requested_validators": [{
      *       "account": "alice",
      *       "staking": "10000000000"
-     *   ],
+     *   }],
      *   "provider_validators": [{
      *       "account": "test.xsat",
      *       "staking": "10200000000",
@@ -140,16 +140,16 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      *
      * ### params
      *
-     * - `{bool} disabled_endorse` - whether to disable endorsement
+     * - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action blkendt.xsat config '[true]' -pblkendt.xsat
+     * $ cleos push action blkendt.xsat config '[840003]' -p blkendt.xsat
      * ```
      */
     [[eosio::action]]
-    void config(const bool disabled_endorse);
+    void config(const uint64_t limit_endorse_height);
 
     /**
      * ## ACTION `endorse`

@@ -80,13 +80,13 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
 ### scope `get_self()`
 ### params
 
-- `{bool} disabled_endorse` - whether to disable endorsement
+- `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
 
 ### example
 
 ```json
 {
-  "disabled_endorse": false
+  "limit_endorse_height": 840000
 }
 ```
 
@@ -106,9 +106,10 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
  {
    "id": 0,
    "hash": "00000000000000000000da20f7d8e9e6412d4f1d8b62d88264cddbdd48256ba0",
-   "requested_validators": [
+   "requested_validators": [{
        "account": "alice",
        "staking": "10000000000"
+    }
    ],
    "provider_validators": [{
        "account": "test.xsat",
@@ -128,13 +129,13 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
 ### params
 
 - `{bool} disabled_endorse` - whether to disable endorsement
+- `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
 
 ### example
 
 ```bash
-$ cleos push action blkendt.xsat config '[true]' -pblkendt.xsat
+$ cleos push action blkendt.xsat config '[true, 840003]' -p blkendt.xsat
 ```
-
 
 ## ACTION `endorse`
 
