@@ -17,6 +17,8 @@ void utxo_manage::cleartable(const name table_name, const optional<uint64_t> sco
 
     if (table_name == "utxos"_n)
         clear_table(_utxo, rows_to_clear);
+    else if (table_name == "pendingutxos"_n)
+        clear_table(_pending_utxo, rows_to_clear);
     else if (table_name == "blocks"_n)
         clear_table(_block, rows_to_clear);
     else if (table_name == "block.extra"_n)

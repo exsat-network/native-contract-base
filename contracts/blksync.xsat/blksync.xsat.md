@@ -181,8 +181,11 @@ static const block_status verify_pass = 7;
 - `{uint32_t} uploaded_size` - the latest release id
 - `{uint8_t} num_chunks` - number of chunks
 - `{uint8_t} uploaded_num_chunks` - number of chunks that have been uploaded
-- `{block_status} status` - current block status
+- `{uint32_t} chunk_size` - the size of each chunk
+- `{vector<uint8_t>} chunk_ids` - the uploaded chunk_id
 - `{string} reason` - reason for verification failure
+- `{block_status} status` - current block status
+- `{time_point_sec} updated_at` - updated at time
 - `{std::optional<verify_info_data>} verify_info` - @see struct `verify_info_data`
 
 ### example
@@ -196,8 +199,11 @@ static const block_status verify_pass = 7;
   "uploaded_size": 1434031,
   "num_chunks": 11,
   "uploaded_num_chunks": 11,
-  "status": 3,
+  "chunk_size": 256000,
+  "chunk_ids": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   "reason": "",
+  "status": 3,
+  "updated_at": "2024-08-19T00:00:00",
   "verify_info": {
       "miner": "",
       "btc_miners": [
@@ -210,16 +216,16 @@ static const block_status verify_pass = 7;
       "has_witness": 1,
       "header_merkle": "f3f07d3e4636fa1ae5300b3bc148c361beafd7b3309d30b7ba136d0e59a9a0e5",
       "relay_header_merkle": [
-      "d1c9861b0d129b34bb6b733c624bbe0a9b10ff01c6047dced64586ef584987f4",
-      "bd95f641a29379f0b5a26961de4bb36bd9568a67ca0615be3fb0a28152ff1806",
-      "667eb5d36c67667ae4f10bd30a62e3797e8700e1fbb5e3f754a7526f2b7db1e2",
-      "5193ac78b5ef8f570ed24946fbcb96d71284faa27b86296093a93eb5c1cfac06"
+         "d1c9861b0d129b34bb6b733c624bbe0a9b10ff01c6047dced64586ef584987f4",
+         "bd95f641a29379f0b5a26961de4bb36bd9568a67ca0615be3fb0a28152ff1806",
+         "667eb5d36c67667ae4f10bd30a62e3797e8700e1fbb5e3f754a7526f2b7db1e2",
+         "5193ac78b5ef8f570ed24946fbcb96d71284faa27b86296093a93eb5c1cfac06"
       ],
       "relay_witness_merkle": [
-      "8a080509ebf6baca260d466c2669200d9b4de750f6a190382c4e8ab6ab6859db",
-      "d65d4261be51ca1193e718a6f0cfe6415b6f122f4c3df87861e7452916b45d78",
-      "95aa96164225b76afa32a9b2903241067b0ea71228cc2d51b9321148c4e37dd3",
-      "0dfca7530a6e950ecdec67c60e5d9574404cc97b333a4e24e3cf2eadd5eb76bd"
+          "8a080509ebf6baca260d466c2669200d9b4de750f6a190382c4e8ab6ab6859db",
+          "d65d4261be51ca1193e718a6f0cfe6415b6f122f4c3df87861e7452916b45d78",
+          "95aa96164225b76afa32a9b2903241067b0ea71228cc2d51b9321148c4e37dd3",
+          "0dfca7530a6e950ecdec67c60e5d9574404cc97b333a4e24e3cf2eadd5eb76bd"
       ],
       "num_transactions": 4899,
       "processed_transactions": 4096,
@@ -239,6 +245,7 @@ static const block_status verify_pass = 7;
 - `{uint64_t} bucket_id` - bucket_id is used to obtain block data
 - `{name} synchronizer` - synchronizer account
 - `{name} miner` - miner account
+- `{time_point_sec} created_at` - created at time
 
 ### example
 
@@ -250,6 +257,7 @@ static const block_status verify_pass = 7;
   "bucket_id": 80,
   "synchronizer": "test.xsat",
   "miner": "alice",
+  "created_at": "2024-08-13T00:00:00"
 }
 ```
 
@@ -279,15 +287,13 @@ static const block_status verify_pass = 7;
 ### scope `bucket_id`
 ### params
 
-- `{uint64_t} id` - chunk id
 - `{std::vector<char>} data` - the block chunk for block
 
 ### example
 
 ```json
 {
-  "id": 0,
-  "data": "",
+  "data": ""
 }
 ```
 
@@ -356,12 +362,13 @@ $ cleos push action blksync.xsat delchunks '[1]' -p utxomng.xsat
 - `{checksum256} hash` - block hash
 - `{uint32_t} size` -block size
 - `{uint8_t} num_chunks` - number of chunks
+- `{uint32_t} chunk_size` - the size of each chunk
 
 ### example
 
 ```bash
 $ cleos push action blksync.xsat initbucket '["alice", 840000,
-"0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9]' -p alice
+"0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9, 25600]' -p alice
 ```
 
 ## ACTION `pushchunk`

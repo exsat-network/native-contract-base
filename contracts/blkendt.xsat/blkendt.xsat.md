@@ -23,27 +23,29 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
 
 ## Table of Content
 
-- [STRUCT `validator_info`](#struct-validator_info)
+- [STRUCT `requested_validator_info`](#struct-requested_validator_info)
   - [example](#example)
+- [STRUCT `provider_validator_info`](#struct-provider_validator_info)
+  - [example](#example-1)
 - [TABLE `config`](#table-config)
   - [scope `get_self()`](#scope-get_self)
   - [params](#params)
-  - [example](#example-1)
+  - [example](#example-2)
 - [TABLE `endorsements`](#table-endorsements)
   - [scope `height`](#scope-height)
   - [params](#params-1)
-  - [example](#example-2)
+  - [example](#example-3)
 - [ACTION `config`](#action-config)
   - [params](#params-2)
-  - [example](#example-3)
+  - [example](#example-4)
 - [ACTION `endorse`](#action-endorse)
   - [params](#params-3)
-  - [example](#example-4)
+  - [example](#example-5)
 - [ACTION `erase`](#action-erase)
   - [params](#params-4)
-  - [example](#example-5)
+  - [example](#example-6)
 
-## STRUCT `validator_info`
+## STRUCT `requested_validator_info`
 
 - `{name} account` - validator account
 - `{uint64_t} staking` - the validator's staking amount
@@ -57,45 +59,66 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
 }
 ```
 
+## STRUCT `provider_validator_info`
+
+- `{name} account` - validator account
+- `{uint64_t} staking` - the validator's staking amount
+- `{time_point_sec} created_at` - created at time
+
+### example
+
+```json
+{
+  "account": "test.xsat",
+  "staking": "10200000000",
+  "created_at": "2024-08-13T00:00:00"
+}
+```
+
 ## TABLE `config`
 
 ### scope `get_self()`
 ### params
 
-- `{bool} disabled_endorse` - whether to disable endorsement
+- `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
 
 ### example
 
 ```json
 {
-  "disabled_endorse": false
+  "limit_endorse_height": 840000
 }
 ```
 
-## TABLE `endorsements`
-
-### scope `height`
-### params
-
-- `{uint64_t} id` - primary key
-- `{checksum256} hash` - endorsement block hash
-- `{std::vector<validator_info>} requested_validators` - list of unendorsed validators
-- `{std::vector<validator_info>} provider_validators` - list of endorsed validators
-
-### example
-
-```json
-{
-  "id": 0,
-  "hash": "00000000000000000000da20f7d8e9e6412d4f1d8b62d88264cddbdd48256ba0",
-  "requested_validators": [],
-  "provider_validators": [{
-      "account": "test.xsat",
-      "staking": "10200000000"
-     }
-  ]
-}
-```
+ ## TABLE `endorsements`
+ 
+ ### scope `height`
+ ### params
+ 
+ - `{uint64_t} id` - primary key
+ - `{checksum256} hash` - endorsement block hash
+ - `{std::vector<requested_validator_info>} requested_validators` - list of unendorsed validators
+ - `{std::vector<provider_validator_info>} provider_validators` - list of endorsed validators
+ 
+ ### example
+ 
+ ```json
+ {
+   "id": 0,
+   "hash": "00000000000000000000da20f7d8e9e6412d4f1d8b62d88264cddbdd48256ba0",
+   "requested_validators": [{
+       "account": "alice",
+       "staking": "10000000000"
+    }
+   ],
+   "provider_validators": [{
+       "account": "test.xsat",
+       "staking": "10200000000",
+       "created_at": "2024-08-13T00:00:00"
+      }
+   ]
+ }
+ ```
 
 ## ACTION `config`
 
@@ -106,13 +129,13 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
 ### params
 
 - `{bool} disabled_endorse` - whether to disable endorsement
+- `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
 
 ### example
 
 ```bash
-$ cleos push action blkendt.xsat config '[true]' -pblkendt.xsat
+$ cleos push action blkendt.xsat config '[true, 840003]' -p blkendt.xsat
 ```
-
 
 ## ACTION `endorse`
 

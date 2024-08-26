@@ -486,8 +486,8 @@ $ cleos push action endrmng.xsat proxyreg '["test.xsat", "alice", "alice",  1000
 ### params
 
 - `{name} validator` - validator account
-- `{uint64_t} commission_rate` - commission ratio, decimal is 10^4
-- `{string} financial_account` - financial accounts
+- `{optional<uint64_t>} commission_rate` - commission ratio, decimal is 10^4
+- `{optional<string>} financial_account` - financial accounts
 
 ### example
 

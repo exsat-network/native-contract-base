@@ -16,25 +16,70 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     typedef uint8_t parsing_status;
     static const parsing_status waiting = 1;
-    static const parsing_status parsing = 2;
+    static const parsing_status migrating = 2;
     static const parsing_status deleting_data = 3;
     static const parsing_status distributing_rewards = 4;
+    static const parsing_status parsing = 5;
 
+    //@notice parsing_progress.num_transactions == parsing_progress.parsed_transactions => return status `parsing_completed`
     static std::string get_parsing_status_name(const parsing_status status) {
         switch (status) {
             // Because wait starts from a new block, the return name is parsing completed.
             case waiting:
-                return "parsing_completed";
+                return "waiting";
             case parsing:
                 return "parsing";
             case deleting_data:
                 return "deleting_data";
             case distributing_rewards:
                 return "distributing_rewards";
+            case migrating:
+                return "migrating";
             default:
                 return "invalid_status";
         }
     }
+
+    /**
+     * ## STRUCT `parsing_progress_row`
+     *
+     * ### params
+     *
+     * - `{uint64_t} bucket_id` - the bucket_id currently being parsed
+     * - `{uint64_t} num_transactions` - the number of transactions currently parsing the block
+     * - `{uint64_t} parsed_transactions` - number of transactions currently resolved
+     * - `{uint64_t} parsed_position` - the position of the currently parsed block
+     * - `{uint64_t} parsed_vin` - the current transaction has been resolved to the vin index
+     * - `{uint64_t} parsed_vout` - the current transaction has been resolved to the vout index
+     * - `{name} parser` - the last parser of the parsing block
+     * - `{time_point_sec} parsed_expiration_time` - timeout for parsing chunks
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "bucket_id": 3,
+     *   "num_transactions": 0,
+     *   "parsed_transactions": 0,
+     *   "parsed_position": 0,
+     *   "parsed_vin": 0,
+     *   "parsed_vout": 0,
+     *   "parser": "alice",
+     *   "parsed_expiration_time": "2024-07-13T14:39:32"
+     * }
+     * ```
+     */
+    struct parsing_progress_row {
+        uint64_t bucket_id;
+        uint64_t num_utxos;
+        uint64_t num_transactions;
+        uint64_t parsed_transactions;
+        uint64_t parsed_position;
+        uint64_t parsed_vin;
+        uint64_t parsed_vout;
+        name parser;
+        time_point_sec parse_expiration_time;
+    };
 
     /**
      * ## TABLE `chainstate`
@@ -42,72 +87,80 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * ### scope `get_self()`
      * ### params
      *
+     * - `{uint64_t} num_utxos` - total number of UTXOs
      * - `{uint64_t} head_height` - header block height for consensus success
      * - `{uint64_t} irreversible_height` - irreversible block height
      * - `{uint64_t} irreversible_hash` - irreversible block hash
-     * - `{uint64_t} num_utxos` - total number of UTXOs
-     * - `{uint8_t} status` - parsing status @see `parsing_status`
-     * - `{uint64_t} parsing_height` - the current height being parsed
-     * - `{checksum256} parsing_hash` - the hash currently being parsed
-     * - `{uint64_t} parsing_bucket_id` - the bucket_id currently being parsed
-     * - `{uint64_t} num_transactions` - the number of transactions currently parsing the block
-     * - `{uint64_t} processed_transactions` - number of transactions currently resolved
-     * - `{uint64_t} processed_position` - the position of the currently parsed block
-     * - `{uint64_t} processed_vin` - the current transaction has been resolved to the vin index
-     * - `{uint64_t} processed_vout` - the current transaction has been resolved to the vout index
+     * - `{uint64_t} migrating_height` - block height in migration
+     * - `{uint64_t} migrating_hash` - block hash in migration
+     * - `{uint64_t} migrating_num_utxos` - the total number of UTXOs in the migration
+     * - `{uint64_t} migrated_num_utxos` - number of UTXOs that have been migrated
      * - `{uint32_t} num_provider_validators` - the number of validators that have endorsed the current parsed block
      * - `{uint32_t} num_validators_assigned` - the number of validators that have been allocated rewards
      * - `{name} miner` - block miner account
      * - `{name} synchronizer` - block synchronizer account
      * - `{name} parser` - the account number of the parsing block
-     * - `{time_point_sec} parsed_expiration_time` - timeout for parsing chunks
+     * - `{uint64_t} parsed_height` - parsed block height
+     * - `{uint64_t} parsing_height` - the current height being parsed
+     * - `{map<checksum256, parsing_progress_row>} parsing_progress_of` - parsing progress @see `parsing_progress_row`
+     * - `{uint8_t} status` - parsing status @see `parsing_status`
      *
      * ### example
      *
      * ```json
      * {
-     *   "head_height": 840043,
-     *   "irreversible_height": 840001,
-     *   "irreversible_hash": "00000000000000000001b48a75d5a3077913f3f441eb7e08c13c43f768db2463",
-     *   "num_utxos": 15757,
-     *   "status": 1,
-     *   "parsing_height": 840002,
-     *   "parsing_hash": "00000000000000000002c0cc73626b56fb3ee1ce605b0ce125cc4fb58775a0a9",
-     *   "parsing_bucket_id": 3,
-     *   "num_transactions": 0,
-     *   "processed_transactions": 0,
-     *   "processed_position": 0,
-     *   "processed_vin": 0,
-     *   "processed_vout": 0,
+     *   "num_utxos": 26240,
+     *   "head_height": 840031,
+     *   "irreversible_height": 840002,
+     *   "irreversible_hash": "00000000000000000002c0cc73626b56fb3ee1ce605b0ce125cc4fb58775a0a9",
+     *   "migrating_height": 840003,
+     *   "migrating_hash": "00000000000000000001cfe8671cb9269dfeded2c4e900e365fffae09b34b119",
+     *   "migrating_num_utxos": 16278,
+     *   "migrated_num_utxos": 10000,
      *   "num_provider_validators": 2,
      *   "num_validators_assigned": 0,
      *   "miner": "",
      *   "synchronizer": "alice",
      *   "parser": "alice",
-     *   "parsed_expiration_time": "2024-07-13T14:39:32"
+     *   "parsed_height": 840008,
+     *   "parsing_height": 840009,
+     *   "parsing_progress_of": [{
+     *       "first": "00000000000000000000c6075e66b667adcdb8935e6d9a877f5cf140c806ae87",
+     *       "second": {
+     *           "bucket_id": 11,
+     *           "num_utxos": 0,
+     *           "num_transactions": 0,
+     *           "parsed_transactions": 0,
+     *           "parsed_position": 0,
+     *           "parsed_vin": 0,
+     *           "parsed_vout": 0,
+     *           "parser": "alice",
+     *           "parse_expiration_time": "2024-08-08T02:44:43"
+     *       }
+     *       }
+     *   ],
+     *   "status": 5
      * }
      * ```
      */
     struct [[eosio::table]] chain_state_row {
+        uint64_t num_utxos;
         uint64_t head_height;
         uint64_t irreversible_height;
         checksum256 irreversible_hash;
-        uint64_t num_utxos;
-        parsing_status status;
-        uint64_t parsing_height;
-        checksum256 parsing_hash;
-        uint64_t parsing_bucket_id;
-        uint64_t num_transactions;
-        uint64_t processed_transactions;
-        uint64_t processed_position;
-        uint64_t processed_vin;
-        uint64_t processed_vout;
+        uint64_t migrating_height;
+        checksum256 migrating_hash;
+        uint64_t migrating_num_utxos;
+        uint64_t migrated_num_utxos;
         uint32_t num_provider_validators;
         uint32_t num_validators_assigned;
         name miner;
         name synchronizer;
         name parser;
-        time_point_sec parsed_expiration_time;
+        uint64_t parsed_height;
+        uint64_t parsing_height;
+        map<checksum256, parsing_progress_row> parsing_progress_of;
+        parsing_status status;
     };
     typedef eosio::singleton<"chainstate"_n, chain_state_row> chain_state_table;
 
@@ -157,7 +210,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{uint64_t} id` - primary key
      * - `{checksum256} txid` - transaction id
      * - `{uint32_t} index` - vout index
-     * - `{std::vector<uint8_t>} scriptpubkey` - vout's script public key
+     * - `{std::vector<uint8_t>} scriptpubkey` - script public key
      * - `{uint32_t} value` - utxo quantity
      *
      * ### example
@@ -189,6 +242,62 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         utxo_table;
 
     /**
+     * ## TABLE `pendingutxos`
+     *
+     * ### scope `get_self()`
+     * ### params
+     *
+     * - `{uint64_t} id` - primary key
+     * - `{uint64_t} height` - block height
+     * - `{checksum256} hash` - block hash
+     * - `{checksum256} txid` - transaction id
+     * - `{uint32_t} index` - vout index
+     * - `{std::vector<uint8_t>} scriptpubkey` - script public key
+     * - `{uint32_t} value` - utxo quantity
+     * - `{name} type` - utxo type (`vin` or `vout`)
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 2,
+     *   "height": 840000,
+     *   "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5",
+     *   "txid": "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e",
+     *   "index": 0,
+     *   "scriptpubkey": "51203b8b3ab1453eb47e2d4903b963776680e30863df3625d3e74292338ae7928da1",
+     *   "value": 1797928002,
+     *   "type": "vout"
+     * }
+     * ```
+     */
+    struct [[eosio::table]] pending_utxo_row {
+        uint64_t id;
+        uint64_t height;
+        checksum256 hash;
+        checksum256 txid;
+        uint32_t index;
+        std::vector<uint8_t> scriptpubkey;
+        uint64_t value;
+        name type;  // vin/vout
+        uint64_t primary_key() const { return id; }
+        uint64_t by_height() const { return height; }
+        checksum256 by_scriptpubkey() const { return compute_scriptpubkey_id_for_block(height, hash, scriptpubkey); }
+        checksum256 by_block_id() const { return xsat::utils::compute_block_id(height, hash); }
+        checksum256 by_utxo_id() const { return compute_utxo_id_for_block(height, hash, txid, index); }
+        checksum256 by_type() const { return compute_type_id_for_block(height, hash, type); }
+    };
+    typedef eosio::multi_index<
+        "pendingutxos"_n, pending_utxo_row,
+        eosio::indexed_by<"byheight"_n, const_mem_fun<pending_utxo_row, uint64_t, &pending_utxo_row::by_height>>,
+        eosio::indexed_by<"scriptpubkey"_n,
+                          const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_scriptpubkey>>,
+        eosio::indexed_by<"byblockid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_block_id>>,
+        eosio::indexed_by<"byutxoid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_utxo_id>>,
+        eosio::indexed_by<"bytype"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_type>>>
+        pending_utxo_table;
+
+    /**
      * ## TABLE `blocks`
      *
      * ### scope `get_self()`
@@ -218,7 +327,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      *   "merkle": "476eac37dd22a59952c5812f715a3e39b68663e40d80d756ba44d7d59e7d6a0a",
      *   "timestamp": 1713576761,
      *   "bits": 386089497,
-     *   "nonce": 1492849681,
+     *   "nonce": 1492849681
      *  }
      * ```
      */
@@ -281,24 +390,32 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * less than or
      * - `{name} miner` - block miner account
      * - `{name} synchronizer` - block synchronizer account
+     * - `{name} parser` - the last parser of the parsing block
+     * - `{uint64_t} num_utxos` - the total number of vin and vout of the block
+     * - `{bool} irreversible` - is it an irreversible block
+     * - `{time_point_sec} created_at` - created at time
      *
      * ### example
      *
      * ```json
      * {
-     *   "bucket_id": 13,
-     *   "height": 840011,
-     *   "hash": "00000000000000000002d12efb02bcf70580b2eebf4b775578844640512e30f3",
-     *   "cumulative_work": "0000000000000000000000000000000000000000753f3af9322a2a893cb6ece4",
-     *   "version": 747323392,
-     *   "previous_block_hash": "00000000000000000000da20f7d8e9e6412d4f1d8b62d88264cddbdd48256ba0",
-     *   "merkle": "476eac37dd22a59952c5812f715a3e39b68663e40d80d756ba44d7d59e7d6a0a",
-     *   "timestamp": 1713576761,
+     *   "bucket_id": 5,
+     *   "height": 840003,
+     *   "hash": "00000000000000000001cfe8671cb9269dfeded2c4e900e365fffae09b34b119",
+     *   "cumulative_work": "0000000000000000000000000000000000000000753cc66782a80f6f099fe68c",
+     *   "version": 704643072,
+     *   "previous_block_hash": "00000000000000000002c0cc73626b56fb3ee1ce605b0ce125cc4fb58775a0a9",
+     *   "merkle": "2daee999cac85a7663bbc3a0e24bd7c86e009c005e7d801ef104d134b420179b",
+     *   "timestamp": 1713572633,
      *   "bits": 386089497,
-     *   "nonce": 1492849681,
+     *   "nonce": 213198539,
      *   "miner": "",
-     *   "synchronizer": "alice"
-     *  }
+     *   "synchronizer": "alice",
+     *   "parser": "alice",
+     *   "num_utxos": 16278,
+     *   "irreversible": 1,
+     *   "created_at": "2024-08-13T00:00:00"
+     * }
      * ```
      */
     struct [[eosio::table]] consensus_block_row {
@@ -314,6 +431,10 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         uint32_t nonce;
         name miner;
         name synchronizer;
+        name parser;
+        uint64_t num_utxos;
+        bool irreversible;
+        time_point_sec created_at;
         uint64_t primary_key() const { return bucket_id; }
         uint64_t by_height() const { return height; }
         checksum256 by_block_id() const { return xsat::utils::compute_block_id(height, hash); }
@@ -574,6 +695,39 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         return eosio::sha256((char *)result.data(), result.size());
     }
 
+    static checksum256 compute_type_id_for_block(const uint64_t height, const checksum256 &hash, const name &type) {
+        std::vector<char> result;
+        result.resize(48);
+        eosio::datastream<char *> ds(result.data(), result.size());
+        ds << height;
+        ds << hash;
+        ds << type;
+        return eosio::sha256((char *)result.data(), result.size());
+    }
+
+    static checksum256 compute_scriptpubkey_id_for_block(const uint64_t height, const checksum256 &hash,
+                                                         const vector<uint8_t> &scriptpubkey) {
+        std::vector<char> result;
+        result.resize(44 + scriptpubkey.size());
+        eosio::datastream<char *> ds(result.data(), result.size());
+        ds << height;
+        ds << hash;
+        ds << scriptpubkey;
+        return eosio::sha256((char *)result.data(), result.size());
+    }
+
+    static checksum256 compute_utxo_id_for_block(const uint64_t height, const checksum256 &hash,
+                                                 const checksum256 &tx_id, const uint32_t index) {
+        std::vector<char> result;
+        result.resize(76);
+        eosio::datastream<char *> ds(result.data(), result.size());
+        ds << height;
+        ds << hash;
+        ds << tx_id;
+        ds << index;
+        return eosio::sha256((char *)result.data(), result.size());
+    }
+
     static bool check_consensus(const uint64_t height, const eosio::checksum256 &hash) {
         utxo_manage::consensus_block_table _consensus_block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
         auto consensus_block_idx = _consensus_block.get_index<"byblockid"_n>();
@@ -609,20 +763,32 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     config_table _config = config_table(_self, _self.value);
     chain_state_table _chain_state = chain_state_table(_self, _self.value);
     utxo_table _utxo = utxo_table(_self, _self.value);
+    pending_utxo_table _pending_utxo = pending_utxo_table(_self, _self.value);
     block_table _block = block_table(_self, _self.value);
     consensus_block_table _consensus_block = consensus_block_table(_self, _self.value);
 
     // private function
+    void parsing_transactions(const uint64_t height, const checksum256 &hash, parsing_progress_row *parsing_progress,
+                              uint64_t process_row);
+
+    void migrate(chain_state_row *chain_state, uint64_t process_row);
+
+    void delete_data(utxo_manage::chain_state_row *chain_state, const uint16_t num_retain_data_blocks,
+                     uint64_t process_row);
+
     consensus_block_row find_next_irreversible_block(const uint64_t irreversible_height,
                                                      const checksum256 &irreversible_hash);
-    void find_set_next_block(utxo_manage::chain_state_row *chain_state);
 
-    void process_transactions(utxo_manage::chain_state_row *chain_state, uint64_t process_row);
+    void find_set_next_irreversible_block(chain_state_row *chain_state);
+
+    void save_pending_utxo(const uint64_t height, const checksum256 &hash, const checksum256 &txid,
+                           const uint32_t index, const std::vector<uint8_t> &script_data, const uint64_t value,
+                           const name &type);
 
     bool remove_utxo(const checksum256 &prev_txid, const uint32_t prev_index);
 
-    utxo_row save_utxo(const std::vector<uint8_t> &script_data, const uint64_t value, const checksum256 &txid,
-                       const uint32_t index);
+    utxo_row save_utxo(const checksum256 &txid, const uint32_t index, const std::vector<uint8_t> &script_data,
+                       const uint64_t value);
 
 #ifdef DEBUG
     template <typename T>

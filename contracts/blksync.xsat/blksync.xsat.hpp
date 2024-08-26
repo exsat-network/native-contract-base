@@ -144,8 +144,11 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * - `{uint32_t} uploaded_size` - the latest release id
      * - `{uint8_t} num_chunks` - number of chunks
      * - `{uint8_t} uploaded_num_chunks` - number of chunks that have been uploaded
-     * - `{block_status} status` - current block status
+     * - `{uint32_t} chunk_size` - the size of each chunk
+     * - `{vector<uint8_t>} chunk_ids` - the uploaded chunk_id
      * - `{string} reason` - reason for verification failure
+     * - `{block_status} status` - current block status
+     * - `{time_point_sec} updated_at` - updated at time
      * - `{std::optional<verify_info_data>} verify_info` - @see struct `verify_info_data`
      *
      * ### example
@@ -159,8 +162,11 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *   "uploaded_size": 1434031,
      *   "num_chunks": 11,
      *   "uploaded_num_chunks": 11,
-     *   "status": 3,
+     *   "chunk_size": 256000,
+     *   "chunk_ids": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
      *   "reason": "",
+     *   "status": 3,
+     *   "updated_at": "2024-08-19T00:00:00",
      *   "verify_info": {
      *       "miner": "",
      *       "btc_miners": [
@@ -173,16 +179,16 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *       "has_witness": 1,
      *       "header_merkle": "f3f07d3e4636fa1ae5300b3bc148c361beafd7b3309d30b7ba136d0e59a9a0e5",
      *       "relay_header_merkle": [
-     *       "d1c9861b0d129b34bb6b733c624bbe0a9b10ff01c6047dced64586ef584987f4",
-     *       "bd95f641a29379f0b5a26961de4bb36bd9568a67ca0615be3fb0a28152ff1806",
-     *       "667eb5d36c67667ae4f10bd30a62e3797e8700e1fbb5e3f754a7526f2b7db1e2",
-     *       "5193ac78b5ef8f570ed24946fbcb96d71284faa27b86296093a93eb5c1cfac06"
+     *          "d1c9861b0d129b34bb6b733c624bbe0a9b10ff01c6047dced64586ef584987f4",
+     *          "bd95f641a29379f0b5a26961de4bb36bd9568a67ca0615be3fb0a28152ff1806",
+     *          "667eb5d36c67667ae4f10bd30a62e3797e8700e1fbb5e3f754a7526f2b7db1e2",
+     *          "5193ac78b5ef8f570ed24946fbcb96d71284faa27b86296093a93eb5c1cfac06"
      *       ],
      *       "relay_witness_merkle": [
-     *       "8a080509ebf6baca260d466c2669200d9b4de750f6a190382c4e8ab6ab6859db",
-     *       "d65d4261be51ca1193e718a6f0cfe6415b6f122f4c3df87861e7452916b45d78",
-     *       "95aa96164225b76afa32a9b2903241067b0ea71228cc2d51b9321148c4e37dd3",
-     *       "0dfca7530a6e950ecdec67c60e5d9574404cc97b333a4e24e3cf2eadd5eb76bd"
+     *           "8a080509ebf6baca260d466c2669200d9b4de750f6a190382c4e8ab6ab6859db",
+     *           "d65d4261be51ca1193e718a6f0cfe6415b6f122f4c3df87861e7452916b45d78",
+     *           "95aa96164225b76afa32a9b2903241067b0ea71228cc2d51b9321148c4e37dd3",
+     *           "0dfca7530a6e950ecdec67c60e5d9574404cc97b333a4e24e3cf2eadd5eb76bd"
      *       ],
      *       "num_transactions": 4899,
      *       "processed_transactions": 4096,
@@ -199,8 +205,11 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         uint32_t uploaded_size;
         uint8_t num_chunks;
         uint8_t uploaded_num_chunks;
-        block_status status;
+        uint32_t chunk_size;
+        std::set<uint8_t> chunk_ids;
         std::string reason;
+        block_status status;
+        time_point_sec updated_at;
 
         std::optional<verify_info_data> verify_info;
 
@@ -231,6 +240,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * - `{uint64_t} bucket_id` - bucket_id is used to obtain block data
      * - `{name} synchronizer` - synchronizer account
      * - `{name} miner` - miner account
+     * - `{time_point_sec} created_at` - created at time
      *
      * ### example
      *
@@ -242,6 +252,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *   "bucket_id": 80,
      *   "synchronizer": "test.xsat",
      *   "miner": "alice",
+     *   "created_at": "2024-08-13T00:00:00"
      * }
      * ```
      */
@@ -252,6 +263,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         uint64_t bucket_id;
         name synchronizer;
         name miner;
+        time_point_sec created_at;
         uint64_t primary_key() const { return id; }
         uint64_t by_bucket_id() const { return bucket_id; }
         checksum256 by_hash() const { return hash; }
@@ -304,22 +316,18 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * ### scope `bucket_id`
      * ### params
      *
-     * - `{uint64_t} id` - chunk id
      * - `{std::vector<char>} data` - the block chunk for block
      *
      * ### example
      *
      * ```json
      * {
-     *   "id": 0,
-     *   "data": "",
+     *   "data": ""
      * }
      * ```
      */
     struct [[eosio::table]] block_chunk_row {
-        uint64_t id;
         std::vector<char> data;
-        uint64_t primary_key() const { return id; }
     };
     typedef eosio::multi_index<"block.chunk"_n, block_chunk_row> block_chunk_table;
 
@@ -367,6 +375,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * $ cleos push action blksync.xsat consensus '[840000, "alice", 1]' -p utxomng.xsat
      * ```
      */
+    [[eosio::action]]
     void consensus(const uint64_t height, const name &synchronizer, const uint64_t bucket_id);
 
     /**
@@ -386,6 +395,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * $ cleos push action blksync.xsat delchunks '[1]' -p utxomng.xsat
      * ```
      */
+    [[eosio::action]]
     void delchunks(const uint64_t bucket_id);
 
     /**
@@ -402,17 +412,18 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * - `{checksum256} hash` - block hash
      * - `{uint32_t} size` -block size
      * - `{uint8_t} num_chunks` - number of chunks
+     * - `{uint32_t} chunk_size` - the size of each chunk
      *
      * ### example
      *
      * ```bash
      * $ cleos push action blksync.xsat initbucket '["alice", 840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9]' -p alice
+     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9, 25600]' -p alice
      * ```
      */
     [[eosio::action]]
     void initbucket(const name &synchronizer, const uint64_t height, const checksum256 &hash, const uint32_t block_size,
-                    const uint8_t num_chunks);
+                    const uint8_t num_chunks, const uint32_t chunk_size);
 
     /**
      * ## ACTION `pushchunk`
@@ -438,7 +449,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      */
     [[eosio::action]]
     void pushchunk(const name &synchronizer, const uint64_t height, const checksum256 &hash, const uint8_t chunk_id,
-                   const std::vector<char> &data);
+                   const eosio::ignore<std::vector<char>> &data);
 
     /**
      * ## ACTION `delchunk`
@@ -513,14 +524,22 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
 
 #ifdef DEBUG
     [[eosio::action]]
-    void cleartable(const name table_name, const name &synchronizer, const uint64_t height,
+    void cleartable(const name table_name, const name &synchronizer, const uint64_t height, const uint64_t bucket_id,
                     const optional<uint64_t> max_rows);
+
+    [[eosio::action]]
+    void reset(const name &synchronizer, const uint64_t height, const checksum256 &hash);
+
+    [[eosio::action]]
+    void updateparent(const name &synchronizer, const uint64_t height, const checksum256 &hash,
+                      const checksum256 &parent);
+
 #endif
 
     // logs
     [[eosio::action]]
     void bucketlog(const uint64_t bucket_id, const name &synchronizer, const uint64_t height, const checksum256 &hash,
-                   const uint32_t block_size, const uint8_t num_chunks) {
+                   const uint32_t block_size, const uint8_t num_chunks, const uint32_t chunk_size) {
         require_auth(get_self());
     }
 
@@ -547,26 +566,50 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     using delbucketlog_action = eosio::action_wrapper<"delbucketlog"_n, &block_sync::delbucketlog>;
 
     // [start, end)
-    static std::vector<char> read_bucket(const uint64_t bucket_id, const name &code, const uint64_t start,
-                                         const uint64_t end) {
-        block_chunk_table _block_chunk = block_chunk_table(code, bucket_id);
-        auto begin_itr = _block_chunk.begin();
-        auto end_itr = _block_chunk.end();
+    inline static std::vector<char> read_bucket(const eosio::name &code, const uint64_t bucket_id,
+                                                const eosio::name &table, const uint64_t start, const uint64_t end) {
+        // itr, size, from, to
+        std::vector<std::tuple<int32_t, int32_t, int32_t, int32_t>> ranges;
+        auto last_position = 0;
+        auto total_size = 0;
+        auto iter = eosio::internal_use_do_not_use::db_find_i64(code.value, bucket_id, table.value, 0);
 
-        std::vector<char> result;
-        uint64_t last_position = 0;
-        while (begin_itr != end_itr) {
-            auto next_position = last_position + static_cast<std::uint64_t>(begin_itr->data.size());
+        while (iter >= 0) {
+            auto size = eosio::internal_use_do_not_use::db_get_i64(iter, nullptr, 0);
+            auto next_position = last_position + size;
             if (start <= last_position && end >= next_position) {
-                result.insert(result.end(), begin_itr->data.begin(), begin_itr->data.end());
-            } else if (start <= last_position && end < next_position) {
-                result.insert(result.end(), begin_itr->data.begin(), begin_itr->data.end() - (next_position - end));
+                ranges.push_back(make_tuple(iter, size, 0, size));
+                total_size += size;
+            } else if (start <= last_position && end < next_position && end > last_position) {
+                ranges.push_back(make_tuple(iter, size, 0, end - last_position));
+                total_size += end - last_position;
                 break;
-            } else if (start > last_position && end >= next_position) {
-                result.insert(result.end(), begin_itr->data.begin() + (start - last_position), begin_itr->data.end());
+            } else if (start > last_position && start < next_position && end >= next_position) {
+                ranges.push_back(make_tuple(iter, size, start - last_position, size));
+                total_size += next_position - start;
+            } else if (start > last_position && start < next_position && end < next_position) {
+                ranges.push_back(make_tuple(iter, size, start - last_position, end - last_position));
+                total_size += end - start;
             }
-            last_position = next_position;
-            begin_itr++;
+            last_position += size;
+            uint64_t ignored;
+            iter = eosio::internal_use_do_not_use::db_next_i64(iter, &ignored);
+        }
+        std::vector<char> result;
+        result.resize(total_size);
+        size_t offset = 0;
+
+        for (const auto &[iter, size, from, to] : ranges) {
+            auto data_size = to - from;
+            if (from == 0) {
+                eosio::internal_use_do_not_use::db_get_i64(iter, result.data() + offset, data_size);
+            } else {
+                std::vector<char> data;
+                data.resize(size);
+                eosio::internal_use_do_not_use::db_get_i64(iter, data.data(), size);
+                std::copy(data.begin() + from, data.begin() + to, result.begin() + offset);
+            }
+            offset += data_size;
         }
         return result;
     }
@@ -580,7 +623,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     void find_miner(std::vector<bitcoin::core::transaction_output> outputs, name &miner, vector<string> &btc_miners);
 
     template <typename ITR>
-    optional<string> check_merkle(const ITR &block_bucket_itr, optional<verify_info_data> &verify_info);
+    optional<string> check_merkle(const ITR &block_bucket_itr, verify_info_data &verify_info);
 
     template <typename T, typename ITR>
     verify_block_result check_fail(T &_block_bucket, const ITR block_bucket_itr, const string &state,

@@ -18,9 +18,9 @@ void reward_distribution::distribute(const uint64_t height) {
 
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     auto chain_state = _chain_state.get();
-    check(chain_state.parsing_height == height, "rwddist.xsat::distribute: no rewards are being distributed");
+    check(chain_state.migrating_height == height, "rwddist.xsat::distribute: no rewards are being distributed");
 
-    auto hash = chain_state.parsing_hash;
+    auto hash = chain_state.migrating_hash;
 
     // calc reward
     uint64_t halvings = (height - START_HEIGHT) / SUBSIDY_HALVING_INTERVAL;
@@ -62,7 +62,8 @@ void reward_distribution::distribute(const uint64_t height) {
     provider_validators.reserve(endorsement_itr->provider_validators.size());
     for (size_t i = 0; i < endorsement_itr->provider_validators.size(); ++i) {
         const auto validator = endorsement_itr->provider_validators[i];
-        provider_validators.emplace_back(validator_info{.account = validator.account, .staking = validator.staking});
+        provider_validators.emplace_back(validator_info{
+            .account = validator.account, .staking = validator.staking, .created_at = validator.created_at});
 
         endorsed_staking += validator.staking;
         if (i < num_reached_consensus) {
@@ -81,10 +82,12 @@ void reward_distribution::distribute(const uint64_t height) {
         row.reached_consensus_staking = reached_consensus_staking;
         row.miner = chain_state.miner;
         row.synchronizer = chain_state.synchronizer;
+        row.parser = chain_state.parser;
         row.num_validators = num_validators;
     });
 
     auto reward_balance = _reward_balance.get_or_default();
+    reward_balance.height = height;
     reward_balance.synchronizer_rewards_unclaimed = reward_log_itr->synchronizer_rewards;
     reward_balance.consensus_rewards_unclaimed = reward_log_itr->consensus_rewards;
     reward_balance.staking_rewards_unclaimed = reward_log_itr->staking_rewards;
@@ -92,15 +95,14 @@ void reward_distribution::distribute(const uint64_t height) {
 }
 
 [[eosio::action]]
-void reward_distribution::endtreward(const name& parser, const uint64_t height, uint32_t from_index,
-                                     const uint32_t to_index) {
+void reward_distribution::endtreward(const uint64_t height, uint32_t from_index, const uint32_t to_index) {
     require_auth(UTXO_MANAGE_CONTRACT);
 
     auto reward_log_itr
         = _reward_log.require_find(height, "rwddist.xsat::endtreward: no rewards are being distributed");
 
     check(reward_log_itr->num_validators_assigned < reward_log_itr->provider_validators.size(),
-          "rwddist.xsat::endtreward: The current block has distributed rewards");
+          "rwddist.xsat::endtreward: the current block has distributed rewards");
     check(from_index == reward_log_itr->num_validators_assigned, "rwddist.xsat::endtreward: invalid from_index");
     check(to_index > from_index && to_index <= reward_log_itr->provider_validators.size(),
           "rwddist.xsat::endtreward: invalid to_index");
@@ -113,6 +115,7 @@ void reward_distribution::endtreward(const name& parser, const uint64_t height, 
     auto reward_balance = _reward_balance.get_or_default();
     asset total_rewards = {0, reward_log_itr->staking_rewards.symbol};
     for (; from_index < to_index; from_index++) {
+        eosio::print_f("from_index %", from_index);
         auto validator = reward_log_itr->provider_validators[from_index];
         // endorse / consensus staking
         auto endorse_staking = validator.staking;
@@ -158,12 +161,12 @@ void reward_distribution::endtreward(const name& parser, const uint64_t height, 
     if (to_index == reward_log_itr->provider_validators.size()) {
         // transfer to poolreg.xsat
         token_transfer(get_self(), POOL_REGISTER_CONTRACT, {reward_log_itr->synchronizer_rewards, EXSAT_CONTRACT},
-                       parser.to_string() + "," + std::to_string(height));
+                       reward_log_itr->parser.to_string() + "," + std::to_string(height));
 
         // log
         reward_distribution::rewardlog_action _rewardlog(get_self(), {get_self(), "active"_n});
-        _rewardlog.send(height, reward_log_itr->hash, reward_log_itr->synchronizer, reward_log_itr->miner, parser,
-                        reward_log_itr->synchronizer_rewards, reward_log_itr->staking_rewards,
+        _rewardlog.send(height, reward_log_itr->hash, reward_log_itr->synchronizer, reward_log_itr->miner,
+                        reward_log_itr->parser, reward_log_itr->synchronizer_rewards, reward_log_itr->staking_rewards,
                         reward_log_itr->consensus_rewards);
 
         reward_balance.synchronizer_rewards_unclaimed.amount = 0;
@@ -174,8 +177,7 @@ void reward_distribution::endtreward(const name& parser, const uint64_t height, 
     _reward_log.modify(reward_log_itr, same_payer, [&](auto& row) {
         row.num_validators_assigned = to_index;
         row.latest_exec_time = current_time_point();
-        row.parser = parser;
-#ifndef DEBUG
+#ifndef UNITTEST
         row.tx_id = xsat::utils::get_trx_id();
 #endif
     });

@@ -20,6 +20,9 @@ static constexpr name UTXO_MANAGE_CONTRACT = "utxomng.xsat"_n;
 static constexpr name RESOURCE_MANAGE_CONTRACT = "rescmng.xsat"_n;
 static constexpr name REWARD_DISTRIBUTION_CONTRACT = "rwddist.xsat"_n;
 
+// TABLE
+static constexpr name BLOCK_CHUNK = "block.chunk"_n;
+
 // SYMBOLS
 static constexpr symbol XSAT_SYMBOL = {"XSAT", 8};
 static constexpr symbol BTC_SYMBOL = {"BTC", 8};
@@ -31,7 +34,7 @@ static constexpr uint64_t BTC_SUPPLY = 21000000LL * DECIMAL;
 static constexpr uint64_t XSAT_REWARD_PER_BLOCK = 50LL * DECIMAL;
 
 static constexpr uint64_t START_HEIGHT = 839999;
-static constexpr uint64_t IRREVERSIBLE_BLOCKS = 7;
+static constexpr uint64_t IRREVERSIBLE_BLOCKS = 6;
 static constexpr uint64_t BLOCK_HEADER_SIZE = 80;
 static constexpr uint64_t SUBSIDY_HALVING_INTERVAL = 210000;
 
