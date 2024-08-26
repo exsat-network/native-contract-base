@@ -540,9 +540,12 @@ utxo_manage::consensus_block_row utxo_manage::find_next_irreversible_block(const
     const auto err_msg = "utxomng.xsat::processblock: next irreversible block not found";
     // If the next block does not fork, return directly
     auto height_idx = _consensus_block.get_index<"byheight"_n>();
-    auto consensus_block_itr = height_idx.require_find(irreversible_height + 1, err_msg);
-    if (std::distance(consensus_block_itr, height_idx.end()) == 1) {
-        return *consensus_block_itr;
+    auto next_irreversible_itr = height_idx.lower_bound(irreversible_height + 1);
+    auto next_irreversible_end = height_idx.upper_bound(irreversible_height + 1);
+    auto block_size = std::distance(next_irreversible_itr, next_irreversible_end);
+    check(block_size > 0, err_msg);
+    if (block_size == 1) {
+        return *next_irreversible_itr;
     }
 
     // Find the parent block with the largest cumulative work after 6 blocks
@@ -562,7 +565,7 @@ utxo_manage::consensus_block_row utxo_manage::find_next_irreversible_block(const
     auto block_id_idx = _consensus_block.get_index<"byblockid"_n>();
     auto irreversible_block = block_id_idx.require_find(
         xsat::utils::compute_block_id(parent.height - 1, parent.previous_block_hash), err_msg);
-    while (irreversible_block != block_id_idx.end() && irreversible_block->previous_block_hash != irreversible_hash) {
+    while (irreversible_block->previous_block_hash != irreversible_hash) {
         irreversible_block = block_id_idx.require_find(
             xsat::utils::compute_block_id(irreversible_block->height - 1, irreversible_block->previous_block_hash),
             err_msg);
