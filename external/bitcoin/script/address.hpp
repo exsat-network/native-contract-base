@@ -236,8 +236,8 @@ namespace bitcoin {
 
 #if defined(TESTNET)
     const unsigned char PKHashPrefix = 0x6f;      // 0x00 for mainnet,  0x6f for testnet
-const unsigned char ScriptHashPrefix = 0xcf;  // 0x05 for mainnet, 0xc4 for testnet
-const std::string Bech32HRP = "tb";           // "bc" for mainnet, "tb" for testnet
+    const unsigned char ScriptHashPrefix = 0xcf;  // 0x05 for mainnet, 0xc4 for testnet
+    const std::string Bech32HRP = "tb";           // "bc" for mainnet, "tb" for testnet
 #elif defined(MAINNET) || !defined(TESTNET)
     const unsigned char PKHashPrefix = 0x00;      // 0x00 for mainnet,  0x6f for testnet
     const unsigned char ScriptHashPrefix = 0x05;  // 0x05 for mainnet, 0xc4 for testnet
@@ -473,6 +473,81 @@ const std::string Bech32HRP = "tb";           // "bc" for mainnet, "tb" for test
 
         // Perform Bech32 error location
         error_str = "Invalid address";
+        return false;
+    }
+
+    bool IsValid(const std::string& str) {
+        if (str.empty()) return false;
+
+        std::vector<unsigned char> data;
+
+        // Note this will be false if it is a valid Bech32 address for a different network
+        bool is_bech32 = (bitcoin::bech32::ToLower(str.substr(0, Bech32HRP.size())) == Bech32HRP);
+
+        if (!is_bech32 && bitcoin::DecodeBase58Check(str, data, 21)) {
+            // base58-encoded Bitcoin addresses.
+            // Public-key-hash-addresses have version 0 (or 111 testnet).
+            // The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
+            const std::vector<unsigned char>& pubkey_prefix = {PKHashPrefix};
+            if (data.size() == 20 + pubkey_prefix.size()
+                && std::equal(pubkey_prefix.begin(), pubkey_prefix.end(), data.begin())) {
+                return true;
+            }
+            // Script-hash-addresses have version 5 (or 196 testnet).
+            // The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
+            const std::vector<unsigned char>& script_prefix = {ScriptHashPrefix};
+            if (data.size() == 20 + script_prefix.size()
+                && std::equal(script_prefix.begin(), script_prefix.end(), data.begin())) {
+                return true;
+            }
+            return false;
+        } else if (!is_bech32) {
+            return false;
+        }
+
+        data.clear();
+        const auto dec = bech32::Decode(str);
+        if (dec.encoding == bech32::Encoding::BECH32 || dec.encoding == bech32::Encoding::BECH32M) {
+            if (dec.data.empty()) {
+                return false;
+            }
+            // Bech32 decoding
+            if (dec.hrp != Bech32HRP) {
+                return false;
+            }
+            int version = dec.data[0];  // The first 5 bit symbol is the witness version (0-16)
+            if (version == 0 && dec.encoding != bech32::Encoding::BECH32) {
+                return false;
+            }
+            if (version != 0 && dec.encoding != bech32::Encoding::BECH32M) {
+                return false;
+            }
+            // The rest of the symbols are converted witness program bytes.
+            data.reserve(((dec.data.size() - 1) * 5) / 8);
+            if (ConvertBits<5, 8, false>(
+                    [&](unsigned char c) {
+                        data.push_back(c);
+                    },
+                    dec.data.begin() + 1, dec.data.end())) {
+                if (version == 0) {
+                    if (data.size() == 20 || data.size() == 32) {
+                        return true;
+                    }
+                    return false;
+                }
+                if (version == 1 && data.size() == WITNESS_V1_TAPROOT_SIZE) {
+                    return true;
+                }
+
+                if (version > 16 || data.size() < 2 || data.size() > BECH32_WITNESS_PROG_MAX_LEN) {
+                    return false;
+                }
+
+                return true;
+            } else {
+                return false;
+            }
+        }
         return false;
     }
 }  // namespace bitcoin
