@@ -35,8 +35,8 @@ void utxo_manage::init(const uint64_t height, const checksum256& hash, const che
 //@auth get_self()
 [[eosio::action]]
 void utxo_manage::config(const uint16_t parse_timeout_seconds, const uint16_t num_validators_per_distribution,
-                         const uint16_t num_retain_data_blocks, const uint8_t num_merkle_layer,
-                         const uint16_t num_miner_priority_blocks) {
+                         const uint16_t retained_spent_utxo_blocks, const uint16_t num_retain_data_blocks,
+                         const uint8_t num_merkle_layer, const uint16_t num_miner_priority_blocks) {
     require_auth(get_self());
 
     check(parse_timeout_seconds > 0, "utxomng.xsat::config: parse_timeout_seconds must be greater than 0");
@@ -48,6 +48,7 @@ void utxo_manage::config(const uint16_t parse_timeout_seconds, const uint16_t nu
     config.parse_timeout_seconds = parse_timeout_seconds;
     config.num_validators_per_distribution = num_validators_per_distribution;
     config.num_retain_data_blocks = num_retain_data_blocks;
+    config.retained_spent_utxo_blocks = retained_spent_utxo_blocks;
     config.num_merkle_layer = num_merkle_layer;
     config.num_txs_per_verification = 2 << (num_merkle_layer - 1);
     config.num_miner_priority_blocks = num_miner_priority_blocks;
@@ -237,6 +238,7 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
     check(height > 0, "utxomng.xsat::processblock: there are currently no block to parse");
     check(height > chain_state.irreversible_height, "utxomng.xsat::processblock: the block has been parsed");
 
+    // Find parsable hash
     auto current_time = current_time_point();
     checksum256 hash;
     for (const auto& it : chain_state.parsing_progress_of) {
@@ -287,7 +289,7 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
             chain_state.status = deleting_data;
         }
     } else if (chain_state.status == deleting_data) {
-        delete_data(&chain_state, config.num_retain_data_blocks, process_row);
+        delete_data(&chain_state, config.retained_spent_utxo_blocks, config.num_retain_data_blocks, process_row);
     } else if (chain_state.status == distributing_rewards) {
         auto from_index = chain_state.num_validators_assigned;
         auto to_index = from_index + config.num_validators_per_distribution;
@@ -362,10 +364,11 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
     _chain_state.set(chain_state, get_self());
 
     auto status = get_parsing_status_name(chain_state.status);
-    if (parsing_progress.num_transactions == parsing_progress.parsed_transactions) {
+    if (parsing_progress.num_transactions > 0
+        && parsing_progress.num_transactions == parsing_progress.parsed_transactions) {
         status = "parsing_completed";
     }
-    return {.height = height, .block_hash = hash, .status = status};
+    return {.status = status, .height = height, .block_hash = hash};
 }
 
 void utxo_manage::parsing_transactions(const uint64_t height, const checksum256& hash,
@@ -383,6 +386,7 @@ void utxo_manage::parsing_transactions(const uint64_t height, const checksum256&
     if (process_row == 0) process_row = -1;
 
     uint64_t parsed_position = 0;
+    std::vector<uint8_t> script_data = {};
     auto pending_transactions = parsing_progress->num_transactions - parsing_progress->parsed_transactions;
     while (pending_transactions-- && process_row) {
         bitcoin::core::transaction transaction(&block_data);
@@ -394,7 +398,7 @@ void utxo_manage::parsing_transactions(const uint64_t height, const checksum256&
              parsing_progress->parsed_vin++, process_row--) {
             auto vin = transaction.inputs[parsing_progress->parsed_vin];
             if (transaction.is_coinbase()) continue;
-            std::vector<uint8_t> script_data = {};
+
             save_pending_utxo(height, hash, bitcoin::be_checksum256_from_uint(vin.previous_output_hash),
                               vin.previous_output_index, script_data, 0, "vin"_n);
             parsing_progress->num_utxos++;
@@ -431,86 +435,104 @@ void utxo_manage::migrate(utxo_manage::chain_state_row* chain_state, uint64_t pr
     auto start_itr = pending_utxo_idx.lower_bound(block_id);
     auto end_itr = pending_utxo_idx.upper_bound(block_id);
 
+    auto utxo_idx = _utxo.get_index<"byutxoid"_n>();
     while (start_itr != end_itr && process_row--) {
         if (start_itr->type == "vin"_n) {
-            auto has_prev_utxo = remove_utxo(start_itr->txid, start_itr->index);
-            if (has_prev_utxo) {
+            auto prev_utxo = remove_utxo(utxo_idx, start_itr->txid, start_itr->index);
+            if (prev_utxo.has_value()) {
                 chain_state->num_utxos -= 1;
+
+                // migrate to utxo  table
+                save_spent_utxo(start_itr->height, *prev_utxo);
             }
         } else {
             save_utxo(start_itr->txid, start_itr->index, start_itr->scriptpubkey, start_itr->value);
             chain_state->num_utxos += 1;
         }
 
-        chain_state->migrated_num_utxos++;
-
+        // erase pending utxo
         start_itr = pending_utxo_idx.erase(start_itr);
+
+        chain_state->migrated_num_utxos++;
     }
 }
 
-void utxo_manage::delete_data(utxo_manage::chain_state_row* chain_state, const uint16_t num_retain_data_blocks,
-                              uint64_t process_row) {
+void utxo_manage::delete_data(utxo_manage::chain_state_row* chain_state, const uint16_t retained_spent_utxo_blocks,
+                              const uint16_t num_retain_data_blocks, uint64_t process_row) {
+    // Batch delete forked pendingutxos
     auto pending_utxo_idx = _pending_utxo.get_index<"byheight"_n>();
     auto pending_utxo_itr = pending_utxo_idx.lower_bound(chain_state->migrating_height);
     auto pending_utxo_end = pending_utxo_idx.upper_bound(chain_state->migrating_height);
-    // Delete forked utxo in batches first
     if (pending_utxo_itr != pending_utxo_end) {
         while (pending_utxo_itr != pending_utxo_end && process_row--) {
             pending_utxo_itr = pending_utxo_idx.erase(pending_utxo_itr);
         }
-    } else {
-        block_sync::delchunks_action _delchunks(BLOCK_SYNC_CONTRACT, {get_self(), "active"_n});
-
-        // erase endorsement
-        block_endorse::erase_action _erase(BLOCK_ENDORSE_CONTRACT, {get_self(), "active"_n});
-        _erase.send(chain_state->migrating_height);
-
-        // erase old block chunks
-        auto del_height = chain_state->migrating_height - num_retain_data_blocks;
-        block_extra_table _erase_block_extra(get_self(), del_height);
-        if (_erase_block_extra.exists()) {
-            _delchunks.send(_erase_block_extra.get().bucket_id);
-            _erase_block_extra.remove();
-        }
-
-        // erase consensus block
-        consensus_block_row consensus_block;
-        auto consensus_block_idx = _consensus_block.get_index<"byheight"_n>();
-        auto consensus_block_itr = consensus_block_idx.lower_bound(chain_state->migrating_height);
-        auto consensus_block_end = consensus_block_idx.upper_bound(chain_state->migrating_height);
-        while (consensus_block_itr != consensus_block_end) {
-            // Without deleting the data of the current latest irreversible block, config.num_retain_data_blocks block
-            // data needs to be retained.
-            if (consensus_block_itr->hash != chain_state->migrating_hash) {
-                _delchunks.send(consensus_block_itr->bucket_id);
-            } else {
-                consensus_block = *consensus_block_itr;
-            }
-            consensus_block_itr = consensus_block_idx.erase(consensus_block_itr);
-        }
-
-        // save irreversible block
-        _block.emplace(get_self(), [&](auto& row) {
-            row.height = consensus_block.height;
-            row.hash = consensus_block.hash;
-            row.cumulative_work = consensus_block.cumulative_work;
-            row.version = consensus_block.version;
-            row.previous_block_hash = consensus_block.previous_block_hash;
-            row.merkle = consensus_block.merkle;
-            row.timestamp = consensus_block.timestamp;
-            row.bits = consensus_block.bits;
-            row.nonce = consensus_block.nonce;
-        });
-
-        // save block extra
-        block_extra_table _block_extra = block_extra_table(get_self(), chain_state->migrating_height);
-        auto block_extra = _block_extra.get_or_default();
-        block_extra.bucket_id = consensus_block.bucket_id;
-        _block_extra.set(block_extra, get_self());
-
-        // next action
-        chain_state->status = distributing_rewards;
+        return;
     }
+
+    // Delete spentutxos in batches
+    auto del_history_height = chain_state->migrating_height - retained_spent_utxo_blocks;
+    auto spent_utxo_idx = _spent_utxo.get_index<"byheight"_n>();
+    auto spent_utxo_itr = spent_utxo_idx.lower_bound(del_history_height);
+    auto spent_utxo_end = spent_utxo_idx.upper_bound(del_history_height);
+    if (spent_utxo_itr != spent_utxo_end) {
+        while (spent_utxo_itr != spent_utxo_end && process_row--) {
+            spent_utxo_itr = spent_utxo_idx.erase(spent_utxo_itr);
+        }
+        return;
+    }
+
+    block_sync::delchunks_action _delchunks(BLOCK_SYNC_CONTRACT, {get_self(), "active"_n});
+
+    // erase endorsement
+    block_endorse::erase_action _erase(BLOCK_ENDORSE_CONTRACT, {get_self(), "active"_n});
+    _erase.send(chain_state->migrating_height);
+
+    // erase old block chunks
+    auto del_height = chain_state->migrating_height - num_retain_data_blocks;
+    block_extra_table _erase_block_extra(get_self(), del_height);
+    if (_erase_block_extra.exists()) {
+        _delchunks.send(_erase_block_extra.get().bucket_id);
+        _erase_block_extra.remove();
+    }
+
+    // erase consensus block
+    consensus_block_row consensus_block;
+    auto consensus_block_idx = _consensus_block.get_index<"byheight"_n>();
+    auto consensus_block_itr = consensus_block_idx.lower_bound(chain_state->migrating_height);
+    auto consensus_block_end = consensus_block_idx.upper_bound(chain_state->migrating_height);
+    while (consensus_block_itr != consensus_block_end) {
+        // Without deleting the data of the current latest irreversible block, config.num_retain_data_blocks block
+        // data needs to be retained.
+        if (consensus_block_itr->hash != chain_state->migrating_hash) {
+            _delchunks.send(consensus_block_itr->bucket_id);
+        } else {
+            consensus_block = *consensus_block_itr;
+        }
+        consensus_block_itr = consensus_block_idx.erase(consensus_block_itr);
+    }
+
+    // save irreversible block
+    _block.emplace(get_self(), [&](auto& row) {
+        row.height = consensus_block.height;
+        row.hash = consensus_block.hash;
+        row.cumulative_work = consensus_block.cumulative_work;
+        row.version = consensus_block.version;
+        row.previous_block_hash = consensus_block.previous_block_hash;
+        row.merkle = consensus_block.merkle;
+        row.timestamp = consensus_block.timestamp;
+        row.bits = consensus_block.bits;
+        row.nonce = consensus_block.nonce;
+    });
+
+    // save block extra
+    block_extra_table _block_extra = block_extra_table(get_self(), chain_state->migrating_height);
+    auto block_extra = _block_extra.get_or_default();
+    block_extra.bucket_id = consensus_block.bucket_id;
+    _block_extra.set(block_extra, get_self());
+
+    // next action
+    chain_state->status = distributing_rewards;
 }
 
 void utxo_manage::find_set_next_irreversible_block(utxo_manage::chain_state_row* chain_state) {
@@ -574,6 +596,21 @@ utxo_manage::consensus_block_row utxo_manage::find_next_irreversible_block(const
     return *irreversible_block;
 }
 
+void utxo_manage::save_spent_utxo(const uint64_t height, const utxo_manage::utxo_row& utxo) {
+    auto id = _spent_utxo.available_primary_key();
+    if (id == 0) {
+        id = 1;
+    }
+    _spent_utxo.emplace(get_self(), [&](auto& row) {
+        row.id = id;
+        row.height = height;
+        row.txid = utxo.txid;
+        row.index = utxo.index;
+        row.scriptpubkey = utxo.scriptpubkey;
+        row.value = utxo.value;
+    });
+}
+
 void utxo_manage::save_pending_utxo(const uint64_t height, const checksum256& hash, const checksum256& txid,
                                     const uint32_t index, const std::vector<uint8_t>& script_data, const uint64_t value,
                                     const name& type) {
@@ -610,17 +647,17 @@ utxo_manage::utxo_row utxo_manage::save_utxo(const checksum256& txid, const uint
     return *utxo_itr;
 }
 
-bool utxo_manage::remove_utxo(const checksum256& prev_txid, const uint32_t prev_index) {
-    auto utxo_idx = _utxo.get_index<"byutxoid"_n>();
-
+template <typename IDX>
+optional<utxo_manage::utxo_row> utxo_manage::remove_utxo(IDX& utxo_idx, const checksum256& prev_txid,
+                                                         const uint32_t prev_index) {
     auto utxo_itr = utxo_idx.find(compute_utxo_id(prev_txid, prev_index));
     if (utxo_itr != utxo_idx.end()) {
         utxo_idx.erase(utxo_itr);
-        return true;
+        return *utxo_itr;
     } else {
         // log
         utxo_manage::lostutxolog_action _lostutxolog(get_self(), {get_self(), "active"_n});
         _lostutxolog.send(prev_txid, prev_index);
-        return false;
+        return nullopt;
     }
 }

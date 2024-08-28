@@ -19,6 +19,8 @@ void utxo_manage::cleartable(const name table_name, const optional<uint64_t> sco
         clear_table(_utxo, rows_to_clear);
     else if (table_name == "pendingutxos"_n)
         clear_table(_pending_utxo, rows_to_clear);
+    else if (table_name == "spentutxos"_n)
+        clear_table(_spent_utxo, rows_to_clear);
     else if (table_name == "blocks"_n)
         clear_table(_block, rows_to_clear);
     else if (table_name == "block.extra"_n)
@@ -31,4 +33,19 @@ void utxo_manage::cleartable(const name table_name, const optional<uint64_t> sco
         _config.remove();
     else
         check(false, "utxomng.xsat::cleartable: [table_name] unknown table to clear");
+}
+
+[[eosio::action]]
+std::vector<unsigned char> utxo_manage::addrtoscript(const string& btc_address) {
+    std::vector<unsigned char> script;
+    string error;
+    if (!bitcoin::DecodeDestination(btc_address, script, error)) {
+        check(false, error);
+    }
+    return script;
+}
+
+[[eosio::action]]
+bool utxo_manage::isvalid(const string& btc_address) {
+    return bitcoin::IsValid(btc_address);
 }

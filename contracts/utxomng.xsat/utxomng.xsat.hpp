@@ -173,6 +173,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{uint16_t} parse_timeout_seconds` - parsing timeout duration
      * - `{uint16_t} num_validators_per_distribution` - number of endorsing users each time rewards are distributed
      * - `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
+     * - `{uint16_t} retained_spent_utxo_blocks` - number of blocks to retained spent utxo
      * - `{uint16_t} num_txs_per_verification` - the number of tx for each verification (2^n)
      * - `{uint8_t} num_merkle_layer` - verify the number of merkle levels (log(num_txs_per_verification))
      * - `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of
@@ -185,6 +186,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      *   "parse_timeout_seconds": 600,
      *   "num_validators_per_distribution": 100,
      *   "num_retain_data_blocks": 100,
+     *   "retained_spent_utxo_blocks": 5000,
      *   "num_txs_per_verification": 1024,
      *   "num_merkle_layer": 10,
      *   "num_miner_priority_blocks": 10
@@ -195,6 +197,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         uint16_t parse_timeout_seconds = 600;
         uint16_t num_validators_per_distribution = 100;
         uint16_t num_retain_data_blocks = 100;
+        uint16_t retained_spent_utxo_blocks = 5000;
         uint16_t num_txs_per_verification = 2048;
         uint8_t num_merkle_layer = 11;
         uint16_t num_miner_priority_blocks = 10;
@@ -296,6 +299,52 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         eosio::indexed_by<"byutxoid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_utxo_id>>,
         eosio::indexed_by<"bytype"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_type>>>
         pending_utxo_table;
+
+    /**
+     * ## TABLE `spentutxos`
+     *
+     * ### scope `get_self()`
+     * ### params
+     *
+     * - `{uint64_t} id` - primary key
+     * - `{uint64_t} height` - block height
+     * - `{checksum256} txid` - transaction id
+     * - `{uint32_t} index` - vout index
+     * - `{std::vector<uint8_t>} scriptpubkey` - script public key
+     * - `{uint32_t} value` - utxo quantity
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 2,
+     *   "height": 840000,
+     *   "txid": "2bb85f4b004be6da54f766c17c1e855187327112c231ef2ff35ebad0ea67c69e",
+     *   "index": 0,
+     *   "scriptpubkey": "51203b8b3ab1453eb47e2d4903b963776680e30863df3625d3e74292338ae7928da1",
+     *   "value": 1797928002,
+     * }
+     * ```
+     */
+    struct [[eosio::table]] spent_utxo_row {
+        uint64_t id;
+        uint64_t height;
+        checksum256 txid;
+        uint32_t index;
+        std::vector<uint8_t> scriptpubkey;
+        uint64_t value;
+        uint64_t primary_key() const { return id; }
+        uint64_t by_height() const { return height; }
+        checksum256 by_scriptpubkey() const { return xsat::utils::hash(scriptpubkey); }
+        checksum256 by_utxo_id() const { return compute_utxo_id(txid, index); }
+    };
+    typedef eosio::multi_index<
+        "spentutxos"_n, spent_utxo_row,
+        eosio::indexed_by<"byheight"_n, const_mem_fun<spent_utxo_row, uint64_t, &spent_utxo_row::by_height>>,
+        eosio::indexed_by<"scriptpubkey"_n,
+                          const_mem_fun<spent_utxo_row, checksum256, &spent_utxo_row::by_scriptpubkey>>,
+        eosio::indexed_by<"byutxoid"_n, const_mem_fun<spent_utxo_row, checksum256, &spent_utxo_row::by_utxo_id>>>
+        spent_utxo_table;
 
     /**
      * ## TABLE `blocks`
@@ -454,24 +503,24 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      *
      * ### params
      *
+     * - `{string} status` - current parsing status (waiting, migrating, deleting_data, distributing_rewards, parsing, parsing_completed)
      * - `{uint64_t} height` - block height
      * - `{checksum256} block_hash` - block hash
-     * - `{string} status` - current parsing status
      *
      * ### example
      *
      * ```json
      * {
-     *   "height": 840000,
-     *   "block_hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5",
      *   "status": "parsing",
+     *   "height": 840000,
+     *   "block_hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"
      * }
      * ```
      */
     struct process_block_result {
+        string status;
         uint64_t height;
         checksum256 block_hash;
-        string status;
     };
 
     /**
@@ -510,6 +559,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{uint16_t} parse_timeout_seconds` - parsing timeout duration
      * - `{uint16_t} num_validators_per_distribution` - number of endorsing users each time rewards are distributed
      * - `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
+     * - `{uint16_t} retained_spent_utxo_blocks` - number of blocks to retain utxo
      * - `{uint16_t} num_txs_per_verification` - the number of tx for each verification (2^n)
      * - `{uint8_t} num_merkle_layer` - verify the number of merkle levels (log(num_txs_per_verification))
      * - `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of
@@ -518,13 +568,13 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action utxomng.xsat config '[600, 100, 100, 11, 10]' -p utxomng.xsat
+     * $ cleos push action utxomng.xsat config '[600, 100, 5000, 100, 11, 10]' -p utxomng.xsat
      * ```
      */
     [[eosio::action]]
     void config(const uint16_t parse_timeout_seconds, const uint16_t num_validators_per_distribution,
-                const uint16_t num_retain_data_blocks, const uint8_t num_merkle_layer,
-                const uint16_t num_miner_priority_blocks);
+                const uint16_t retained_spent_utxo_blocks, const uint16_t num_retain_data_blocks,
+                const uint8_t num_merkle_layer, const uint16_t num_miner_priority_blocks);
 
     /**
      * ## ACTION `addutxo`
@@ -675,6 +725,12 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 #ifdef DEBUG
     [[eosio::action]]
     void cleartable(const name table_name, const optional<uint64_t> scope, const optional<uint64_t> max_rows);
+
+    [[eosio::action]]
+    std::vector<unsigned char> addrtoscript(const string &btc_address);
+
+    [[eosio::action]]
+    bool isvalid(const string &btc_address);
 #endif
 
     // logs
@@ -764,6 +820,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     chain_state_table _chain_state = chain_state_table(_self, _self.value);
     utxo_table _utxo = utxo_table(_self, _self.value);
     pending_utxo_table _pending_utxo = pending_utxo_table(_self, _self.value);
+    spent_utxo_table _spent_utxo = spent_utxo_table(_self, _self.value);
     block_table _block = block_table(_self, _self.value);
     consensus_block_table _consensus_block = consensus_block_table(_self, _self.value);
 
@@ -773,19 +830,22 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     void migrate(chain_state_row *chain_state, uint64_t process_row);
 
-    void delete_data(utxo_manage::chain_state_row *chain_state, const uint16_t num_retain_data_blocks,
-                     uint64_t process_row);
+    void delete_data(utxo_manage::chain_state_row *chain_state, const uint16_t retained_spent_utxo_blocks,
+                     const uint16_t num_retain_data_blocks, uint64_t process_row);
 
     consensus_block_row find_next_irreversible_block(const uint64_t irreversible_height,
                                                      const checksum256 &irreversible_hash);
 
     void find_set_next_irreversible_block(chain_state_row *chain_state);
 
+    void save_spent_utxo(const uint64_t height, const utxo_manage::utxo_row &pending_utxo);
+
     void save_pending_utxo(const uint64_t height, const checksum256 &hash, const checksum256 &txid,
                            const uint32_t index, const std::vector<uint8_t> &script_data, const uint64_t value,
                            const name &type);
 
-    bool remove_utxo(const checksum256 &prev_txid, const uint32_t prev_index);
+    template <typename IDX>
+    optional<utxo_row> remove_utxo(IDX &utxo_idx, const checksum256 &prev_txid, const uint32_t prev_index);
 
     utxo_row save_utxo(const checksum256 &txid, const uint32_t index, const std::vector<uint8_t> &script_data,
                        const uint64_t value);
