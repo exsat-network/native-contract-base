@@ -652,8 +652,9 @@ optional<utxo_manage::utxo_row> utxo_manage::remove_utxo(IDX& utxo_idx, const ch
                                                          const uint32_t prev_index) {
     auto utxo_itr = utxo_idx.find(compute_utxo_id(prev_txid, prev_index));
     if (utxo_itr != utxo_idx.end()) {
+        auto found_utxo = *utxo_itr;
         utxo_idx.erase(utxo_itr);
-        return *utxo_itr;
+        return found_utxo;
     } else {
         // log
         utxo_manage::lostutxolog_action _lostutxolog(get_self(), {get_self(), "active"_n});
