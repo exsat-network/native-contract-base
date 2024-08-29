@@ -49,3 +49,10 @@ std::vector<unsigned char> utxo_manage::addrtoscript(const string& btc_address) 
 bool utxo_manage::isvalid(const string& btc_address) {
     return bitcoin::IsValid(btc_address);
 }
+
+[[eosio::action]]
+void utxo_manage::setirrhash(const checksum256& irreversible_hash) {
+    auto chain_state = _chain_state.get();
+    chain_state.irreversible_hash = irreversible_hash;
+    _chain_state.set(chain_state, get_self());
+}

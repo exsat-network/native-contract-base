@@ -293,9 +293,9 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     typedef eosio::multi_index<
         "pendingutxos"_n, pending_utxo_row,
         eosio::indexed_by<"byheight"_n, const_mem_fun<pending_utxo_row, uint64_t, &pending_utxo_row::by_height>>,
+        eosio::indexed_by<"byblockid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_block_id>>,
         eosio::indexed_by<"scriptpubkey"_n,
                           const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_scriptpubkey>>,
-        eosio::indexed_by<"byblockid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_block_id>>,
         eosio::indexed_by<"byutxoid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_utxo_id>>,
         eosio::indexed_by<"bytype"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_type>>>
         pending_utxo_table;
@@ -483,19 +483,23 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         name parser;
         uint64_t num_utxos;
         bool irreversible;
+        bool parse;
         time_point_sec created_at;
         uint64_t primary_key() const { return bucket_id; }
         uint64_t by_height() const { return height; }
-        checksum256 by_block_id() const { return xsat::utils::compute_block_id(height, hash); }
         uint64_t by_synchronizer() const { return synchronizer.value; }
+        uint128_t by_parse_height() const { return compute_parse_height(parse, height); }
+        checksum256 by_block_id() const { return xsat::utils::compute_block_id(height, hash); }
     };
     typedef eosio::multi_index<
         "consensusblk"_n, consensus_block_row,
         eosio::indexed_by<"byheight"_n, const_mem_fun<consensus_block_row, uint64_t, &consensus_block_row::by_height>>,
-        eosio::indexed_by<"byblockid"_n,
-                          const_mem_fun<consensus_block_row, checksum256, &consensus_block_row::by_block_id>>,
         eosio::indexed_by<"bysyncer"_n,
-                          const_mem_fun<consensus_block_row, uint64_t, &consensus_block_row::by_synchronizer>>>
+                          const_mem_fun<consensus_block_row, uint64_t, &consensus_block_row::by_synchronizer>>,
+        eosio::indexed_by<"parseheight"_n,
+                          const_mem_fun<consensus_block_row, uint128_t, &consensus_block_row::by_parse_height>>,
+        eosio::indexed_by<"byblockid"_n,
+                          const_mem_fun<consensus_block_row, checksum256, &consensus_block_row::by_block_id>>>
         consensus_block_table;
 
     /**
@@ -731,6 +735,9 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     [[eosio::action]]
     bool isvalid(const string &btc_address);
+
+    [[eosio::action]]
+    void setirrhash(const checksum256 &irreversible_hash);
 #endif
 
     // logs
@@ -784,6 +791,10 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         return eosio::sha256((char *)result.data(), result.size());
     }
 
+    static uint128_t compute_parse_height(const bool parse, const uint64_t height) {
+        return uint128_t(parse) << 64 | height;
+    }
+
     static bool check_consensus(const uint64_t height, const eosio::checksum256 &hash) {
         utxo_manage::consensus_block_table _consensus_block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
         auto consensus_block_idx = _consensus_block.get_index<"byblockid"_n>();
@@ -828,15 +839,17 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     void parsing_transactions(const uint64_t height, const checksum256 &hash, parsing_progress_row *parsing_progress,
                               uint64_t process_row);
 
-    void migrate(chain_state_row *chain_state, uint64_t process_row);
+    void migrate(chain_state_row &chain_state, uint64_t process_row);
 
-    void delete_data(utxo_manage::chain_state_row *chain_state, const uint16_t retained_spent_utxo_blocks,
+    void delete_data(utxo_manage::chain_state_row &chain_state, const uint16_t retained_spent_utxo_blocks,
                      const uint16_t num_retain_data_blocks, uint64_t process_row);
+
+    void find_set_next_parsable_block(chain_state_row &chain_state, const uint16_t parse_timeout_seconds);
 
     consensus_block_row find_next_irreversible_block(const uint64_t irreversible_height,
                                                      const checksum256 &irreversible_hash);
 
-    void find_set_next_irreversible_block(chain_state_row *chain_state);
+    void find_set_next_irreversible_block(chain_state_row &chain_state);
 
     void save_spent_utxo(const uint64_t height, const utxo_manage::utxo_row &pending_utxo);
 
