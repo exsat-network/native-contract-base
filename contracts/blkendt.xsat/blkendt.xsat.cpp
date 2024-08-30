@@ -22,10 +22,11 @@ void block_endorse::erase(const uint64_t height) {
 
 //@auth get_self()
 [[eosio::action]]
-void block_endorse::config(const uint64_t limit_endorse_height) {
+void block_endorse::config(const uint64_t limit_endorse_height, const uint16_t limit_num_endorsed_blocks) {
     require_auth(get_self());
     auto config = _config.get_or_default();
     config.limit_endorse_height = limit_endorse_height;
+    config.limit_num_endorsed_blocks = limit_num_endorsed_blocks;
     _config.set(config, get_self());
 }
 
@@ -34,7 +35,7 @@ void block_endorse::config(const uint64_t limit_endorse_height) {
 void block_endorse::endorse(const name& validator, const uint64_t height, const checksum256& hash) {
     require_auth(validator);
 
-    auto config = _config.get_or_default();
+    auto config = _config.get();
     check(config.limit_endorse_height == 0 || config.limit_endorse_height >= height,
           "blkendt.xsat::endorse: the current endorsement status is disabled");
 
@@ -42,6 +43,11 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     auto chain_state = _chain_state.get();
     check(chain_state.irreversible_height < height && chain_state.migrating_height != height,
           "blkendt.xsat::endorse: the block has been parsed and does not need to be endorsed");
+
+    check(
+        config.limit_num_endorsed_blocks == 0 || chain_state.parsed_height + config.limit_num_endorsed_blocks >= height,
+        "blkendt.xsat::endorse: the endorsement height cannot exceed height "
+            + std::to_string(chain_state.parsed_height + config.limit_num_endorsed_blocks));
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
@@ -93,8 +99,8 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     }
 
     if (reached_consensus) {
-            utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
-            _consensus.send(height, hash);
+        utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
+        _consensus.send(height, hash);
     }
 }
 

@@ -81,12 +81,14 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
 ### params
 
 - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
+- `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
 
 ### example
 
 ```json
 {
-  "limit_endorse_height": 840000
+  "limit_endorse_height": 840000,
+  "limit_num_endorsed_blocks": 10
 }
 ```
 
@@ -120,22 +122,23 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
  }
  ```
 
-## ACTION `config`
-
-- **authority**: `get_self()`
-
-> Configure endorsement status
-
-### params
-
-- `{bool} disabled_endorse` - whether to disable endorsement
-- `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
-
-### example
-
-```bash
-$ cleos push action blkendt.xsat config '[true, 840003]' -p blkendt.xsat
-```
+ ## ACTION `config`
+ 
+ - **authority**: `get_self()`
+ 
+ > Configure endorsement status
+ 
+ ### params
+ 
+ - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
+ - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
+ 
+ ### example
+ 
+ ```bash
+ $ cleos push action blkendt.xsat config '[840003, 10]' -p blkendt.xsat
+ ```
+ 
 
 ## ACTION `endorse`
 
