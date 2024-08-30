@@ -82,6 +82,20 @@ describe('poolreg.xsat', () => {
         )
     })
 
+    it('initpool: invalid miner', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions
+                .initpool([
+                    'bob',
+                    839999,
+                    'bob',
+                    ['12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KA', '1CGB4JC7iaThXywv1j6PNFx7jUgRhFuPTmX'],
+                ])
+                .send('poolreg.xsat@active'),
+            'eosio_assert_message: poolreg.xsat::initpool: invalid miner ["12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KA"]'
+        )
+    })
+
     it('initpool', async () => {
         await contracts.poolreg.actions
             .initpool([

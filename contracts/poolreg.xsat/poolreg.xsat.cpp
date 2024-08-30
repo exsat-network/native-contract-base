@@ -1,6 +1,7 @@
 #include <poolreg.xsat/poolreg.xsat.hpp>
 #include <rescmng.xsat/rescmng.xsat.hpp>
 #include <btc.xsat/btc.xsat.hpp>
+#include <bitcoin/script/address.hpp>
 #include "../internal/defines.hpp"
 
 #ifdef DEBUG
@@ -54,6 +55,10 @@ void pool::initpool(const name& synchronizer, const uint64_t latest_produced_blo
     require_auth(get_self());
 
     check(is_account(synchronizer), "poolreg.xsat::initpool: synchronizer does not exists");
+
+    for (const auto& miner : miners) {
+        check(bitcoin::IsValid(miner), "poolreg.xsat::initpool: invalid miner [\"" + miner + "\"]");
+    }
 
     bool is_eos_address = financial_account.size() <= 12;
     if (is_eos_address) {
@@ -258,8 +263,8 @@ void pool::on_transfer(const name& from, const name& to, const asset& quantity, 
 }
 
 void pool::save_miners(const name& synchronizer, const vector<string>& miners) {
+    auto miner_idx = _miner.get_index<"byminer"_n>();
     for (const auto miner : miners) {
-        auto miner_idx = _miner.get_index<"byminer"_n>();
         auto miner_itr = miner_idx.find(xsat::utils::hash(miner));
         if (miner_itr == miner_idx.end()) {
             _miner.emplace(get_self(), [&](auto& row) {

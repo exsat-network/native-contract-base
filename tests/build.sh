@@ -3,7 +3,7 @@
 cd wasm
 cdt-cpp ../../contracts/btc.xsat/btc.xsat.cpp -I ../../contracts/ 
 cdt-cpp ../../contracts/exsat.xsat/exsat.xsat.cpp -I ../../contracts/
-cdt-cpp ../../contracts/poolreg.xsat/poolreg.xsat.cpp -I ../../contracts/ 
+cdt-cpp ../../contracts/poolreg.xsat/poolreg.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include
 cdt-cpp ../../contracts/rescmng.xsat/rescmng.xsat.cpp -I ../../contracts/ 
 cdt-cpp ../../contracts/rwddist.xsat/rwddist.xsat.cpp -I ../../contracts/ -DUNITTEST
 cdt-cpp ../../contracts/staking.xsat/staking.xsat.cpp -I ../../contracts/ 
