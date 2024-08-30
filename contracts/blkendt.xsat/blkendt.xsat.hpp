@@ -21,17 +21,20 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      * ### params
      *
      * - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
+     * - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
      *
      * ### example
      *
      * ```json
      * {
-     *   "limit_endorse_height": 840000
+     *   "limit_endorse_height": 840000,
+     *   "limit_num_endorsed_blocks": 10
      * }
      * ```
      */
     struct [[eosio::table]] config_row {
         uint64_t limit_endorse_height;
+        uint16_t limit_num_endorsed_blocks;
     };
     typedef eosio::singleton<"config"_n, config_row> config_table;
 
@@ -141,15 +144,16 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      * ### params
      *
      * - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
+     * - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action blkendt.xsat config '[840003]' -p blkendt.xsat
+     * $ cleos push action blkendt.xsat config '[840003, 10]' -p blkendt.xsat
      * ```
      */
     [[eosio::action]]
-    void config(const uint64_t limit_endorse_height);
+    void config(const uint64_t limit_endorse_height, const uint16_t limit_num_endorsed_blocks);
 
     /**
      * ## ACTION `endorse`
