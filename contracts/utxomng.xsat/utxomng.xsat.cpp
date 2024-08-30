@@ -233,8 +233,8 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
 
     auto chain_state = _chain_state.get();
     auto height = chain_state.parsing_height;
-    check(height > 0, "utxomng.xsat::processblock: there are currently no block to parse");
-    check(height > chain_state.irreversible_height, "utxomng.xsat::processblock: the block has been parsed");
+    check(height > 0, "4001:utxomng.xsat::processblock: there are currently no block to parse");
+    check(height > chain_state.irreversible_height, "4002:utxomng.xsat::processblock: the block has been parsed");
 
     // Find parsable hash
     auto current_time = current_time_point();
@@ -245,7 +245,7 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
         }
     }
 
-    check(hash != checksum256(), "utxomng.xsat::processblock: you are not a parser of the current block");
+    check(hash != checksum256(), "4003:utxomng.xsat::processblock: you are not a parser of the current block");
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
@@ -257,10 +257,10 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
     // verify permissions and whether parsing times out
     if (parsing_progress.parse_expiration_time > current_time) {
         check(synchronizer == parsing_progress.parser,
-              "utxomng.xsat::processblock: you are not a parser of the current block");
+              "4004:utxomng.xsat::processblock: you are not a parser of the current block");
     } else {
         pool::synchronizer_table _synchronizer(POOL_REGISTER_CONTRACT, POOL_REGISTER_CONTRACT.value);
-        _synchronizer.require_find(synchronizer.value, "utxomng.xsat::processblock: only synchronizers can parse");
+        _synchronizer.require_find(synchronizer.value, "4005:utxomng.xsat::processblock: only synchronizers can parse");
 
         parsing_progress.parser = synchronizer;
         parsing_progress.parse_expiration_time = current_time + eosio::seconds(config.parse_timeout_seconds);
@@ -571,7 +571,7 @@ void utxo_manage::find_set_next_irreversible_block(utxo_manage::chain_state_row&
 
 utxo_manage::consensus_block_row utxo_manage::find_next_irreversible_block(const uint64_t irreversible_height,
                                                                            const checksum256& irreversible_hash) {
-    const auto err_msg = "utxomng.xsat::processblock: next irreversible block not found";
+    const auto err_msg = "4006:utxomng.xsat::processblock: next irreversible block not found";
     // If the next block does not fork, return directly
     auto height_idx = _consensus_block.get_index<"byheight"_n>();
     auto next_irreversible_itr = height_idx.lower_bound(irreversible_height + 1);
