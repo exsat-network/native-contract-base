@@ -85,6 +85,21 @@ beforeAll(async () => {
 })
 
 describe('blkendt.xsat', () => {
+    it('config: missing required authority', async () => {
+        await expectToThrow(
+            contracts.blkendt.actions.config([0, 0]).send('alice@active'),
+            'missing required authority blkendt.xsat'
+        )
+    })
+
+    it('config', async () => {
+        await contracts.blkendt.actions.config([0, 0]).send('blkendt.xsat@active')
+        expect(get_config()).toEqual({
+            limit_endorse_height: 0,
+            limit_num_endorsed_blocks: 0,
+        })
+    })
+
     it('endorse: missing required authority', async () => {
         await expectToThrow(
             contracts.blkendt.actions
@@ -154,6 +169,7 @@ describe('blkendt.xsat', () => {
                     {
                         account: 'alice',
                         staking: '10000000000',
+                        created_at: TimePointSec.from(blockchain.timestamp).toString(),
                     },
                 ],
             },
@@ -173,10 +189,12 @@ describe('blkendt.xsat', () => {
                     {
                         account: 'alice',
                         staking: '10000000000',
+                        created_at: TimePointSec.from(blockchain.timestamp).toString(),
                     },
                     {
                         account: 'bob',
                         staking: '20000000000',
+                        created_at: TimePointSec.from(blockchain.timestamp).toString(),
                     },
                 ],
             },
@@ -191,14 +209,17 @@ describe('blkendt.xsat', () => {
                     {
                         account: 'alice',
                         staking: '10000000000',
+                        created_at: TimePointSec.from(blockchain.timestamp).toString(),
                     },
                     {
                         account: 'bob',
                         staking: '20000000000',
+                        created_at: TimePointSec.from(blockchain.timestamp).toString(),
                     },
                     {
                         account: 'brian',
                         staking: '30000000000',
+                        created_at: TimePointSec.from(blockchain.timestamp).toString(),
                     },
                 ],
             },
@@ -214,16 +235,12 @@ describe('blkendt.xsat', () => {
         )
     })
 
-    it('config: missing required authority', async () => {
-        await expectToThrow(
-            contracts.blkendt.actions.config([true]).send('alice@active'),
-            'missing required authority blkendt.xsat'
-        )
-    })
-
     it('config', async () => {
-        await contracts.blkendt.actions.config([true]).send('blkendt.xsat@active')
-        expect(get_config()).toEqual({disabled_endorse: true})
+        await contracts.blkendt.actions.config([1, 0]).send('blkendt.xsat@active')
+        expect(get_config()).toEqual({
+            limit_endorse_height: 1,
+            limit_num_endorsed_blocks: 0,
+        })
     })
 
     it('endorse: the current endorsement status is disabled', async () => {
@@ -232,6 +249,23 @@ describe('blkendt.xsat', () => {
         await expectToThrow(
             contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active'),
             'eosio_assert: blkendt.xsat::endorse: the current endorsement status is disabled'
+        )
+    })
+
+    it('config', async () => {
+        await contracts.blkendt.actions.config([0, 1]).send('blkendt.xsat@active')
+        expect(get_config()).toEqual({
+            limit_endorse_height: 0,
+            limit_num_endorsed_blocks: 1,
+        })
+    })
+
+    it('endorse: the endorsement height cannot exceed', async () => {
+        const height = 840001
+        const hash = '00000000000000000001b48a75d5a3077913f3f441eb7e08c13c43f768db2463'
+        await expectToThrow(
+            contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active'),
+            'eosio_assert_message: blkendt.xsat::endorse: the endorsement height cannot exceed height 840000'
         )
     })
 })
