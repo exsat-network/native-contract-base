@@ -83,21 +83,21 @@ void resource_management::pay(const uint64_t height, const checksum256& hash, co
                               const uint64_t quantity) {
     check(has_auth(BLOCK_SYNC_CONTRACT) || has_auth(BLOCK_ENDORSE_CONTRACT) || has_auth(UTXO_MANAGE_CONTRACT)
               || has_auth(POOL_REGISTER_CONTRACT),
-          "rescmng.xsat::pay: missing auth [blksync.xsat/blkendt.xsat/utxmng.xsat/poolreg.xsat]");
+          "3001:rescmng.xsat::pay: missing auth [blksync.xsat/blkendt.xsat/utxmng.xsat/poolreg.xsat]");
 
-    check(quantity > 0, "rescmng.xsat::pay: must pay positive quantity");
+    check(quantity > 0, "3002:rescmng.xsat::pay: must pay positive quantity");
 
     auto fee_amount = get_fee(type, quantity);
     auto account_itr = _account.find(owner.value);
     check(account_itr != _account.end() && account_itr->balance >= fee_amount,
-          "rescmng.xsat::pay: insufficient balance");
+          "3003:rescmng.xsat::pay: insufficient balance");
 
     _account.modify(account_itr, same_payer, [&](auto& row) {
         row.balance -= fee_amount;
     });
     auto config = _config.get();
     if (fee_amount.amount > 0) {
-        token_transfer(get_self(), config.fee_account, {fee_amount, BTC_CONTRACT}, "fee deduction");
+        token_transfer(get_self(), config.fee_account, {fee_amount, BTC_CONTRACT}, "fee");
     }
 
     // log

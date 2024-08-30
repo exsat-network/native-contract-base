@@ -159,14 +159,14 @@ describe('rescmng.xsat', () => {
     it('pay: missing required authority', async () => {
         await expectToThrow(
             contracts.rescmng.actions.pay([840000, '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5', 'bob', 1, 1]).send('alice@active'),
-            'eosio_assert: rescmng.xsat::pay: missing auth [blksync.xsat/blkendt.xsat/utxmng.xsat/poolreg.xsat]'
+            'eosio_assert: 3001:rescmng.xsat::pay: missing auth [blksync.xsat/blkendt.xsat/utxmng.xsat/poolreg.xsat]'
         )
     })
 
     it('pay: insufficient balance', async () => {
         await expectToThrow(
             contracts.rescmng.actions.pay([840000, '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5','bob', 1, 1]).send('poolreg.xsat@active'),
-            'eosio_assert: rescmng.xsat::pay: insufficient balance'
+            'eosio_assert: 3003:rescmng.xsat::pay: insufficient balance'
         )
     })
 

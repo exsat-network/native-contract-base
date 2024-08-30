@@ -57,16 +57,17 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
                             const uint32_t block_size, const uint8_t num_chunks, const uint32_t chunk_size) {
     require_auth(synchronizer);
 
-    check(height > START_HEIGHT, "blksync.xsat::initbucket: height must be greater than 840000");
-    check(block_size > BLOCK_HEADER_SIZE, "blksync.xsat::initbucket: block size must be greater than 80");
-    check(num_chunks > 0, "blksync.xsat::initbucket: the number of chunks must be greater than 0");
+    check(height > START_HEIGHT, "2001:blksync.xsat::initbucket: height must be greater than 840000");
+    check(block_size > BLOCK_HEADER_SIZE, "2002:blksync.xsat::initbucket: block size must be greater than 80");
+    check(num_chunks > 0, "2003:blksync.xsat::initbucket: the number of chunks must be greater than 0");
 
     // check whether it is a synchronizer
     pool::synchronizer_table _synchronizer(POOL_REGISTER_CONTRACT, POOL_REGISTER_CONTRACT.value);
     auto synchronizer_itr
-        = _synchronizer.require_find(synchronizer.value, "blksync.xsat::initbucket: not an synchronizer account");
+        = _synchronizer.require_find(synchronizer.value, "2004:blksync.xsat::initbucket: not an synchronizer account");
 
-    check(!utxo_manage::check_consensus(height, hash), "blksync.xsat::initbucket: the block has reached consensus");
+    check(!utxo_manage::check_consensus(height, hash),
+          "2005:blksync.xsat::initbucket: the block has reached consensus");
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
@@ -81,10 +82,10 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
         // slot limit
         check(synchronizer_itr->produced_block_limit == 0
                   || height - synchronizer_itr->latest_produced_block_height <= synchronizer_itr->produced_block_limit,
-              "blksync.xsat::initbucket: to become a synchronizer, a block must be produced within 72 hours");
+              "2006:blksync.xsat::initbucket: to become a synchronizer, a block must be produced within 72 hours");
         const auto num_slots = std::distance(_block_bucket.begin(), _block_bucket.end());
         check(num_slots < synchronizer_itr->num_slots,
-              "blksync.xsat::initbucket: not enough slots, please buy more slots");
+              "2007:blksync.xsat::initbucket: not enough slots, please buy more slots");
 
         bucket_id = next_bucket_id();
         _block_bucket.emplace(get_self(), [&](auto& row) {
@@ -99,7 +100,7 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
         });
     } else {
         check(block_bucket_itr->status == uploading || block_bucket_itr->status == verify_fail,
-              "blksync.xsat::initbucket: cannot init bucket in the current state ["
+              "2008:blksync.xsat::initbucket: cannot init bucket in the current state ["
                   + get_block_status_name(block_bucket_itr->status) + "]");
 
         bucket_id = block_bucket_itr->bucket_id;
@@ -123,23 +124,24 @@ void block_sync::pushchunk(const name& synchronizer, const uint64_t height, cons
                            const uint8_t chunk_id, const eosio::ignore<std::vector<char>>& data) {
     require_auth(synchronizer);
 
-    check(!utxo_manage::check_consensus(height, hash), "blksync.xsat::pushchunk: the block has reached consensus");
+    check(!utxo_manage::check_consensus(height, hash), "2009:blksync.xsat::pushchunk: the block has reached consensus");
 
     // check
     eosio::unsigned_int size;
     _ds >> size;
     auto data_size = _ds.remaining();
-    eosio::check(data_size == (size_t)size, "blksync.xsat::pushchunk: data size does not match");
-    check(data_size > 0, "blksync.xsat::pushchunk: data size must be greater than 0");
+    check(data_size == (size_t)size, "2010:blksync.xsat::pushchunk: data size does not match");
+    check(data_size > 0, "2011:blksync.xsat::pushchunk: data size must be greater than 0");
 
     block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
     auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
-    auto block_bucket_itr = block_bucket_idx.require_find(xsat::utils::compute_block_id(height, hash),
-                                                          "blksync.xsat::pushchunk: [blockbuckets] does not exists");
+    auto block_bucket_itr = block_bucket_idx.require_find(
+        xsat::utils::compute_block_id(height, hash), "2012:blksync.xsat::pushchunk: [blockbuckets] does not exists");
 
     auto status = block_bucket_itr->status;
-    check(status != verify_merkle && status != verify_parent_hash && status != verify_pass,
-          "blksync.xsat::pushchunk: cannot push chunk in the current state [" + get_block_status_name(status) + "]");
+    check(
+        status != verify_merkle && status != verify_parent_hash && status != verify_pass,
+        "2013:blksync.xsat::pushchunk: cannot push chunk in the current state [" + get_block_status_name(status) + "]");
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
@@ -185,12 +187,13 @@ void block_sync::delchunk(const name& synchronizer, const uint64_t height, const
     // check
     block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
     auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
-    auto block_bucket_itr = block_bucket_idx.require_find(xsat::utils::compute_block_id(height, hash),
-                                                          "blksync.xsat::delchunk: [blockbuckets] does not exists");
+    auto block_bucket_itr = block_bucket_idx.require_find(
+        xsat::utils::compute_block_id(height, hash), "2014:blksync.xsat::delchunk: [blockbuckets] does not exists");
 
     auto status = block_bucket_itr->status;
     check(status != verify_merkle && status != verify_parent_hash && status != verify_pass,
-          "blksync.xsat::delchunk: cannot delete chunk in the current state [" + get_block_status_name(status) + "]");
+          "2015:blksync.xsat::delchunk: cannot delete chunk in the current state [" + get_block_status_name(status)
+              + "]");
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
@@ -200,7 +203,7 @@ void block_sync::delchunk(const name& synchronizer, const uint64_t height, const
 
     auto chunk_itr
         = eosio::internal_use_do_not_use::db_find_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, chunk_id);
-    check(chunk_itr >= 0, "blksync.xsat::delchunk: chunk_id does not exist");
+    check(chunk_itr >= 0, "2016:blksync.xsat::delchunk: chunk_id does not exist");
 
     auto chunk_size = eosio::internal_use_do_not_use::db_get_i64(chunk_itr, nullptr, 0);
     eosio::internal_use_do_not_use::db_remove_i64(chunk_itr);
@@ -231,8 +234,8 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
     // check
     block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
     auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
-    auto block_bucket_itr = block_bucket_idx.require_find(xsat::utils::compute_block_id(height, hash),
-                                                          "blksync.xsat::delbucket: [blockbuckets] does not exists");
+    auto block_bucket_itr = block_bucket_idx.require_find(
+        xsat::utils::compute_block_id(height, hash), "2017:blksync.xsat::delbucket: [blockbuckets] does not exists");
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
@@ -274,8 +277,8 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
     auto block_bucket_idx = _block_bucket.get_index<"byblockid"_n>();
     auto block_bucket_itr = block_bucket_idx.require_find(
         xsat::utils::compute_block_id(height, hash),
-        "blksync.xsat::verify: you have not uploaded the block data. please upload it first and then verify it");
-    check(block_bucket_itr->in_verifiable(), "blksync.xsat::verify: cannot validate block in the current state ["
+        "2018:blksync.xsat::verify: you have not uploaded the block data. please upload it first and then verify it");
+    check(block_bucket_itr->in_verifiable(), "2019:blksync.xsat::verify: cannot validate block in the current state ["
                                                  + get_block_status_name(block_bucket_itr->status) + "]");
 
     // fee deduction
@@ -315,7 +318,8 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
     if (status == verify_parent_hash) {
         // check parent
         auto parent_cumulative_work = utxo_manage::get_cumulative_work(height - 1, verify_info.previous_block_hash);
-        check(parent_cumulative_work.has_value(), "blksync.xsat::verify: parent block hash did not reach consensus");
+        check(parent_cumulative_work.has_value(),
+              "2020:blksync.xsat::verify: parent block hash did not reach consensus");
 
         checksum256 cumulative_work
             = bitcoin::be_checksum256_from_uint(bitcoin::be_uint_from_checksum256(verify_info.work)
@@ -393,9 +397,10 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
     // waiting_miner_verification
     block_miner_table _block_miner(get_self(), height);
     auto block_miner_idx = _block_miner.get_index<"byhash"_n>();
-    auto block_miner_itr = block_miner_idx.require_find(hash, "blksync.xsat::verify: [blockminer] does not exists");
+    auto block_miner_itr
+        = block_miner_idx.require_find(hash, "2021:blksync.xsat::verify: [blockminer] does not exists");
     check(block_miner_itr->expired_block_num <= current_block_number(),
-          "blksync.xsat::verify: waiting for miners to produce blocks");
+          "2022:blksync.xsat::verify: waiting for miners to produce blocks");
 
     utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
     _consensus.send(height, hash);

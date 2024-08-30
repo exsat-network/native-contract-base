@@ -114,7 +114,7 @@ describe('blkendt.xsat', () => {
             contracts.blkendt.actions
                 .endorse(['bob', 839999, '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'])
                 .send('bob@active'),
-            'eosio_assert: blkendt.xsat::endorse: the block has been parsed and does not need to be endorsed'
+            'eosio_assert: 1002:blkendt.xsat::endorse: the block has been parsed and does not need to be endorsed'
         )
     })
 
@@ -123,7 +123,7 @@ describe('blkendt.xsat', () => {
             contracts.blkendt.actions
                 .endorse(['amy', 840000, '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'])
                 .send('amy@active'),
-            'eosio_assert: blkendt.xsat::endorse: no validators found with staking amounts exceeding 100 BTC'
+            'eosio_assert: 1004:blkendt.xsat::endorse: no validators found with staking amounts exceeding 100 BTC'
         )
     })
 
@@ -143,7 +143,7 @@ describe('blkendt.xsat', () => {
 
         await expectToThrow(
             contracts.blkendt.actions.endorse(['amy', height, hash]).send('amy@active'),
-            'eosio_assert: blkendt.xsat::endorse: the validator has less than 100 BTC staked'
+            'eosio_assert: 1005:blkendt.xsat::endorse: the validator has less than 100 BTC staked'
         )
     })
 
@@ -231,7 +231,7 @@ describe('blkendt.xsat', () => {
         const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
         await expectToThrow(
             contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active'),
-            'eosio_assert: blkendt.xsat::endorse: validator is on the list of provider validators'
+            'eosio_assert: 1006:blkendt.xsat::endorse: validator is on the list of provider validators'
         )
     })
 
@@ -248,7 +248,7 @@ describe('blkendt.xsat', () => {
         const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
         await expectToThrow(
             contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active'),
-            'eosio_assert: blkendt.xsat::endorse: the current endorsement status is disabled'
+            'eosio_assert: 1001:blkendt.xsat::endorse: the current endorsement status is disabled'
         )
     })
 
@@ -265,7 +265,7 @@ describe('blkendt.xsat', () => {
         const hash = '00000000000000000001b48a75d5a3077913f3f441eb7e08c13c43f768db2463'
         await expectToThrow(
             contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active'),
-            'eosio_assert_message: blkendt.xsat::endorse: the endorsement height cannot exceed height 840000'
+            'eosio_assert_message: 1003:blkendt.xsat::endorse: the endorsement height cannot exceed height 840000'
         )
     })
 })

@@ -37,16 +37,16 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
 
     auto config = _config.get();
     check(config.limit_endorse_height == 0 || config.limit_endorse_height >= height,
-          "blkendt.xsat::endorse: the current endorsement status is disabled");
+          "1001:blkendt.xsat::endorse: the current endorsement status is disabled");
 
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     auto chain_state = _chain_state.get();
     check(chain_state.irreversible_height < height && chain_state.migrating_height != height,
-          "blkendt.xsat::endorse: the block has been parsed and does not need to be endorsed");
+          "1002:blkendt.xsat::endorse: the block has been parsed and does not need to be endorsed");
 
     check(
         config.limit_num_endorsed_blocks == 0 || chain_state.parsed_height + config.limit_num_endorsed_blocks >= height,
-        "blkendt.xsat::endorse: the endorsement height cannot exceed height "
+        "1003:blkendt.xsat::endorse: the endorsement height cannot exceed height "
             + std::to_string(chain_state.parsed_height + config.limit_num_endorsed_blocks));
 
     // fee deduction
@@ -60,12 +60,13 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     if (endorsement_itr == endorsement_idx.end()) {
         std::vector<requested_validator_info> requested_validators = get_valid_validator();
         check(!requested_validators.empty(),
-              "blkendt.xsat::endorse: no validators found with staking amounts exceeding 100 BTC");
+              "1004:blkendt.xsat::endorse: no validators found with staking amounts exceeding 100 BTC");
         auto itr = std::find_if(requested_validators.begin(), requested_validators.end(),
                                 [&](const requested_validator_info& a) {
                                     return a.account == validator;
                                 });
-        check(itr != requested_validators.end(), "blkendt.xsat::endorse: the validator has less than 100 BTC staked");
+        check(itr != requested_validators.end(),
+              "1005:blkendt.xsat::endorse: the validator has less than 100 BTC staked");
         provider_validator_info provider_info{
             .account = itr->account, .staking = itr->staking, .created_at = current_time_point()};
         requested_validators.erase(itr);
@@ -82,14 +83,14 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
                                return a.account == validator;
                            })
                   == endorsement_itr->provider_validators.end(),
-              "blkendt.xsat::endorse: validator is on the list of provider validators");
+              "1006:blkendt.xsat::endorse: validator is on the list of provider validators");
 
         auto itr = std::find_if(endorsement_itr->requested_validators.begin(),
                                 endorsement_itr->requested_validators.end(), [&](const requested_validator_info& a) {
                                     return a.account == validator;
                                 });
         check(itr != endorsement_itr->requested_validators.end(),
-              "blkendt.xsat::endorse: the validator has less than 100 BTC staked");
+              "1007:blkendt.xsat::endorse: the validator has less than 100 BTC staked");
         endorsement_idx.modify(endorsement_itr, same_payer, [&](auto& row) {
             row.provider_validators.push_back(
                 {.account = itr->account, .staking = itr->staking, .created_at = current_time_point()});

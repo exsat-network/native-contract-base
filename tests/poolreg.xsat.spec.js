@@ -298,7 +298,7 @@ describe('poolreg.xsat', () => {
     it('buyslot: insufficient balance', async () => {
         await expectToThrow(
             contracts.poolreg.actions.buyslot(['bob', 'bob', 1]).send('bob@active'),
-            'eosio_assert: rescmng.xsat::pay: insufficient balance'
+            'eosio_assert: 3003:rescmng.xsat::pay: insufficient balance'
         )
     })
 
