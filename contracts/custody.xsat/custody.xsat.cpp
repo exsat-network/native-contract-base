@@ -57,13 +57,13 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
 }
 
 [[eosio::action]]
-void custody::updatecusty(const checksum160 staker, const name validator) {
+void custody::updcustody(const checksum160 staker, const name validator) {
     require_auth(get_self());
-    check(is_account(validator), "custody.xsat::updatecusty: validator does not exists");
+    check(is_account(validator), "custody.xsat::updcustody: validator does not exists");
     custody_index _custody(get_self(), get_self().value);
     auto staker_idx = _custody.get_index<"bystaker"_n>();
     auto staker_id = xsat::utils::compute_id(staker);
-    auto itr = staker_idx.require_find(staker_id, "custody.xsat::updatecusty: staker does not exists");
+    auto itr = staker_idx.require_find(staker_id, "custody.xsat::updcustody: staker does not exists");
 
     // newstake
     endorse_manage::evm_staker_table _staking(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);

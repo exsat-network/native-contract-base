@@ -45,7 +45,7 @@ public:
     void addcustody(const checksum160 staker, const checksum160 proxy, const name validator, const optional<string> btc_address, optional<vector<uint8_t>> scriptpubkey);
 
     /**
-     * ## ACTION `updatecusty`
+     * ## ACTION `updcustody`
      *
      * - **authority**: `get_self()`
      *
@@ -59,11 +59,11 @@ public:
      * ### example
      *
      * ```bash
-     * $ cleos push action custody.xsat updatecusty '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "val1.xsat"]' -p custody.xsat
+     * $ cleos push action custody.xsat updcustody '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "val1.xsat"]' -p custody.xsat
      * ```
      */
     [[eosio::action]]
-    void updatecusty(const checksum160 staker, const name validator);
+    void updcustody(const checksum160 staker, const name validator);
 
     /**
      * ## ACTION `delcustody`
