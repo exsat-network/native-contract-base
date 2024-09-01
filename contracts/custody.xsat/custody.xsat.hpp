@@ -7,6 +7,7 @@
 #include <sstream>
 #include <utxomng.xsat/utxomng.xsat.hpp>
 #include <endrmng.xsat/endrmng.xsat.hpp>
+#include <btc.xsat/btc.xsat.hpp>
 #include <bitcoin/utility/address_converter.hpp>
 #include "../internal/defines.hpp"
 #include "../internal/utils.hpp"
@@ -86,6 +87,25 @@ public:
     void delcustody(const checksum160 staker);
 
     /**
+     * ## ACTION `updblkstatus`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Update block sync status
+     *
+     * ### params
+     *
+     * - `{uint8_t} status` - block sync status
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action custody.xsat updblkstatus '[1]' -p custody.xsat
+     * ```
+     */
+    void updblkstatus(const uint8_t status);
+
+    /**
      * ## ACTION `syncstake`
      *
      * - **authority**: `anyone`
@@ -100,6 +120,48 @@ public:
      */
     [[eosio::action]]
     void syncstake(optional<uint64_t> process_rows);
+
+    /**
+     * ## ACTION `stake`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Stake to validator
+     *
+     * ### params
+     *
+     * - `{checksum160} staker` - staker evm address
+     * - `{asset} quantity` - staking amount
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action custody.xsat stake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void stake(const checksum160& staker, const asset& quantity);
+
+    /**
+     * ## ACTION `unstake`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Unstake to validator
+     *
+     * ### params
+     *
+     * - `{checksum160} staker` - staker evm address
+     * - `{asset} quantity` - staking amount
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action custody.xsat unstake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void unstake(const checksum160& staker, const asset& quantity);
 
 #ifdef DEBUG
     [[eosio::action]]
@@ -125,14 +187,20 @@ private:
      *
      * ```json
      * {
-     *   "custody_id": 1
+     *   "block_sync_status": 0,
+     *   "custody_id": 1,
+     *   "last_custody_id": 1,
+     *   "last_height": 0,
+     *   "vault_id": 1
      * }
      * ```
      */
     struct [[eosio::table]] global_id_row {
+        uint8_t block_sync_status; // 0: not synced, 1: synced
         uint64_t custody_id;
         uint64_t last_custody_id;
         uint64_t last_height;
+        uint64_t vault_id;
     };
     typedef singleton<"globalid"_n, global_id_row> global_id_table;
     global_id_table _global_id = global_id_table(_self, _self.value);
@@ -186,7 +254,47 @@ private:
         eosio::indexed_by<"scriptpubkey"_n, const_mem_fun<custody_row, checksum256, &custody_row::by_scriptpubkey>>>
         custody_index;
 
+    /**
+     * ## TABLE `vaults`
+     *
+     * ### scope `get_self()`
+     *
+     * - `{uint64_t} id` - the vault id
+     * - `{checksum160} staker` - the staker evm address
+     * - `{name} validator` - the validator account
+     * - `{string} btc_address` - the bitcoin address
+     * - `{asset} quantity` - the staking amount
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 1,
+     *   "staker": "ee37064f01ec9314278f4984ff4b9b695eb91912",
+     *   "validator": "vali.xsat",
+     *   "btc_address": "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN",
+     *   "quantity": "1.00000000 BTC"
+     * }
+     */
+    struct [[eosio::table]] vault_row {
+        uint64_t id;
+        checksum160 staker;
+        name validator;
+        string btc_address;
+        asset quantity;
+        uint64_t primary_key() const { return id; }
+        checksum256 by_staker() const { return xsat::utils::compute_id(staker); }
+    };
+    typedef eosio::multi_index<"vaults"_n, vault_row,
+        eosio::indexed_by<"bystaker"_n, const_mem_fun<vault_row, checksum256, &vault_row::by_staker>>>
+        vault_index;
+
+    // table init
+    custody_index _custody = custody_index(_self, _self.value);
+    vault_index _vault = vault_index(_self, _self.value);
+
     uint64_t next_custody_id();
+    uint64_t next_vault_id();
     uint64_t current_irreversible_height();
 
 #ifdef DEBUG

@@ -19,6 +19,11 @@ static constexpr name ENDORSER_MANAGE_CONTRACT = "endrmng.xsat"_n;
 static constexpr name UTXO_MANAGE_CONTRACT = "utxomng.xsat"_n;
 static constexpr name RESOURCE_MANAGE_CONTRACT = "rescmng.xsat"_n;
 static constexpr name REWARD_DISTRIBUTION_CONTRACT = "rwddist.xsat"_n;
+static constexpr name CUSTODY_CONTRACT = "custody.xsat"_n;
+
+// ACCOUNTS
+static constexpr name VAULT_ACCOUNT = "vault.xsat"_n;
+static constexpr name TRIGGER_ACCOUNT = "trigger.xsat"_n;
 
 // TABLE
 static constexpr name BLOCK_CHUNK = "block.chunk"_n;
