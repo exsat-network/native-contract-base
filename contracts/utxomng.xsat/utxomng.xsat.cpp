@@ -20,8 +20,8 @@ void utxo_manage::init(const uint64_t height, const checksum256& hash, const che
     check(!_chain_state.exists() || _chain_state.get().irreversible_height == 0,
           "utxomng.xsat::init: can only be initialized once");
     check(height == START_HEIGHT, "utxomng.xsat::init: block height must be 839999");
-    check(hash > checksum256(), "utxomng.xsat::init: invalid hash");
-    check(cumulative_work > checksum256(), "utxomng.xsat::init: invalid cumulative_work");
+    check(hash > ZERO_HASH, "utxomng.xsat::init: invalid hash");
+    check(cumulative_work > ZERO_HASH, "utxomng.xsat::init: invalid cumulative_work");
 
     auto chain_state = _chain_state.get_or_default();
     chain_state.head_height = height;
@@ -245,7 +245,7 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
         }
     }
 
-    check(hash != checksum256(), "4003:utxomng.xsat::processblock: you are not a parser of the current block");
+    check(hash != ZERO_HASH, "4003:utxomng.xsat::processblock: you are not a parser of the current block");
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
@@ -304,7 +304,7 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
             chain_state.irreversible_height = chain_state.migrating_height;
             chain_state.irreversible_hash = chain_state.migrating_hash;
             chain_state.migrating_height = 0;
-            chain_state.migrating_hash = checksum256();
+            chain_state.migrating_hash = ZERO_HASH;
             chain_state.migrating_num_utxos = 0;
             chain_state.migrated_num_utxos = 0;
             chain_state.num_provider_validators = 0;
