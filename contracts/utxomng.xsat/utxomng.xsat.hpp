@@ -441,6 +441,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{name} synchronizer` - block synchronizer account
      * - `{name} parser` - the last parser of the parsing block
      * - `{uint64_t} num_utxos` - the total number of vin and vout of the block
+     * - `{bool} parse` - is it an parsed block
      * - `{bool} irreversible` - is it an irreversible block
      * - `{time_point_sec} created_at` - created at time
      *
@@ -462,6 +463,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      *   "synchronizer": "alice",
      *   "parser": "alice",
      *   "num_utxos": 16278,
+     *   "parse": 1,
      *   "irreversible": 1,
      *   "created_at": "2024-08-13T00:00:00"
      * }
@@ -738,6 +740,9 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     [[eosio::action]]
     void setirrhash(const checksum256 &irreversible_hash);
+
+    [[eosio::action]]
+    vector<string> scripttoaddr(const vector<uint8_t> &scriptpubkey);
 #endif
 
     // logs

@@ -336,7 +336,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *
      * ### params
      *
-     * - `{string} status` - verification status
+     * - `{string} status` - verification status (uploading, upload_complete, verify_merkle, verify_parent_hash, waiting_miner_verification, verify_pass, verify_fail)
      * - `{string} reason` - reason for verification failure
      * - `{checksum256} block_hash` - block hash
      *
