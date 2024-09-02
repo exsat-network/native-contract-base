@@ -233,7 +233,7 @@ void pool::buyslot(const name& synchronizer, const name& receiver, const uint16_
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
-    pay.send(0, checksum256(), synchronizer, BUY_SLOT, num_slots);
+    pay.send(0, ZERO_HASH, synchronizer, BUY_SLOT, num_slots);
 }
 
 [[eosio::on_notify("*::transfer")]]
