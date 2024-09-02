@@ -743,6 +743,9 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     [[eosio::action]]
     vector<string> scripttoaddr(const vector<uint8_t> &scriptpubkey);
+
+    [[eosio::action]]
+    bool unspendable(const uint64_t height, const vector<uint8_t> &script);
 #endif
 
     // logs

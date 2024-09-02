@@ -36,7 +36,17 @@ void utxo_manage::cleartable(const name table_name, const optional<uint64_t> sco
 }
 
 [[eosio::action]]
+std::vector<string> utxo_manage::scripttoaddr(const vector<uint8_t>& scriptpubkey) {
+    require_auth(get_self());
+
+    std::vector<string> scriptpubkey_addresses;
+    bitcoin::ExtractDestination(scriptpubkey, scriptpubkey_addresses);
+    return scriptpubkey_addresses;
+}
+
+[[eosio::action]]
 std::vector<unsigned char> utxo_manage::addrtoscript(const string& btc_address) {
+    require_auth(get_self());
     std::vector<unsigned char> script;
     string error;
     if (!bitcoin::DecodeDestination(btc_address, script, error)) {
@@ -47,12 +57,20 @@ std::vector<unsigned char> utxo_manage::addrtoscript(const string& btc_address) 
 
 [[eosio::action]]
 bool utxo_manage::isvalid(const string& btc_address) {
+    require_auth(get_self());
     return bitcoin::IsValid(btc_address);
 }
 
 [[eosio::action]]
 void utxo_manage::setirrhash(const checksum256& irreversible_hash) {
+    require_auth(get_self());
     auto chain_state = _chain_state.get();
     chain_state.irreversible_hash = irreversible_hash;
     _chain_state.set(chain_state, get_self());
+}
+
+[[eosio::action]]
+bool utxo_manage::unspendable(const uint64_t height, const vector<uint8_t>& script) {
+    require_auth(get_self());
+    return xsat::utils::is_unspendable(height, script);
 }

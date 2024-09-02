@@ -6,6 +6,7 @@
 #include <cstring>
 #include <vector>
 #include <string>
+#include "defines.hpp"
 
 using namespace eosio;
 using namespace std;
@@ -77,6 +78,18 @@ namespace xsat::utils {
         }
         vector<uint8_t> account_data(data.begin() + 8, data.end());
         return parse_name(account_decode(account_data));
+    }
+
+    // OP_FALSE OP_RETURN or OP_RETURN
+    static bool is_unspendable_legacy(const vector<uint8_t>& script) {
+        return (script[0] == 0x00 && script[1] == 0x6a) || script[0] == 0x6a;
+    }
+
+    // OP_FALSE OP_RETURN
+    static bool is_unspendable_genesis(const vector<uint8_t>& script) { return script[0] == 0x00 && script[1] == 0x6a; }
+
+    static bool is_unspendable(const uint64_t height, const vector<uint8_t>& script) {
+        return height > GENESIS_ACTIVATION ? is_unspendable_genesis(script) : is_unspendable_legacy(script);
     }
 
     template <typename T>

@@ -391,7 +391,7 @@ void utxo_manage::parsing_transactions(const uint64_t height, const checksum256&
              parsing_progress->parsed_vout++, process_row--) {
             auto vout = transaction.outputs[parsing_progress->parsed_vout];
 
-            if (vout.value == 0) continue;
+            if (xsat::utils::is_unspendable_legacy(vout.script.data)) continue;
             save_pending_utxo(height, hash, txid, parsing_progress->parsed_vout, vout.script.data, vout.value,
                               "vout"_n);
             parsing_progress->num_utxos++;
