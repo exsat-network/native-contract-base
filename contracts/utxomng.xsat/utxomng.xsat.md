@@ -372,48 +372,49 @@ static const parsing_status migrating = 5;
 ## TABLE `consensusblk`
 
 ### scope `get_self()`
-
 ### params
 
--   `{uint64_t} bucket_id` - the associated bucket number is used to obtain block data
--   `{uint64_t} height` - block height
--   `{checksum256} hash` - block hash
--   `{checksum256} cumulative_work` - the cumulative workload of the block
--   `{uint32_t} version` - block version
--   `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
--   `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
--   `{uint32_t} timestamp` - the block time is a Unix epoch time
--   `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
-    equal to
--   `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
-    less than or
--   `{name} miner` - block miner account
--   `{name} synchronizer` - block synchronizer account
--   `{name} parser` - the last parser of the parsing block
--   `{uint64_t} num_utxos` - the total number of vin and vout of the block
--   `{bool} irreversible` - is it an irreversible block
--   `{time_point_sec} created_at` - created at time
+- `{uint64_t} bucket_id` - the associated bucket number is used to obtain block data
+- `{uint64_t} height` - block height
+- `{checksum256} hash` - block hash
+- `{checksum256} cumulative_work` - the cumulative workload of the block
+- `{uint32_t} version` - block version
+- `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
+- `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
+- `{uint32_t} timestamp` - the block time is a Unix epoch time
+- `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
+equal to
+- `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
+less than or
+- `{name} miner` - block miner account
+- `{name} synchronizer` - block synchronizer account
+- `{name} parser` - the last parser of the parsing block
+- `{uint64_t} num_utxos` - the total number of vin and vout of the block
+- `{bool} parse` - is it an parsed block
+- `{bool} irreversible` - is it an irreversible block
+- `{time_point_sec} created_at` - created at time
 
 ### example
 
 ```json
 {
-    "bucket_id": 5,
-    "height": 840003,
-    "hash": "00000000000000000001cfe8671cb9269dfeded2c4e900e365fffae09b34b119",
-    "cumulative_work": "0000000000000000000000000000000000000000753cc66782a80f6f099fe68c",
-    "version": 704643072,
-    "previous_block_hash": "00000000000000000002c0cc73626b56fb3ee1ce605b0ce125cc4fb58775a0a9",
-    "merkle": "2daee999cac85a7663bbc3a0e24bd7c86e009c005e7d801ef104d134b420179b",
-    "timestamp": 1713572633,
-    "bits": 386089497,
-    "nonce": 213198539,
-    "miner": "",
-    "synchronizer": "alice",
-    "parser": "alice",
-    "num_utxos": 16278,
-    "irreversible": 1,
-    "created_at": "2024-08-13T00:00:00"
+  "bucket_id": 5,
+  "height": 840003,
+  "hash": "00000000000000000001cfe8671cb9269dfeded2c4e900e365fffae09b34b119",
+  "cumulative_work": "0000000000000000000000000000000000000000753cc66782a80f6f099fe68c",
+  "version": 704643072,
+  "previous_block_hash": "00000000000000000002c0cc73626b56fb3ee1ce605b0ce125cc4fb58775a0a9",
+  "merkle": "2daee999cac85a7663bbc3a0e24bd7c86e009c005e7d801ef104d134b420179b",
+  "timestamp": 1713572633,
+  "bits": 386089497,
+  "nonce": 213198539,
+  "miner": "",
+  "synchronizer": "alice",
+  "parser": "alice",
+  "num_utxos": 16278,
+  "parse": 1,
+  "irreversible": 1,
+  "created_at": "2024-08-13T00:00:00"
 }
 ```
 

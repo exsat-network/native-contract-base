@@ -162,6 +162,18 @@ beforeAll(async () => {
 })
 
 describe('utxomng.xsat', () => {
+    it('unspendable', async () => {
+        await contracts.utxomng.actions
+            .unspendable([840327, '6a206d1988a6cdd64bf8103095f4fea8bbcb45efb2143196c4fac4a32e85df10cc43'])
+            .send('utxomng.xsat@active')
+        expect(blockchain.actionTraces[0].returnValue[0]).toEqual(1)
+
+        await contracts.utxomng.actions
+            .unspendable([840673, 'fabe6d6d553d6eb4ada3a4795b3da6bab58e55b7bfa362e40fb9350d4fa781057f9512d40100000000000000'])
+            .send('utxomng.xsat@active')
+        expect(blockchain.actionTraces[0].returnValue[0]).toEqual(0)
+    })
+
     it('addutxo: missing required authority', async () => {
         await expectToThrow(
             contracts.utxomng.actions

@@ -33,6 +33,8 @@ static constexpr symbol XSAT_SYMBOL = {"XSAT", 8};
 static constexpr symbol BTC_SYMBOL = {"BTC", 8};
 
 // CONSTANTS
+static constexpr checksum256 ZERO_HASH = checksum256();
+static constexpr uint64_t GENESIS_ACTIVATION = 100000000LL;
 static constexpr uint32_t DECIMAL = 100000000LL;
 static constexpr uint64_t MIN_STAKE_FOR_ENDORSEMENT = 100LL * DECIMAL;
 static constexpr uint64_t BTC_SUPPLY = 21000000LL * DECIMAL;
