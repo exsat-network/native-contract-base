@@ -11,7 +11,6 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
     check(is_account(validator), "custody.xsat::addcustody: validator does not exists");
     check(proxy != checksum160(), "custody.xsat::addcustody: proxy cannot be empty");
     check(btc_address.has_value() || scriptpubkey.has_value(), "custody.xsat::addcustody: btc_address and scriptpubkey cannot be empty at the same time");
-    custody_index _custody(get_self(), get_self().value);
     auto staker_idx = _custody.get_index<"bystaker"_n>();
     auto staker_itr = staker_idx.find(xsat::utils::compute_id(staker));
     check(staker_itr == staker_idx.end(), "custody.xsat::addcustody: staker address already exists");
@@ -36,7 +35,7 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
         utxo_value += s_itr->value;
     }
     if (utxo_value > 0) {
-        endorse_manage::evm_staker_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
+        endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
         stake.send(get_self(), proxy, staker, validator, asset(utxo_value, BTC_SYMBOL));
     }
 
@@ -57,13 +56,12 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
 }
 
 [[eosio::action]]
-void custody::updatecusty(const checksum160 staker, const name validator) {
+void custody::updcustody(const checksum160 staker, const name validator) {
     require_auth(get_self());
-    check(is_account(validator), "custody.xsat::updatecusty: validator does not exists");
-    custody_index _custody(get_self(), get_self().value);
+    check(is_account(validator), "custody.xsat::updcustody: validator does not exists");
     auto staker_idx = _custody.get_index<"bystaker"_n>();
     auto staker_id = xsat::utils::compute_id(staker);
-    auto itr = staker_idx.require_find(staker_id, "custody.xsat::updatecusty: staker does not exists");
+    auto itr = staker_idx.require_find(staker_id, "custody.xsat::updcustody: staker does not exists");
 
     // newstake
     endorse_manage::evm_staker_table _staking(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);
@@ -84,7 +82,6 @@ void custody::updatecusty(const checksum160 staker, const name validator) {
 [[eosio::action]]
 void custody::delcustody(const checksum160 staker) {
     require_auth(get_self());
-    custody_index _custody(get_self(), get_self().value);
     auto staker_idx = _custody.get_index<"bystaker"_n>();
     auto staker_id = xsat::utils::compute_id(staker);
     auto itr = staker_idx.require_find(staker_id, "custody.xsat::delcustody: staker does not exists");
@@ -103,13 +100,21 @@ void custody::delcustody(const checksum160 staker) {
 }
 
 [[eosio::action]]
+void custody::updblkstatus(const uint8_t status) {
+    require_auth(get_self());
+    check(status == 0 || status == 1, "custody.xsat::updblkstatus: invalid status");
+    global_id_row global_id = _global_id.get_or_default();
+    global_id.block_sync_status = status;
+    _global_id.set(global_id, get_self());
+}
+
+[[eosio::action]]
 void custody::syncstake(optional<uint64_t> process_rows) {
     process_rows = process_rows.value_or(100);
     global_id_row global_id = _global_id.get_or_default();
     const uint64_t height = current_irreversible_height();
     check(height > global_id.last_height, "custody.xsat::syncstake: no new block height update");
 
-    custody_index _custody(get_self(), get_self().value);
     utxo_manage::utxo_table _utxo(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     endorse_manage::evm_staker_table _staking(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);
     auto scriptpubkey_idx = _utxo.get_index<"scriptpubkey"_n>();
@@ -136,7 +141,7 @@ void custody::syncstake(optional<uint64_t> process_rows) {
             staking_value = staking_itr->quantity.amount;
         }
         if (utxo_value > staking_value) {
-            endorse_manage::evm_staker_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
+            endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
             stake.send(get_self(), itr->proxy, itr->staker, itr->validator, asset(safemath::sub(utxo_value, staking_value), BTC_SYMBOL));
             _custody.modify(itr, same_payer, [&](auto& row) {
                 row.value = utxo_value;
@@ -166,11 +171,85 @@ void custody::syncstake(optional<uint64_t> process_rows) {
     }
 }
 
+[[eosio::action]]
+void custody::stake(const checksum160& staker, const asset& quantity) {
+    require_auth(get_self());
+    global_id_row global_id = _global_id.get_or_default();
+    check(global_id.block_sync_status == 0, "custody.xsat::stake: block sync status is synced, this stake channel is closed");
+    check(quantity.amount > 0, "custody.xsat::stake: quantity must be positive");
+    auto staker_id = xsat::utils::compute_id(staker);
+    auto custody_staker_idx = _custody.get_index<"bystaker"_n>();
+    auto custody_staker_itr = custody_staker_idx.require_find(staker_id, "custody.xsat::stake: staker does not exists");
+
+    auto vault_staker_idx = _vault.get_index<"bystaker"_n>();
+    auto vault_staker_itr = vault_staker_idx.find(staker_id);
+
+    // issue BTC
+    btc::issue_action issue(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+    issue.send(BTC_CONTRACT, quantity, "issue BTC to staker");
+    // transfer BTC to vault
+    btc::transfer_action transfer(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+    transfer.send(BTC_CONTRACT, VAULT_ACCOUNT, quantity, "transfer BTC to vault");
+    //evm stake
+    endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
+    stake.send(get_self(), custody_staker_itr->proxy, staker, custody_staker_itr->validator, quantity);
+
+    if (vault_staker_itr == vault_staker_idx.end()) {
+        _vault.emplace(get_self(), [&](auto& row) {
+            row.id = next_vault_id();
+            row.staker = staker;
+            row.validator = custody_staker_itr->validator;
+            row.btc_address = custody_staker_itr->btc_address;
+            row.quantity = quantity;
+        });
+    } else {
+        vault_staker_idx.modify(vault_staker_itr, same_payer, [&](auto& row) {
+            row.quantity += quantity;
+        });
+    }
+}
+
+[[eosio::action]]
+void custody::unstake(const checksum160& staker, const asset& quantity) {
+    require_auth(get_self());
+    global_id_row global_id = _global_id.get_or_default();
+    check(global_id.block_sync_status == 0, "custody.xsat::stake: block sync status is synced, this stake channel is closed");
+    check(quantity.amount > 0, "custody.xsat::unstake: quantity must be positive");
+    auto staker_id = xsat::utils::compute_id(staker);
+    auto custody_staker_idx = _custody.get_index<"bystaker"_n>();
+    auto custody_staker_itr = custody_staker_idx.require_find(staker_id, "custody.xsat::unstake: staker does not exists in custody");
+
+    auto vault_staker_idx = _vault.get_index<"bystaker"_n>();
+    auto vault_staker_itr = vault_staker_idx.require_find(staker_id, "custody.xsat::unstake: staker does not exists in vault");
+    check(vault_staker_itr->quantity >= quantity, "custody.xsat::unstake: insufficient quantity in vault");
+
+    // transfer BTC from vault to custody
+    btc::transfer_action transfer(BTC_CONTRACT, { VAULT_ACCOUNT, "active"_n });
+    transfer.send(VAULT_ACCOUNT, BTC_CONTRACT, quantity, "transfer BTC from vault to custody");
+    // retire BTC
+    btc::retire_action retire(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+    retire.send(quantity, "retire BTC from staker");
+    //evm unstake
+    endorse_manage::evm_unstake_action unstake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
+    unstake.send(get_self(), custody_staker_itr->proxy, staker, custody_staker_itr->validator, quantity);
+
+    vault_staker_idx.modify(vault_staker_itr, same_payer, [&](auto& row) {
+        row.quantity -= quantity;
+    });
+}
+
 uint64_t custody::next_custody_id() {
     global_id_row global_id = _global_id.get_or_default();
     global_id.custody_id++;
     _global_id.set(global_id, get_self());
     return global_id.custody_id;
+}
+
+uint64_t custody::next_vault_id() {
+    global_id_row global_id = _global_id.get_or_default();
+    global_id.vault_id++;
+    _global_id.set(global_id, get_self());
+    return global_id.vault_id;
 }
 
 uint64_t custody::current_irreversible_height() {
