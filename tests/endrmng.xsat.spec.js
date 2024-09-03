@@ -208,10 +208,10 @@ describe('endrmng.xsat', () => {
         )
     })
 
-    it('proxyreg: the proxy account is not in the whitelist', async () => {
+    it('proxyreg: caller is not in the `proxyreg` whitelist', async () => {
         await expectToThrow(
             contracts.endrmng.actions.proxyreg(['bob', 'alice', 'alice', 2000]).send('bob@active'),
-            'eosio_assert: endrmng.xsat::proxyreg: the proxy account is not in the whitelist'
+            'eosio_assert: endrmng.xsat::proxyreg: caller is not in the `proxyreg` whitelist'
         )
     })
 
