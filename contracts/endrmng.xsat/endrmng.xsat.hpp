@@ -61,9 +61,9 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     typedef eosio::multi_index<"whitelist"_n, whitelist_row> whitelist_table;
 
     /**
-     * ## TABLE `evmproxys`
+     * ## TABLE `evmproxies`
      *
-     * ### scope `get_self()`
+     * ### scope the account whose scope is evmcaller in the `whitelist` table
      * ### params
      *
      * - `{uint64_t} id` - evm proxy id
@@ -85,7 +85,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
         checksum256 by_proxy() const { return xsat::utils::compute_id(proxy); }
     };
     typedef eosio::multi_index<
-        "evmproxys"_n, evm_proxy_row,
+        "evmproxies"_n, evm_proxy_row,
         eosio::indexed_by<"byproxy"_n, const_mem_fun<evm_proxy_row, checksum256, &evm_proxy_row::by_proxy>>>
         evm_proxy_table;
 
@@ -365,16 +365,17 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      *
      * ### params
      *
+     * - `{name} caller` - caller account
      * - `{checksum160} proxy` - proxy account
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action endrmng.xsat addevmproxy '["bb776ae86d5996908af46482f24be8ccde2d4c41"]' -p endrmng.xsat
+     * $ cleos push action endrmng.xsat addevmproxy '["evmcaller", "bb776ae86d5996908af46482f24be8ccde2d4c41"]' -p endrmng.xsat
      * ```
      */
     [[eosio::action]]
-    void addevmproxy(const checksum160& proxy);
+    void addevmproxy(const name& caller, const checksum160& proxy);
 
     /**
      * ## ACTION `delevmproxy`
@@ -385,16 +386,17 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      *
      * ### params
      *
+     * - `{name} caller` - caller account
      * - `{checksum160} proxy` - proxy account
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action endrmng.xsat delevmproxy '["bb776ae86d5996908af46482f24be8ccde2d4c41"]' -p endrmng.xsat
+     * $ cleos push action endrmng.xsat delevmproxy '["evmcaller", "bb776ae86d5996908af46482f24be8ccde2d4c41"]' -p endrmng.xsat
      * ```
      */
     [[eosio::action]]
-    void delevmproxy(const checksum160& proxy);
+    void delevmproxy(const name& caller, const checksum160& proxy);
 
     /**
      * ## ACTION `setstatus`
@@ -846,7 +848,6 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     validator_table _validator = validator_table(_self, _self.value);
     evm_staker_table _evm_stake = evm_staker_table(_self, _self.value);
     native_staker_table _native_stake = native_staker_table(_self, _self.value);
-    evm_proxy_table _evm_proxy = evm_proxy_table(_self, _self.value);
     stat_table _stat = stat_table(_self, _self.value);
 
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
