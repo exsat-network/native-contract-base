@@ -173,22 +173,21 @@ void custody::syncstake(optional<uint64_t> process_rows) {
                     row.value = new_staking_value;
                     row.latest_stake_time = eosio::current_time_point();
                 });
-
-                if (itr->is_issue) {
-                    handle_issue_btc(itr->staker, quantity, itr->validator, itr->btc_address);
-                }
             }
             if (itr->is_issue) {
                 handle_issue_btc(itr->staker, quantity, itr->validator, itr->btc_address);
             }
         } else if (utxo_value < current_staking) {
-            endorse_manage::evm_unstake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
-            auto quantity = asset(safemath::sub(current_staking, utxo_value), BTC_SYMBOL);
-            stake.send(get_self(), itr->proxy, itr->staker, itr->validator, quantity);
-            _custody.modify(itr, same_payer, [&](auto& row) {
-                row.value = utxo_value;
-                row.latest_stake_time = eosio::current_time_point();
+            uint64_t unstake_amount = safemath::sub(current_staking, utxo_value);
+            auto quantity = asset(unstake_amount, BTC_SYMBOL);
+            if (utxo_value < MAX_STAKING) {
+                endorse_manage::evm_unstake_action unstake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
+                unstake.send(get_self(), itr->proxy, itr->staker, itr->validator, quantity);
+                _custody.modify(itr, same_payer, [&](auto& row) {
+                    row.value = utxo_value;
+                    row.latest_stake_time = eosio::current_time_point();
                 });
+            }
             if (itr->is_issue) {
                 handle_retire_btc(itr->staker, quantity);
             }
