@@ -6,9 +6,8 @@
 - updcustody
 - delcustody
 - updblkstatus
-- syncstake
-- stake
-- unstake
+- onchainsync
+- offchainsync
 
 
 ## Quickstart
@@ -26,14 +25,11 @@ $ cleos push action custody.xsat delcustody '["1995587ef4e2dd5e6c61a8909110b0ca9
 # delcustody @custody.xsat
 $ cleos push action custody.xsat updblkstatus '[true]' -p custody.xsat
 
-# syncstake @custody.xsat
-$ cleos push action custody.xsat syncstake '[100]' -p custody.xsat
+# onchainsync @custody.xsat
+$ cleos push action custody.xsat onchainsync '[100]' -p custody.xsat
 
-# stake @custody.xsat
-$ cleos push action custody.xsat stake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
-
-# unstake @custody.xsat
-$ cleos push action custody.xsat unstake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
+# offchainsync @custody.xsat
+$ cleos push action custody.xsat offchainsync '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
 
 ## Table Information
 

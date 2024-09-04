@@ -25,30 +25,12 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
     auto scriptpubkey_itr = scriptpubkey_idx.find(hash);
     check(scriptpubkey_itr == scriptpubkey_idx.end(), "custody.xsat::addcustody: bitcoin address already exists");
 
-    // uint64_t utxo_value = 0;
-    // global_row global = _global.get_or_default();
-    // if (global.is_synchronized) {
-    //     // stake
-    //     utxo_value = get_utxo_value(*scriptpubkey);
-    //     handle_staking(staker, utxo_value);
-    //     handle_btc_vault(staker, utxo_value);
-    //     uint64_t staking_value = std::min(utxo_value, MAX_STAKING);
-    //     if (staking_value > 0) {
-    //         auto quantity = asset(staking_value, BTC_SYMBOL);
-    //         endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
-    //         stake.send(get_self(), proxy, staker, validator, quantity);
-    //         if (is_issue) {
-    //             handle_issue_btc(staker, quantity, validator, *btc_address);
-    //         }
-    //     }
-    // }
-
     _custody.emplace(get_self(), [&](auto& row) {
         row.id = next_custody_id();
         row.staker = staker;
         row.proxy = proxy;
         row.validator = validator;
-        row.value = 0;
+        row.value = utxo_value;
         row.is_issue = is_issue;
         row.latest_stake_time = eosio::current_time_point();
         if (btc_address.has_value()) {
@@ -142,7 +124,6 @@ void custody::onchainsync(optional<uint64_t> process_rows) {
         _global.set(global, get_self());
     }
 }
-
 
 [[eosio::action]]
 void custody::offchainsync(const checksum160& staker, const asset& balance) {
