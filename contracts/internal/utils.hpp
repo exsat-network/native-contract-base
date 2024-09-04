@@ -228,14 +228,11 @@ namespace xsat::utils {
     }
 
     static bool is_proxy_valid(const checksum160& proxy) {
-        const uint32_t* proxy_data = reinterpret_cast<const uint32_t*>(&proxy);
-        if (proxy_data[0] != 0) {
-            return false;
-        }
-        if ((proxy_data[1] & 0xF0000000) != 0) {
-            return false;
-        }
-        return true;
+        const uint64_t* data = reinterpret_cast<const uint64_t*>(&proxy);
+        uint64_t first_part = data[0];
+        uint64_t second_part = data[1];
+
+        return first_part == 0 && (second_part & 0xFFFFFFFF00000000) == 0;
     }
 
 }  // namespace xsat::utils

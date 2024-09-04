@@ -10,6 +10,7 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
     require_auth(get_self());
     check(is_account(validator), "custody.xsat::addcustody: validator does not exists");
     check(proxy != checksum160(), "custody.xsat::addcustody: proxy cannot be empty");
+    check(xsat::utils::is_proxy_valid(proxy), "custody.xsat::addcustody: proxy is not valid");
     check(btc_address.has_value() || scriptpubkey.has_value(), "custody.xsat::addcustody: btc_address and scriptpubkey cannot be empty at the same time");
     auto staker_idx = _custody.get_index<"bystaker"_n>();
     auto staker_itr = staker_idx.find(xsat::utils::compute_id(staker));
@@ -30,7 +31,7 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
         row.staker = staker;
         row.proxy = proxy;
         row.validator = validator;
-        row.value = utxo_value;
+        row.value = 0;
         row.is_issue = is_issue;
         row.latest_stake_time = eosio::current_time_point();
         if (btc_address.has_value()) {
