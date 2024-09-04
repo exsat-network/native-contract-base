@@ -152,17 +152,17 @@ void custody::syncstake(optional<uint64_t> process_rows) {
         checksum256 staking_id = endorse_manage::compute_staking_id(itr->proxy, itr->staker, itr->validator);
         auto staking_idx = _staking.get_index<"bystakingid"_n>();
         auto staking_itr = staking_idx.find(staking_id);
-        uint64_t staking_value = 0; // current staking value
+        uint64_t current_staking = 0; // current staking value
         if (staking_itr != staking_idx.end()) {
-            staking_value = staking_itr->quantity.amount;
+            current_staking = staking_itr->quantity.amount;
         }
-        if (utxo_value > staking_value) {
-            uint64_t stake_increase = safemath::sub(utxo_value, staking_value);
-            uint64_t new_staking_value = safemath::add(staking_value, stake_increase);
+        if (utxo_value > current_staking) {
+            uint64_t stake_increase = safemath::sub(utxo_value, current_staking);
+            uint64_t new_staking_value = safemath::add(current_staking, stake_increase);
             auto quantity = asset(stake_increase, BTC_SYMBOL);
-            if (staking_value < MAX_STAKING) {
+            if (current_staking < MAX_STAKING) {
                 if (new_staking_value > MAX_STAKING) {
-                    stake_increase = safemath::sub(MAX_STAKING, staking_value);
+                    stake_increase = safemath::sub(MAX_STAKING, current_staking);
                     new_staking_value = MAX_STAKING;
                 }
                 endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
@@ -181,9 +181,9 @@ void custody::syncstake(optional<uint64_t> process_rows) {
             if (itr->is_issue) {
                 handle_issue_btc(itr->staker, quantity, itr->validator, itr->btc_address);
             }
-        } else if (utxo_value < staking_value) {
+        } else if (utxo_value < current_staking) {
             endorse_manage::evm_unstake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
-            auto quantity = asset(safemath::sub(staking_value, utxo_value), BTC_SYMBOL);
+            auto quantity = asset(safemath::sub(current_staking, utxo_value), BTC_SYMBOL);
             stake.send(get_self(), itr->proxy, itr->staker, itr->validator, quantity);
             _custody.modify(itr, same_payer, [&](auto& row) {
                 row.value = utxo_value;
