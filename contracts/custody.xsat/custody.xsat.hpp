@@ -297,6 +297,9 @@ private:
     custody_index _custody = custody_index(_self, _self.value);
     vault_index _vault = vault_index(_self, _self.value);
 
+    void handle_issue_btc(const checksum160& staker, const asset& quantity, const name validator, const string btc_address);
+    void handle_retire_btc(const checksum160& staker, const asset& quantity);
+
     uint64_t next_custody_id();
     uint64_t next_vault_id();
     uint64_t current_irreversible_height();

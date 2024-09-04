@@ -37,8 +37,13 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
             utxo_value += s_itr->value;
         }
         if (utxo_value > 0) {
+            auto quantity = asset(utxo_value, BTC_SYMBOL);
             endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
-            stake.send(get_self(), proxy, staker, validator, asset(utxo_value, BTC_SYMBOL));
+            stake.send(get_self(), proxy, staker, validator, quantity);
+
+            if (is_issue) {
+                handle_issue_btc(staker, quantity, validator, *btc_address);
+            }
         }
     }
 
@@ -98,8 +103,11 @@ void custody::delcustody(const checksum160 staker) {
     if (staking_itr != staking_idx.end() && staking_itr->quantity.amount > 0) {
         endorse_manage::evm_unstake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
         stake.send(get_self(), itr->proxy, itr->staker, itr->validator, staking_itr->quantity);
-    }
 
+        if (itr->is_issue) {
+            handle_retire_btc(itr->staker, staking_itr->quantity);
+        }
+    }
     staker_idx.erase(itr);
 }
 
@@ -147,18 +155,26 @@ void custody::syncstake(optional<uint64_t> process_rows) {
         }
         if (utxo_value > staking_value) {
             endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
-            stake.send(get_self(), itr->proxy, itr->staker, itr->validator, asset(safemath::sub(utxo_value, staking_value), BTC_SYMBOL));
+            auto quantity = asset(safemath::sub(utxo_value, staking_value), BTC_SYMBOL);
+            stake.send(get_self(), itr->proxy, itr->staker, itr->validator, quantity);
             _custody.modify(itr, same_payer, [&](auto& row) {
                 row.value = utxo_value;
                 row.latest_stake_time = eosio::current_time_point();
             });
+            if (itr->is_issue) {
+                handle_issue_btc(itr->staker, quantity, itr->validator, itr->btc_address);
+            }
         } else if (utxo_value < staking_value) {
             endorse_manage::evm_unstake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
-            stake.send(get_self(), itr->proxy, itr->staker, itr->validator, asset(safemath::sub(staking_value, utxo_value), BTC_SYMBOL));
+            auto quantity = asset(safemath::sub(staking_value, utxo_value), BTC_SYMBOL);
+            stake.send(get_self(), itr->proxy, itr->staker, itr->validator, quantity);
             _custody.modify(itr, same_payer, [&](auto& row) {
                 row.value = utxo_value;
                 row.latest_stake_time = eosio::current_time_point();
-            });
+                });
+            if (itr->is_issue) {
+                handle_retire_btc(itr->staker, quantity);
+            }
         }
         last_custody_id = itr->id;
         if (std::next(itr) == end) {
@@ -191,29 +207,7 @@ void custody::stake(const checksum160& staker, const asset& quantity) {
     stake.send(get_self(), custody_staker_itr->proxy, staker, custody_staker_itr->validator, quantity);
 
     if (custody_staker_itr->is_issue) {
-        auto vault_staker_idx = _vault.get_index<"bystaker"_n>();
-        auto vault_staker_itr = vault_staker_idx.find(staker_id);
-
-        // issue BTC
-        btc::issue_action issue(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
-        issue.send(BTC_CONTRACT, quantity, "issue BTC to staker");
-        // transfer BTC to vault
-        btc::transfer_action transfer(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
-        transfer.send(BTC_CONTRACT, VAULT_ACCOUNT, quantity, "transfer BTC to vault");
-
-        if (vault_staker_itr == vault_staker_idx.end()) {
-            _vault.emplace(get_self(), [&](auto& row) {
-                row.id = next_vault_id();
-                row.staker = staker;
-                row.validator = custody_staker_itr->validator;
-                row.btc_address = custody_staker_itr->btc_address;
-                row.quantity = quantity;
-            });
-        } else {
-            vault_staker_idx.modify(vault_staker_itr, same_payer, [&](auto& row) {
-                row.quantity += quantity;
-            });
-        }
+        handle_issue_btc(staker, quantity, custody_staker_itr->validator, custody_staker_itr->btc_address);
     }
 }
 
@@ -230,24 +224,54 @@ void custody::unstake(const checksum160& staker, const asset& quantity) {
     //evm unstake
     endorse_manage::evm_unstake_action unstake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
     unstake.send(get_self(), custody_staker_itr->proxy, staker, custody_staker_itr->validator, quantity);
-
     if (custody_staker_itr->is_issue) {
-        auto vault_staker_idx = _vault.get_index<"bystaker"_n>();
-        auto vault_staker_itr = vault_staker_idx.require_find(staker_id, "custody.xsat::unstake: staker does not exists in vault");
-        check(vault_staker_itr->quantity >= quantity, "custody.xsat::unstake: insufficient quantity in vault");
+        handle_retire_btc(staker, quantity);
+    }
+}
 
-        // transfer BTC from vault to custody
-        btc::transfer_action transfer(BTC_CONTRACT, { VAULT_ACCOUNT, "active"_n });
-        transfer.send(VAULT_ACCOUNT, BTC_CONTRACT, quantity, "transfer BTC from vault to custody");
-        // retire BTC
-        btc::retire_action retire(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
-        retire.send(quantity, "retire BTC from staker");
+void custody::handle_issue_btc(const checksum160& staker, const asset& quantity, const name validator, const string btc_address) {
+    auto staker_id = xsat::utils::compute_id(staker);
+    auto vault_staker_idx = _vault.get_index<"bystaker"_n>();
+    auto vault_staker_itr = vault_staker_idx.find(staker_id);
 
+    // issue BTC
+    btc::issue_action issue(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+    issue.send(BTC_CONTRACT, quantity, "issue BTC to staker");
+    // transfer BTC to vault
+    btc::transfer_action transfer(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+    transfer.send(BTC_CONTRACT, VAULT_ACCOUNT, quantity, "transfer BTC to vault");
+
+    if (vault_staker_itr == vault_staker_idx.end()) {
+        _vault.emplace(get_self(), [&](auto& row) {
+            row.id = next_vault_id();
+            row.staker = staker;
+            row.validator = validator;
+            row.btc_address = btc_address;
+            row.quantity = quantity;
+        });
+    } else {
         vault_staker_idx.modify(vault_staker_itr, same_payer, [&](auto& row) {
-            row.quantity -= quantity;
+            row.quantity += quantity;
         });
     }
+}
 
+void custody::handle_retire_btc(const checksum160& staker, const asset& quantity) {
+    auto staker_id = xsat::utils::compute_id(staker);
+    auto vault_staker_idx = _vault.get_index<"bystaker"_n>();
+    auto vault_staker_itr = vault_staker_idx.require_find(staker_id, "custody.xsat::handle_retire_btc: staker does not exists in vault");
+    check(vault_staker_itr->quantity >= quantity, "custody.xsat::handle_retire_btc: insufficient quantity in vault");
+
+    // transfer BTC from vault to custody
+    btc::transfer_action transfer(BTC_CONTRACT, { VAULT_ACCOUNT, "active"_n });
+    transfer.send(VAULT_ACCOUNT, BTC_CONTRACT, quantity, "transfer BTC from vault to custody");
+    // retire BTC
+    btc::retire_action retire(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+    retire.send(quantity, "retire BTC from staker");
+
+    vault_staker_idx.modify(vault_staker_itr, same_payer, [&](auto& row) {
+        row.quantity -= quantity;
+    });
 }
 
 uint64_t custody::next_custody_id() {

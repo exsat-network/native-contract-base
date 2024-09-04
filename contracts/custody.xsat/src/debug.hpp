@@ -13,7 +13,7 @@ void custody::cleartable(const name table_name, const optional<name> scope, cons
     const uint64_t value = scope ? scope->value : get_self().value;
 
     if (table_name == "globalid"_n) {
-        _global_id.remove();
+        _global.remove();
     } else if (table_name == "custodies"_n) {
         custody_index _custody(get_self(), get_self().value);
         clear_table(_custody, rows_to_clear);
@@ -43,9 +43,9 @@ void custody::pubkey2addr(const vector<uint8_t> data) {
 [[eosio::action]]
 void custody::updateheight(const uint64_t height) {
     require_auth(get_self());
-    global_id_row global_id = _global_id.get_or_default();
-    global_id.last_height = height;
-    _global_id.set(global_id, get_self());
+    global_row global = _global.get_or_default();
+    global.last_height = height;
+    _global.set(global, get_self());
 }
 
 
