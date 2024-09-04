@@ -122,7 +122,7 @@ public:
      * ```
      */
     [[eosio::action]]
-    void syncstake(optional<uint64_t> process_rows);
+    void onchainsync(optional<uint64_t> process_rows);
 
     /**
      * ## ACTION `stake`
@@ -165,6 +165,9 @@ public:
      */
     [[eosio::action]]
     void unstake(const checksum160& staker, const asset& quantity);
+
+    [[eosio::action]]
+    void offchainsync(const checksum160& staker, const asset& balance);
 
 #ifdef DEBUG
     [[eosio::action]]
