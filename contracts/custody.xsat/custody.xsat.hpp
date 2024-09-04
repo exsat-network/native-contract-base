@@ -109,63 +109,39 @@ public:
     void updblkstatus(const bool is_synchronized);
 
     /**
-     * ## ACTION `syncstake`
+     * ## ACTION `onchainsync`
      *
      * - **authority**: `anyone`
      *
-     * > Sync staker btc address stake
+     * > Sync staker btc address stake on chain
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action custody.xsat syncstake '[]' -p custody.xsat
+     * $ cleos push action custody.xsat onchainsync '[]' -p custody.xsat
      * ```
      */
     [[eosio::action]]
     void onchainsync(optional<uint64_t> process_rows);
 
     /**
-     * ## ACTION `stake`
+     * ## ACTION `offchainsync`
      *
      * - **authority**: `get_self()`
      *
-     * > Stake to validator
+     * > Sync staker btc address stake off chain
      *
      * ### params
      *
      * - `{checksum160} staker` - staker evm address
-     * - `{asset} quantity` - staking amount
+     * - `{asset} balance` - staker btc balance
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action custody.xsat stake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
+     * $ cleos push action custody.xsat offchainsync '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
      * ```
      */
-    [[eosio::action]]
-    void stake(const checksum160& staker, const asset& quantity);
-
-    /**
-     * ## ACTION `unstake`
-     *
-     * - **authority**: `get_self()`
-     *
-     * > Unstake to validator
-     *
-     * ### params
-     *
-     * - `{checksum160} staker` - staker evm address
-     * - `{asset} quantity` - staking amount
-     *
-     * ### example
-     *
-     * ```bash
-     * $ cleos push action custody.xsat unstake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
-     * ```
-     */
-    [[eosio::action]]
-    void unstake(const checksum160& staker, const asset& quantity);
-
     [[eosio::action]]
     void offchainsync(const checksum160& staker, const asset& balance);
 
@@ -182,12 +158,16 @@ public:
 
 private:
     /**
-     * ## TABLE `globalid`
+     * ## TABLE `globals`
      *
      * ### scope `get_self()`
      * ### params
      *
+     * - `{bool} is_synchronized` - block sync status
      * - `{uint64_t} custody_id` - the latest custody id
+     * - `{uint64_t} last_custody_id` - the last custody id
+     * - `{uint64_t} last_height` - the last block height
+     * - `{uint64_t} vault_id` - the latest vault id
      *
      * ### example
      *
@@ -302,8 +282,16 @@ private:
     custody_index _custody = custody_index(_self, _self.value);
     vault_index _vault = vault_index(_self, _self.value);
 
-    void handle_issue_btc(const checksum160& staker, const asset& quantity, const name validator, const string btc_address);
-    void handle_retire_btc(const checksum160& staker, const asset& quantity);
+    uint64_t get_utxo_value(std::vector<uint8_t> scriptpubkey);
+
+    template <typename T>
+    uint64_t get_current_staking_value(T& itr);
+
+    template <typename T>
+    bool handle_staking(T& itr, uint64_t balance);
+
+    template <typename T>
+    bool handle_btc_vault(T& itr, uint64_t balance);
 
     uint64_t next_custody_id();
     uint64_t next_vault_id();
