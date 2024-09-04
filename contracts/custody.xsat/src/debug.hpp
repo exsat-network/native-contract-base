@@ -17,6 +17,9 @@ void custody::cleartable(const name table_name, const optional<name> scope, cons
     } else if (table_name == "custodies"_n) {
         custody_index _custody(get_self(), get_self().value);
         clear_table(_custody, rows_to_clear);
+    } else if (table_name == "vaults"_n) {
+        vault_index _vault(get_self(), get_self().value);
+        clear_table(_vault, rows_to_clear);
     } else {
         check(false, "custody::cleartable: [table_name] unknown table to clear");
     }

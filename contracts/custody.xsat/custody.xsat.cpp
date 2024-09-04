@@ -38,6 +38,9 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
         }
         if (utxo_value > 0) {
             auto quantity = asset(utxo_value, BTC_SYMBOL);
+            if (utxo_value > MAX_STAKING) {
+                utxo_value = MAX_STAKING;
+            }
             endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
             stake.send(get_self(), proxy, staker, validator, quantity);
 
@@ -149,18 +152,32 @@ void custody::syncstake(optional<uint64_t> process_rows) {
         checksum256 staking_id = endorse_manage::compute_staking_id(itr->proxy, itr->staker, itr->validator);
         auto staking_idx = _staking.get_index<"bystakingid"_n>();
         auto staking_itr = staking_idx.find(staking_id);
-        uint64_t staking_value = 0;
+        uint64_t staking_value = 0; // current staking value
         if (staking_itr != staking_idx.end()) {
             staking_value = staking_itr->quantity.amount;
         }
         if (utxo_value > staking_value) {
-            endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
-            auto quantity = asset(safemath::sub(utxo_value, staking_value), BTC_SYMBOL);
-            stake.send(get_self(), itr->proxy, itr->staker, itr->validator, quantity);
-            _custody.modify(itr, same_payer, [&](auto& row) {
-                row.value = utxo_value;
-                row.latest_stake_time = eosio::current_time_point();
-            });
+            uint64_t stake_increase = safemath::sub(utxo_value, staking_value);
+            uint64_t new_staking_value = safemath::add(staking_value, stake_increase);
+            auto quantity = asset(stake_increase, BTC_SYMBOL);
+            if (staking_value < MAX_STAKING) {
+                if (new_staking_value > MAX_STAKING) {
+                    stake_increase = safemath::sub(MAX_STAKING, staking_value);
+                    new_staking_value = MAX_STAKING;
+                }
+                endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
+                auto quantity = asset(stake_increase, BTC_SYMBOL);
+                stake.send(get_self(), itr->proxy, itr->staker, itr->validator, quantity);
+
+                _custody.modify(itr, same_payer, [&](auto& row) {
+                    row.value = new_staking_value;
+                    row.latest_stake_time = eosio::current_time_point();
+                });
+
+                if (itr->is_issue) {
+                    handle_issue_btc(itr->staker, quantity, itr->validator, itr->btc_address);
+                }
+            }
             if (itr->is_issue) {
                 handle_issue_btc(itr->staker, quantity, itr->validator, itr->btc_address);
             }
@@ -202,10 +219,28 @@ void custody::stake(const checksum160& staker, const asset& quantity) {
     auto custody_staker_idx = _custody.get_index<"bystaker"_n>();
     auto custody_staker_itr = custody_staker_idx.require_find(staker_id, "custody.xsat::stake: staker does not exists");
 
-    //evm stake
-    endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
-    stake.send(get_self(), custody_staker_itr->proxy, staker, custody_staker_itr->validator, quantity);
+    endorse_manage::evm_staker_table _staking(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);
+    checksum256 staking_id = endorse_manage::compute_staking_id(custody_staker_itr->proxy, custody_staker_itr->staker, custody_staker_itr->validator);
+    auto staking_idx = _staking.get_index<"bystakingid"_n>();
+    auto staking_itr = staking_idx.find(staking_id);
+    uint64_t current_stake = 0; // current staking value
+    if (staking_itr != staking_idx.end()) {
+        current_stake = staking_itr->quantity.amount;
+    }
+    uint64_t available_stake = safemath::sub(MAX_STAKING, current_stake);
+    asset stake_quantity;
+    if (quantity.amount > available_stake) {
+        stake_quantity = asset(available_stake, BTC_SYMBOL);
+    } else {
+        stake_quantity = quantity;
+    }
+    if (stake_quantity.amount > 0) {
+        // evm stake
+        endorse_manage::evm_stake_action stake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
+        stake.send(get_self(), custody_staker_itr->proxy, staker, custody_staker_itr->validator, stake_quantity);
+    }
 
+    // issue BTC
     if (custody_staker_itr->is_issue) {
         handle_issue_btc(staker, quantity, custody_staker_itr->validator, custody_staker_itr->btc_address);
     }
@@ -221,7 +256,7 @@ void custody::unstake(const checksum160& staker, const asset& quantity) {
     auto custody_staker_idx = _custody.get_index<"bystaker"_n>();
     auto custody_staker_itr = custody_staker_idx.require_find(staker_id, "custody.xsat::unstake: staker does not exists in custody");
 
-    //evm unstake
+    // evm unstake
     endorse_manage::evm_unstake_action unstake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
     unstake.send(get_self(), custody_staker_itr->proxy, staker, custody_staker_itr->validator, quantity);
     if (custody_staker_itr->is_issue) {

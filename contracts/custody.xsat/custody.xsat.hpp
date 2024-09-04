@@ -21,6 +21,8 @@ class [[eosio::contract("custody.xsat")]] custody : public contract {
 public:
     using contract::contract;
 
+    static const uint64_t MAX_STAKING = 10000000000; // 100 BTC in satoshi
+
     /**
      * ## ACTION `addcustody`
      *
