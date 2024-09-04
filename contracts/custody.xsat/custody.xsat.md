@@ -15,7 +15,7 @@
 
 ```bash
 # addcustody @custody.xsat
-$ cleos push action custody.xsat addcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "0000000000000000000000000000000000000001", "chen.sat", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", null ]' -p custody.xsat
+$ cleos push action custody.xsat addcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "0000000000000000000000000000000000000001", "chen.sat", true, "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", null ]' -p custody.xsat
 
 # updcustody @custody.xsat
 $ cleos push action custody.xsat updcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "chen2.sat"]' -p custody.xsat
@@ -24,7 +24,7 @@ $ cleos push action custody.xsat updcustody '["1995587ef4e2dd5e6c61a8909110b0ca9
 $ cleos push action custody.xsat delcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3"]' -p custody.xsat
 
 # delcustody @custody.xsat
-$ cleos push action custody.xsat updblkstatus '[1]' -p custody.xsat
+$ cleos push action custody.xsat updblkstatus '[true]' -p custody.xsat
 
 # syncstake @custody.xsat
 $ cleos push action custody.xsat syncstake '[100]' -p custody.xsat
@@ -38,14 +38,14 @@ $ cleos push action custody.xsat unstake '["1231deb6f5749ef6ce6943a275a1d3e7486f
 ## Table Information
 
 ```bash
-$ cleos get table custody.xsat custody.xsat globalid
+$ cleos get table custody.xsat custody.xsat globals
 $ cleos get table custody.xsat custody.xsat custodies
 $ cleos get table custody.xsat custody.xsat vaults
 ```
 
 ## Table of Content
 
-- [TABLE `globalid`](#table-globalid)
+- [TABLE `globals`](#table-globals)
   - [scope `get_self()`](#scope-get_self)
   - [params](#params)
   - [example](#example)
@@ -54,23 +54,26 @@ $ cleos get table custody.xsat custody.xsat vaults
   - [params](#params-1)
   - [example](#example-1)
 
-## TABLE `globalid`
+## TABLE `globals`
 
 ### scope `get_self()`
 ### params
 
-- `{uint8_t} block_sync_status` - The block sync status
-- `{uint64_t} custody_id` - The custody id is automatically incremented
+- `{bool} is_synchronized` - the block sync status
+- `{uint64_t} custody_id` - the custody id is automatically incremented
 - `{uint64_t} last_custody_id` - last processed custody id
 - `{uint64_t} last_height` - last processed height
+- `{uint64_t} vault_id` - the vault id is automatically incremented
 
 ### example
 
 ```json
 {
+  "is_synchronized": true,
   "custody_id": 4,
   "last_custody_id": 3,
-  "last_height": 0
+  "last_height": 0,
+  "vault_id": 1
 }
 ```
 
