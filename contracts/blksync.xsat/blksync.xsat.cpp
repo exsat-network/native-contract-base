@@ -241,9 +241,10 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
     pay.send(height, hash, synchronizer, PUSH_CHUNK, 1);
 
+    auto bucket_id = block_bucket_itr->bucket_id;
+
     // erase block.chunk
-    auto iter = eosio::internal_use_do_not_use::db_find_i64(get_self().value, block_bucket_itr->bucket_id,
-                                                            BLOCK_CHUNK.value, 0);
+    auto iter = eosio::internal_use_do_not_use::db_find_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
     while (iter >= 0) {
         uint64_t ignored;
         auto next_iter = eosio::internal_use_do_not_use::db_next_i64(iter, &ignored);
@@ -257,14 +258,14 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
     // erase passed index
     passed_index_table _passed_index(get_self(), height);
     auto passed_index_idx = _passed_index.get_index<"bybucketid"_n>();
-    auto passed_index_itr = passed_index_idx.find(block_bucket_itr->bucket_id);
+    auto passed_index_itr = passed_index_idx.find(bucket_id);
     if (passed_index_itr != passed_index_idx.end()) {
         passed_index_idx.erase(passed_index_itr);
     }
 
     // log
     block_sync::delbucketlog_action _delbucketlog(get_self(), {get_self(), "active"_n});
-    _delbucketlog.send(block_bucket_itr->bucket_id);
+    _delbucketlog.send(bucket_id);
 }
 
 //@auth synchronizer
