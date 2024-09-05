@@ -21,6 +21,8 @@ class [[eosio::contract("custody.xsat")]] custody : public contract {
 public:
     using contract::contract;
 
+    static const uint64_t MAX_STAKING = 10000000000; // 100 BTC in satoshi
+
     /**
      * ## ACTION `addcustody`
      *
@@ -33,17 +35,18 @@ public:
      * - `{checksum160} staker` - staker evm address
      * - `{checksum160} proxy` - proxy evm address
      * - `{name} validator` - validator account
+     * - `{bool} is_issue` - issue BTC or not
      * - `{optional<string>} btc_address` - bitcoin address
      * - `{optional<vector<uint8_t>>} scriptpubkey` - scriptpubkey
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action custody.xsat addcustody '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "0000000000000000000000000000000000000001", "val1.xsat", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", null]' -p custody.xsat
+     * $ cleos push action custody.xsat addcustody '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "0000000000000000000000000000000000000001", "val1.xsat", true, "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", null]' -p custody.xsat
      * ```
      */
     [[eosio::action]]
-    void addcustody(const checksum160 staker, const checksum160 proxy, const name validator, const optional<string> btc_address, optional<vector<uint8_t>> scriptpubkey);
+    void addcustody(const checksum160 staker, const checksum160 proxy, const name validator, bool is_issue, const optional<string> btc_address, optional<vector<uint8_t>> scriptpubkey);
 
     /**
      * ## ACTION `updcustody`
@@ -95,73 +98,52 @@ public:
      *
      * ### params
      *
-     * - `{uint8_t} status` - block sync status
+     * - `{bool} is_synchronized` - block sync status
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action custody.xsat updblkstatus '[1]' -p custody.xsat
+     * $ cleos push action custody.xsat updblkstatus '[true]' -p custody.xsat
      * ```
      */
-    void updblkstatus(const uint8_t status);
+    void updblkstatus(const bool is_synchronized);
 
     /**
-     * ## ACTION `syncstake`
+     * ## ACTION `onchainsync`
      *
      * - **authority**: `anyone`
      *
-     * > Sync staker btc address stake
+     * > Sync staker btc address stake on chain
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action custody.xsat syncstake '[]' -p custody.xsat
+     * $ cleos push action custody.xsat onchainsync '[]' -p custody.xsat
      * ```
      */
     [[eosio::action]]
-    void syncstake(optional<uint64_t> process_rows);
+    void onchainsync(optional<uint64_t> process_rows);
 
     /**
-     * ## ACTION `stake`
+     * ## ACTION `offchainsync`
      *
      * - **authority**: `get_self()`
      *
-     * > Stake to validator
+     * > Sync staker btc address stake off chain
      *
      * ### params
      *
      * - `{checksum160} staker` - staker evm address
-     * - `{asset} quantity` - staking amount
+     * - `{asset} balance` - staker btc balance
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action custody.xsat stake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
+     * $ cleos push action custody.xsat offchainsync '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
      * ```
      */
     [[eosio::action]]
-    void stake(const checksum160& staker, const asset& quantity);
-
-    /**
-     * ## ACTION `unstake`
-     *
-     * - **authority**: `get_self()`
-     *
-     * > Unstake to validator
-     *
-     * ### params
-     *
-     * - `{checksum160} staker` - staker evm address
-     * - `{asset} quantity` - staking amount
-     *
-     * ### example
-     *
-     * ```bash
-     * $ cleos push action custody.xsat unstake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
-     * ```
-     */
-    [[eosio::action]]
-    void unstake(const checksum160& staker, const asset& quantity);
+    void offchainsync(const checksum160& staker, const asset& balance);
 
 #ifdef DEBUG
     [[eosio::action]]
@@ -176,18 +158,22 @@ public:
 
 private:
     /**
-     * ## TABLE `globalid`
+     * ## TABLE `globals`
      *
      * ### scope `get_self()`
      * ### params
      *
+     * - `{bool} is_synchronized` - block sync status
      * - `{uint64_t} custody_id` - the latest custody id
+     * - `{uint64_t} last_custody_id` - the last custody id
+     * - `{uint64_t} last_height` - the last block height
+     * - `{uint64_t} vault_id` - the latest vault id
      *
      * ### example
      *
      * ```json
      * {
-     *   "block_sync_status": 0,
+     *   "is_synchronized": false,
      *   "custody_id": 1,
      *   "last_custody_id": 1,
      *   "last_height": 0,
@@ -195,15 +181,15 @@ private:
      * }
      * ```
      */
-    struct [[eosio::table]] global_id_row {
-        uint8_t block_sync_status; // 0: not synced, 1: synced
+    struct [[eosio::table]] global_row {
+        bool is_synchronized; // true: Synchronize the latest bitcoin block, false: not synchronized
         uint64_t custody_id;
         uint64_t last_custody_id;
         uint64_t last_height;
         uint64_t vault_id;
     };
-    typedef singleton<"globalid"_n, global_id_row> global_id_table;
-    global_id_table _global_id = global_id_table(_self, _self.value);
+    typedef singleton<"globals"_n, global_row> global_table;
+    global_table _global = global_table(_self, _self.value);
 
     /**
      * ## TABLE `custodies`
@@ -218,6 +204,7 @@ private:
      * - `{string} btc_address` - the bitcoin address
      * - `{vector<uint8_t>} scriptpubkey` - the scriptpubkey
      * - `{uint64_t} value` - the total utxo value
+     * - `{bool} is_issue` - issue BTC or not
      * - `{time_point_sec} latest_stake_time` - the latest stake time
      *
      * ### example
@@ -231,6 +218,7 @@ private:
      *   "btc_address": "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN",
      *   "scriptpubkey": "a914cac3a79a829c31b07e6a8450c4e05c4289ab95b887"
      *   "value": 100000000,
+     *   "is_issue": true,
      *   "latest_stake_time": "2021-09-01T00:00:00"
      * }
      * ```
@@ -244,6 +232,7 @@ private:
         string btc_address;
         std::vector<uint8_t> scriptpubkey;
         uint64_t value;
+        bool is_issue;
         time_point_sec latest_stake_time;
         uint64_t primary_key() const { return id; }
         checksum256 by_staker() const { return xsat::utils::compute_id(staker); }
@@ -292,6 +281,17 @@ private:
     // table init
     custody_index _custody = custody_index(_self, _self.value);
     vault_index _vault = vault_index(_self, _self.value);
+
+    uint64_t get_utxo_value(std::vector<uint8_t> scriptpubkey);
+
+    template <typename T>
+    uint64_t get_current_staking_value(T& itr);
+
+    template <typename T>
+    bool handle_staking(T& itr, uint64_t balance);
+
+    template <typename T>
+    bool handle_btc_vault(T& itr, uint64_t balance);
 
     uint64_t next_custody_id();
     uint64_t next_vault_id();
