@@ -132,7 +132,6 @@ void custody::offchainsync(const checksum160& staker, const asset& balance) {
     global_row global = _global.get_or_default();
     check(global.is_synchronized == false, "custody.xsat::offchainsync: bitcoin block is synchronized, offchainsync stake channel is closed");
     check(balance.is_valid(), "custody.xsat::offchainsync: invalid balance");
-    check(balance.amount > 0, "custody.xsat::offchainsync: balance must be positive");
     auto staker_id = xsat::utils::compute_id(staker);
     auto custody_staker_idx = _custody.get_index<"bystaker"_n>();
     auto custody_staker_itr = custody_staker_idx.require_find(staker_id, "custody.xsat::offchainsync: staker does not exists");
