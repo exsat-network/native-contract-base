@@ -227,4 +227,12 @@ namespace xsat::utils {
         return result;
     }
 
+    static bool is_proxy_valid(const checksum160& proxy) {
+        const uint64_t* data = reinterpret_cast<const uint64_t*>(&proxy);
+        uint64_t first_part = data[0];
+        uint64_t second_part = data[1];
+
+        return first_part == 0 && (second_part & 0xFFFFFFFF00000000) == 0;
+    }
+
 }  // namespace xsat::utils
