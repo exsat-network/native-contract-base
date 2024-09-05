@@ -12,7 +12,7 @@ void custody::cleartable(const name table_name, const optional<name> scope, cons
     const uint64_t rows_to_clear = (!max_rows || *max_rows == 0) ? -1 : *max_rows;
     const uint64_t value = scope ? scope->value : get_self().value;
 
-    if (table_name == "globalid"_n) {
+    if (table_name == "globals"_n) {
         _global.remove();
     } else if (table_name == "custodies"_n) {
         custody_index _custody(get_self(), get_self().value);
