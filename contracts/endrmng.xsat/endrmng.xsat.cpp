@@ -40,9 +40,14 @@ void endorse_manage::delwhitelist(const name& type, const name& account) {
 
 //@auth get_self()
 [[eosio::action]]
-void endorse_manage::addevmproxy(const checksum160& proxy) {
+void endorse_manage::addevmproxy(const name& caller, const checksum160& proxy) {
     require_auth(get_self());
 
+    whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
+    auto whitelist_itr = _whitelist.require_find(
+        caller.value, "endrmng.xsat::addevmproxy: caller is not in the `evmcaller` whitelist");
+
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
     auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
     auto evm_proxy_itr = evm_proxy_idx.find(xsat::utils::compute_id(proxy));
     check(evm_proxy_itr == evm_proxy_idx.end(), "endrmng.xsat::addevmproxy: proxy already exists");
@@ -54,12 +59,13 @@ void endorse_manage::addevmproxy(const checksum160& proxy) {
 
 //@auth get_self()
 [[eosio::action]]
-void endorse_manage::delevmproxy(const checksum160& proxy) {
+void endorse_manage::delevmproxy(const name& caller, const checksum160& proxy) {
     require_auth(get_self());
 
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
     auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
     auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
-                                                    "endrmng.xsat::delevmproxy: [evmproxys] does not exist");
+                                                    "endrmng.xsat::delevmproxy: [evmproxies] does not exist");
 
     evm_proxy_idx.erase(evm_proxy_itr);
 }
@@ -78,7 +84,7 @@ void endorse_manage::proxyreg(const name& proxy, const name& validator, const st
                               const uint64_t commission_rate) {
     require_auth(proxy);
     whitelist_table _whitelist(get_self(), "proxyreg"_n.value);
-    _whitelist.require_find(proxy.value, "endrmng.xsat::proxyreg: the proxy account is not in the whitelist");
+    _whitelist.require_find(proxy.value, "endrmng.xsat::proxyreg: caller is not in the `proxyreg` whitelist");
 
     check(is_account(validator), "endrmng.xsat::proxyreg: validator account does not exists");
 
@@ -243,14 +249,16 @@ void endorse_manage::claim(const name& staker, const name& validator) {
     _claimlog.send(staker, validator, claimable);
 }
 
-// @auth caller scope is `evmcaller` whitelist account
+// @auth scope is `evmcaller` evmproxies account
 [[eosio::action]]
 void endorse_manage::evmstake(const name& caller, const checksum160& proxy, const checksum160& staker,
                               const name& validator, const asset& quantity) {
     require_auth(caller);
 
-    whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmstake: caller is not in the `evmcaller` whitelist");
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
+    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
+    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                    "endrmng.xsat::evmstake: [evmproxies] does not exist");
 
     auto validator_staking = evm_stake_without_auth(proxy, staker, validator, quantity);
 
@@ -259,14 +267,16 @@ void endorse_manage::evmstake(const name& caller, const checksum160& proxy, cons
     _evmstakelog.send(proxy, staker, validator, quantity, validator_staking);
 }
 
-// @auth scope is `evmcaller` whitelist account
+// @auth scope is `evmcaller` evmproxies account
 [[eosio::action]]
 void endorse_manage::evmunstake(const name& caller, const checksum160& proxy, const checksum160& staker,
                                 const name& validator, const asset& quantity) {
     require_auth(caller);
 
-    whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmunstake: caller is not in the `evmcaller` whitelist");
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
+    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
+    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                    "endrmng.xsat::evmunstake: [evmproxies] does not exist");
 
     auto validator_staking = evm_unstake_without_auth(proxy, staker, validator, quantity);
 
@@ -275,14 +285,16 @@ void endorse_manage::evmunstake(const name& caller, const checksum160& proxy, co
     _evmunstlog.send(proxy, staker, validator, quantity, validator_staking);
 }
 
-// @auth scope is `evmcaller` whitelist account
+// @auth scope is `evmcaller` evmproxies account
 [[eosio::action]]
 void endorse_manage::evmnewstake(const name& caller, const checksum160& proxy, const checksum160& staker,
                                  const name& old_validator, const name& new_validator, const asset& quantity) {
     require_auth(caller);
 
-    whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmnewstake: caller is not in the `evmcaller` whitelist");
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
+    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
+    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                    "endrmng.xsat::evmnewstake: [evmproxies] does not exist");
 
     // unstake
     auto old_validator_staking = evm_unstake_without_auth(proxy, staker, old_validator, quantity);
@@ -381,9 +393,6 @@ asset endorse_manage::evm_stake_without_auth(const checksum160& proxy, const che
     check(quantity.amount <= BTC_SUPPLY,
           "endrmng.xsat::evmstake: quantity must be less than [btc.xsat/BTC] max_supply");
 
-    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
-    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
-                                                    "endrmng.xsat::evmstake: [evmproxys] does not exist");
     auto validator_itr
         = _validator.require_find(validator.value, "endrmng.xsat::evmstake: [validators] does not exists");
     check(!validator_itr->disabled_staking,

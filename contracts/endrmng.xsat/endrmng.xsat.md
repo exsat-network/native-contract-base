@@ -14,10 +14,10 @@
 
 ```bash
 # addevmproxy @endrmng.xsat
-$ cleos push action endrmng.xsat addevmproxy '{"proxy": "e4d68a77714d9d388d8233bee18d578559950cf5"}' -p endrmng.xsat
+$ cleos push action endrmng.xsat addevmproxy '{"caller": "caller1", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5"}' -p endrmng.xsat
 
 # delevmproxy @endrmng.xsat
-$ cleos push action endrmng.xsat delevmproxy '{"proxy": "e4d68a77714d9d388d8233bee18d578559950cf5"}' -p endrmng.xsat
+$ cleos push action endrmng.xsat delevmproxy '{"caller": "caller1", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5"}' -p endrmng.xsat
 
 # addwhitelist @endrmng.xsat type = ["proxyreg", "evmcaller"]
 $ cleos push action endrmng.xsat addwhitelist '{"type": "proxyreg", "account": "alice"}' -p endrmng.xsat
@@ -49,13 +49,13 @@ $ cleos push action endrmng.xsat newstake '{"staker": "alice", "old_validator": 
 # claim @staker
 $ cleos push action endrmng.xsat claim '{"staker": "alice", "validator": "alice"}' -p alice
 
-# evmstake @caller whitelist["evmcaller"]
+# evmstake @auth scope is `evmcaller` evmproxies account
 $ cleos push action endrmng.xsat evmstake '{"caller": "evmutil.xsat", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5", "staker": "bbbbbbbbbbbbbbbbbbbbbbbb5530ea015b900000",  "validator": "alice", "quantity": "0.00000020 BTC"}' -p alice
 
-# evmunstake @caller whitelist["evmcaller"] 
+# evmunstake @auth scope is `evmcaller` evmproxies account
 $ cleos push action endrmng.xsat evmunstake '{"caller": "evmutil.xsat", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5", "staker": "bbbbbbbbbbbbbbbbbbbbbbbb5530ea015b900000",  "validator": "alice", "quantity": "0.00000020 BTC"}' -p evmutil.xsat 
 
-# evmnewstake @caller whitelist["evmcaller"] 
+# evmnewstake @auth scope is `evmcaller` evmproxies account
 $ cleos push action endrmng.xsat evmnewstake '{"caller": "evmutil.xsat", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5", "staker": "bbbbbbbbbbbbbbbbbbbbbbbb5530ea015b900000",  "old_validator": "alice", "new_validator": "bob", "quantity": "0.00000020 BTC"}' -p evmutil.xsat
 
 # evmclaim @caller whitelist["evmcaller"] 
@@ -74,7 +74,7 @@ XSAT", "consensus_rewards": "0.00000020 XSAT"}]}' -p rwddist.xsat
 ```bash
 $ cleos get table endrmng.xsat evmcaller whitelist 
 $ cleos get table endrmng.xsat proxyreg whitelist 
-$ cleos get table endrmng.xsat endrmng.xsat evmproxys 
+$ cleos get table endrmng.xsat <evmcaller> evmproxies
 $ cleos get table endrmng.xsat endrmng.xsat evmstakers 
 $ cleos get table endrmng.xsat endrmng.xsat stakers 
 $ cleos get table endrmng.xsat endrmng.xsat validators 
@@ -92,7 +92,7 @@ $ cleos get table endrmng.xsat endrmng.xsat stat
   - [scope `proxyreg` or `evmcaller`](#scope-proxyreg-or-evmcaller)
   - [params](#params-1)
   - [example](#example-1)
-- [TABLE `evmproxys`](#table-evmproxys)
+- [TABLE `evmproxies`](#table-evmproxies)
   - [scope `get_self()`](#scope-get_self-1)
   - [params](#params-2)
   - [example](#example-2)
@@ -205,9 +205,9 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
 }
 ```
 
-## TABLE `evmproxys`
+## TABLE `evmproxies`
 
-### scope `get_self()`
+### scope whitelist of type evmcaller
 ### params
 
 - `{uint64_t} id` - evm proxy id
@@ -224,7 +224,7 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
 
 ## TABLE `evmstakers`
 
-### scope `get_self()`
+### scope the account whose scope is evmcaller in the `whitelist` table
 ### params
 
 - `{uint64_t} id` - evm staker id
@@ -399,12 +399,13 @@ $ cleos push action endrmng.xsat addwhitelist '["proxyreg", "alice"]' -p endrmng
 
 ### params
 
+- `{name} caller` - caller account
 - `{checksum160} proxy` - proxy account
 
 ### example
 
 ```bash
-$ cleos push action endrmng.xsat addevmproxy '["bb776ae86d5996908af46482f24be8ccde2d4c41"]' -p endrmng.xsat
+$ cleos push action endrmng.xsat addevmproxy '["evmcaller", "bb776ae86d5996908af46482f24be8ccde2d4c41"]' -p endrmng.xsat
 ```
 
 ## ACTION `delevmproxy`
@@ -415,12 +416,13 @@ $ cleos push action endrmng.xsat addevmproxy '["bb776ae86d5996908af46482f24be8cc
 
 ### params
 
+- `{name} caller` - caller account
 - `{checksum160} proxy` - proxy account
 
 ### example
 
 ```bash
-$ cleos push action endrmng.xsat delevmproxy '["bb776ae86d5996908af46482f24be8ccde2d4c41"]' -p endrmng.xsat
+$ cleos push action endrmng.xsat delevmproxy '["evmcaller", "bb776ae86d5996908af46482f24be8ccde2d4c41"]' -p endrmng.xsat
 ```
 
 ## ACTION `setstatus`
