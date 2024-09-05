@@ -13,6 +13,7 @@ void endorse_manage::cleartable(const name table_name, const optional<name> scop
     const uint64_t value = scope ? scope->value : get_self().value;
 
     endorse_manage::whitelist_table _whitelist(get_self(), value);
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), value);
 
     if (table_name == "globalid"_n)
         _global_id.remove();
