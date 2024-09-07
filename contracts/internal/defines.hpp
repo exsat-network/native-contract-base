@@ -23,6 +23,7 @@ static constexpr name CUSTODY_CONTRACT = "custody.xsat"_n;
 
 // ACCOUNTS
 static constexpr name VAULT_ACCOUNT = "vault.xsat"_n;
+static constexpr name BOOT_ACCOUNT = "boot.xsat"_n;
 static constexpr name TRIGGER_ACCOUNT = "trigger.xsat"_n;
 
 // TABLE
