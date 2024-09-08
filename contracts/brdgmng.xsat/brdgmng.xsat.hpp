@@ -24,8 +24,8 @@ public:
     using contract::contract;
 
     typedef uint8_t address_status;
-    static const address_status initialized = 0;
-    static const address_status confirmed = 1;
+    static const address_status address_status_initialized = 0;
+    static const address_status address_status_confirmed = 1;
 
     typedef uint8_t deposit_status;
     static const deposit_status deposit_status_initialized = 0;
@@ -38,6 +38,9 @@ public:
     [[eosio::action]]
     void initialize();
 
+    // [[eosio::action]]
+    // void updateconfig(const uint8_t status);
+
     [[eosio::action]]
     void addperm(const uint64_t id, const vector<name> names);
 
@@ -48,13 +51,17 @@ public:
     void addaddresses(const name actor, const uint64_t permission_id, string b_id, string wallet_code, const vector<string> btc_addresses);
 
     [[eosio::action]]
-    void confirmaddr(const name actor, const uint64_t permission_id, const string btc_addresses);
+    void valaddress(const name actor, const uint64_t permission_id, const string btc_addresses);
 
     [[eosio::action]]
     void mappingaddr(const name actor, const uint64_t permission_id, const checksum160 evm_address);
 
-    // [[eosio::action]]
-    // void updateconfig(const uint8_t status);
+    [[eosio::action]]
+    void deposit(const name actor, uint64_t permission_id, string b_id, string wallet_code, string btc_address, string order_no,
+        uint64_t block_height, string tx_id, uint64_t amount, string tx_status, string remark_detail, uint64_t tx_time_stamp, uint64_t create_time_stamp);
+
+    [[eosio::action]]
+    void valdeposit(const name actor, const uint64_t permission_id, const uint64_t deposit_id);
 
 #ifdef DEBUG
     [[eosio::action]]
@@ -105,6 +112,7 @@ private:
         bool check_uxto_status;
         uint64_t deposit_fee;
         uint64_t withdraw_fee;
+        uint16_t btc_address_inactive_clear_days;
     };
     typedef singleton<"configs"_n, config_row> config_table;
     config_table _config = config_table(_self, _self.value);
@@ -112,6 +120,8 @@ private:
     struct [[eosio::table]] statistics_row {
         uint64_t total_btc_address_count;
         uint64_t mapped_address_count;
+        uint64_t total_deposit_amount;
+        uint64_t total_withdraw_amount;
     };
     typedef singleton<"statistics"_n, statistics_row> statistics_table;
     statistics_table _statistics = statistics_table(_self, _self.value);
@@ -194,10 +204,12 @@ private:
     address_mapping_index _address_mapping = address_mapping_index(_self, _self.value);
     deposit_index _deposit = deposit_index(_self, _self.value);
 
+    void check_permission(const name actor, uint64_t permission_id);
     uint64_t next_address_id();
     uint64_t next_address_mapping_id();
     uint64_t next_deposit_id();
     bool verifyProviders(std::vector<name> requested_actors, std::vector<name> provider_actors);
+    void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
 
 #ifdef DEBUG
     template <typename T>
