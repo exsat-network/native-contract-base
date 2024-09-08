@@ -23,15 +23,23 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
 public:
     using contract::contract;
 
-    typedef uint8_t address_status;
-    static const address_status address_status_initialized = 0;
-    static const address_status address_status_confirmed = 1;
+    // static const std::string staticString1;
+    // static const std::string staticString2;
 
-    typedef uint8_t deposit_status;
-    static const deposit_status deposit_status_initialized = 0;
-    static const deposit_status deposit_status_confirmed = 1;
-    static const deposit_status deposit_status_failed = 3;
-    static const deposit_status deposit_status_error = 4;
+    typedef uint8_t global_status;
+    static const global_status global_status_initiated = 0;
+    static const global_status global_status_confirmed = 1;
+    static const global_status global_status_failed = 2;
+    static const global_status global_status_error = 3;
+
+    typedef uint8_t tx_status;
+    static const tx_status tx_status_unconfirmed = 0;
+    static const tx_status tx_status_confirmed = 1;
+    static const tx_status tx_status_failed = 2;
+    static const tx_status tx_status_frozen = 3;
+    static const tx_status tx_status_rollbacked = 4;
+    static const tx_status tx_status_unconfirmed_alarm = 5;
+    static const tx_status tx_status_error = 6;
 
     static const uint64_t BTC_BASE = 100000000;
 
@@ -42,7 +50,7 @@ public:
     // void updateconfig(const uint8_t status);
 
     [[eosio::action]]
-    void addperm(const uint64_t id, const vector<name> names);
+    void addperm(const uint64_t id, const vector<name> actors);
 
     [[eosio::action]]
     void delperm(const uint64_t id);
@@ -51,7 +59,7 @@ public:
     void addaddresses(const name actor, const uint64_t permission_id, string b_id, string wallet_code, const vector<string> btc_addresses);
 
     [[eosio::action]]
-    void valaddress(const name actor, const uint64_t permission_id, const string btc_addresses);
+    void valaddress(const name actor, const uint64_t permission_id, const uint64_t address_id, const string status);
 
     [[eosio::action]]
     void mappingaddr(const name actor, const uint64_t permission_id, const checksum160 evm_address);
@@ -61,12 +69,29 @@ public:
         uint64_t block_height, string tx_id, uint64_t amount, string tx_status, string remark_detail, uint64_t tx_time_stamp, uint64_t create_time_stamp);
 
     [[eosio::action]]
-    void valdeposit(const name actor, const uint64_t permission_id, const uint64_t deposit_id);
+    void valdeposit(const name actor, const uint64_t permission_id, const uint64_t deposit_id, string tx_status, optional<string> remark_detail);
+
+    [[eosio::on_notify("*::transfer")]]
+    void on_transfer(const name& from, const name& to, const asset& quantity, const string& memo);
+
+    [[eosio::action]]
+    void valwithdraw(const name actor, uint64_t permission_id, uint64_t withdraw_id, string b_id, string wallet_code,
+        uint64_t block_height, string tx_id, string tx_status, string remark_detail, uint64_t tx_time_stamp, uint64_t create_time_stamp);
 
 #ifdef DEBUG
     [[eosio::action]]
     void cleartable(const name table_name, const optional<name> scope, const optional<uint64_t> max_rows);
 #endif
+
+    [[eosio::action]]
+    void depositlog() {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void withdrawlog() {
+        require_auth(get_self());
+    }
 
 private:
     struct [[eosio::table]] boot_row {
@@ -102,16 +127,22 @@ private:
         uint64_t address_id;
         uint64_t address_mapping_id;
         uint64_t deposit_id;
+        uint64_t withdraw_id;
     };
     typedef singleton<"globalid"_n, global_id_row> global_id_table;
     global_id_table _global_id = global_id_table(_self, _self.value);
 
     struct [[eosio::table]] config_row {
-        bool deposit_status;
-        bool withdraw_status;
-        bool check_uxto_status;
+        bool deposit_enable;
+        bool withdraw_enable;
+        bool check_uxto_enable;
+        uint64_t limit_amount;
         uint64_t deposit_fee;
-        uint64_t withdraw_fee;
+        uint64_t withdraw_fast_fee;
+        uint64_t withdraw_avg_fee;
+        uint64_t withdraw_slow_fee;
+        uint16_t withdraw_merge_count;
+        uint16_t withdraw_timeout_minutes;
         uint16_t btc_address_inactive_clear_days;
     };
     typedef singleton<"configs"_n, config_row> config_table;
@@ -137,10 +168,12 @@ private:
         uint64_t id;
         uint64_t permission_id;
         std::vector<name> provider_actors;
+        std::vector<string> statuses;
+        uint8_t confirmed_count;
+        global_status status;
         string b_id; //cactus业务线id
         string wallet_code; //cactus钱包编号
         string btc_address;
-        address_status status;
         uint64_t primary_key() const { return id; }
         uint64_t by_permission_id() const { return permission_id; }
         checksum256 by_btc_addrress() const { return xsat::utils::hash(btc_address); }
@@ -172,7 +205,9 @@ private:
         uint64_t id;
         uint64_t permission_id;
         std::vector<name> provider_actors;
-        deposit_status status;
+        std::vector<string> tx_statuses;
+        uint8_t confirmed_count;
+        global_status status;
         string b_id;
         string wallet_code;
         string btc_address;
@@ -181,7 +216,6 @@ private:
         uint64_t block_height;
         string tx_id;
         uint64_t amount;
-        string tx_status;
         string remark_detail;
         uint64_t tx_time_stamp;
         uint64_t create_time_stamp;
@@ -198,21 +232,63 @@ private:
         eosio::indexed_by<"bytxid"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_tx_id>>>
         deposit_index;
 
+    struct [[eosio::table]] withdraw_row {
+        uint64_t id;
+        uint64_t permission_id;
+        std::vector<name> provider_actors;
+        std::vector<string> tx_statuses;
+        uint8_t confirmed_count;
+        global_status status;
+        string b_id;
+        string wallet_code;
+        string btc_address;
+        checksum160 evm_address;
+        string gas_level;
+        string order_no;
+        uint64_t block_height;
+        string tx_id;
+        uint64_t amount;
+        string tx_status;
+        string remark_detail;
+        uint64_t tx_time_stamp;
+        uint64_t create_time_stamp;
+        uint64_t primary_key() const { return id; }
+        checksum256 by_btc_address() const { return xsat::utils::hash(btc_address); }
+        checksum256 by_evm_address() const { return xsat::utils::compute_id(evm_address); }
+        checksum256 by_order_no() const { return xsat::utils::hash(order_no); }
+        checksum256 by_tx_id() const { return xsat::utils::hash(tx_id); }
+    };
+    typedef eosio::multi_index<"deposits"_n, withdraw_row,
+        eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_btc_address>>,
+        eosio::indexed_by<"byevmaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_evm_address>>,
+        eosio::indexed_by<"byorderno"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_no>>,
+        eosio::indexed_by<"bytxid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_tx_id>>>
+        withdraw_index;
+
     // table init
     permission_index _permission = permission_index(_self, _self.value);
     address_index _address = address_index(_self, _self.value);
     address_mapping_index _address_mapping = address_mapping_index(_self, _self.value);
     deposit_index _deposit = deposit_index(_self, _self.value);
+    withdraw_index _withdraw = withdraw_index(_self, _self.value);
 
     void check_permission(const name actor, uint64_t permission_id);
     uint64_t next_address_id();
     uint64_t next_address_mapping_id();
     uint64_t next_deposit_id();
+    uint64_t next_withdraw_id();
     bool verifyProviders(std::vector<name> requested_actors, std::vector<name> provider_actors);
+    void do_return(const name& from, const name& contract, const asset& quantity, const string& memo);
+    void do_withdraw(const name& from, const name& contract, const asset& quantity, const string& memo);
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
+    void handle_btc_deposit(const uint64_t amount, const checksum160& evm_address);
+    string generate_order_no(const std::vector<uint64_t>& ids);
 
 #ifdef DEBUG
     template <typename T>
     void clear_table(T& table, uint64_t rows_to_clear);
 #endif
 };
+
+// const std::string brdgmng::staticString1 = "Hello, EOS!";
+// const std::string brdgmng::staticString2 = "Welcome to EOSIO!";
