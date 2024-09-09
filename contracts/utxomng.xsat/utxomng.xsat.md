@@ -215,28 +215,28 @@ static const parsing_status migrating = 5;
 ## TABLE `config`
 
 ### scope `get_self()`
-
 ### params
 
--   `{uint16_t} parse_timeout_seconds` - parsing timeout duration
--   `{uint16_t} num_validators_per_distribution` - number of endorsing users each time rewards are distributed
--   `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
--   `{uint16_t} num_txs_per_verification` - the number of tx for each verification (2^n)
--   `{uint8_t} num_merkle_layer` - verify the number of merkle levels (log(num_txs_per_verification))
--   `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of
-    blocks
+- `{uint16_t} parse_timeout_seconds` - parsing timeout duration
+- `{uint16_t} num_validators_per_distribution` - number of endorsing users each time rewards are distributed
+- `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
+- `{uint16_t} retained_spent_utxo_blocks` - number of blocks to retained spent utxo
+- `{uint16_t} num_txs_per_verification` - the number of tx for each verification (2^n)
+- `{uint8_t} num_merkle_layer` - verify the number of merkle levels (log(num_txs_per_verification))
+- `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of blocks
 
 ### example
 
 ```json
 {
-    "parse_timeout_seconds": 600,
-    "num_validators_per_distribution": 100,
-    "num_retain_data_blocks": 100,
-    "num_txs_per_verification": 1024,
-    "num_merkle_layer": 10,
-    "num_miner_priority_blocks": 10
-}
+  "parse_timeout_seconds": 600,
+  "num_validators_per_distribution": 100,
+  "num_retain_data_blocks": 100,
+  "retained_spent_utxo_blocks": 5000,
+  "num_txs_per_verification": 1024,
+  "num_merkle_layer": 10,
+  "num_miner_priority_blocks": 10
+ }
 ```
 
 ## TABLE `utxos`
@@ -332,10 +332,8 @@ static const parsing_status migrating = 5;
 -   `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
 -   `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
 -   `{uint32_t} timestamp` - the block time is a Unix epoch time
--   `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
-    equal to
--   `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
-    less than or
+-   `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or equal to
+-   `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash less than or
 
 ### example
 
@@ -355,17 +353,18 @@ static const parsing_status migrating = 5;
 
 ## TABLE `block.extra`
 
-### scope `height`
-
+### scope `get_self()`
 ### params
 
--   `{uint64_t} bucket_id` - the associated bucket number is used to obtain block data
+- `{uint64_t} height` - block height
+- `{uint64_t} bucket_id` - the associated bucket number is used to obtain block data
 
 ### example
 
 ```json
 {
-    "bucket_id": 1
+  "height": 840001,
+  "bucket_id": 1
 }
 ```
 
@@ -382,10 +381,8 @@ static const parsing_status migrating = 5;
 - `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
 - `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
 - `{uint32_t} timestamp` - the block time is a Unix epoch time
-- `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
-equal to
-- `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
-less than or
+- `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or equal to
+- `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash less than or
 - `{name} miner` - block miner account
 - `{name} synchronizer` - block synchronizer account
 - `{name} parser` - the last parser of the parsing block
@@ -458,20 +455,18 @@ $ cleos push action utxomng.xsat init '[839999,
 
 ## ACTION `config`
 
--   **authority**: `get_self()`
+- **authority**: `get_self()`
 
 > Setting parameters.
 
 ### params
 
--   `{uint16_t} parse_timeout_seconds` - parsing timeout duration
--   `{uint16_t} num_validators_per_distribution` - number of endorsing users each time rewards are distributed
--   `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
--   `{uint16_t} retained_spent_utxo_blocks` - number of blocks to retain utxo
--   `{uint16_t} num_txs_per_verification` - the number of tx for each verification (2^n)
--   `{uint8_t} num_merkle_layer` - verify the number of merkle levels (log(num_txs_per_verification))
--   `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of
-    blocks
+- `{uint16_t} parse_timeout_seconds` - parsing timeout duration
+- `{uint16_t} num_validators_per_distribution` - number of endorsing users each time rewards are distributed
+- `{uint16_t} retained_spent_utxo_blocks` - number of blocks to retain utxo
+- `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
+- `{uint8_t} num_merkle_layer` - verify the number of merkle levels (log(num_txs_per_verification))
+- `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of blocks
 
 ### example
 
@@ -531,10 +526,8 @@ $ cleos push action utxomng.xsat delutxo '[1]' -p utxomng.xsat
 -   `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
 -   `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
 -   `{uint32_t} timestamp` - the block time is a Unix epoch time
--   `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
-    equal to
--   `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
-    less than or
+-   `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or equal to
+-   `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash less than or
 
 ### example
 
@@ -561,6 +554,38 @@ $ cleos push action utxomng.xsat addblock '[840000,
 
 ```bash
 $ cleos push action utxomng.xsat delblock '[840000]' -p utxomng.xsat
+```
+
+## ACTION `delspentutxo`
+
+- **authority**: `get_self()`
+
+> Delete spent utxo.
+
+### params
+
+- `{uint64_t} row` - number of rows to delete utxo
+
+### example
+
+```bash
+$ cleos push action utxomng.xsat delspentutxo '[1000]' -p utxomng.xsat
+```
+
+## ACTION `delblockdata`
+
+- **authority**: `get_self()`
+
+> Delete block data.
+
+### params
+
+- `{uint64_t} row` - number of rows of block data to delete
+
+### example
+
+```bash
+$ cleos push action utxomng.xsat delblockdata '[1000]' -p utxomng.xsat
 ```
 
 ## ACTION `processblock`
