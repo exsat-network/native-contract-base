@@ -12,9 +12,6 @@ void utxo_manage::cleartable(const name table_name, const optional<uint64_t> sco
     const uint64_t rows_to_clear = (!max_rows || *max_rows == 0) ? -1 : *max_rows;
     const uint64_t value = scope ? *scope : get_self().value;
 
-    // tables
-    utxo_manage::block_extra_table _block_extra(get_self(), value);
-
     if (table_name == "utxos"_n)
         clear_table(_utxo, rows_to_clear);
     else if (table_name == "pendingutxos"_n)
@@ -24,7 +21,7 @@ void utxo_manage::cleartable(const name table_name, const optional<uint64_t> sco
     else if (table_name == "blocks"_n)
         clear_table(_block, rows_to_clear);
     else if (table_name == "block.extra"_n)
-        _block_extra.remove();
+        clear_table(_block_extra, rows_to_clear);
     else if (table_name == "consensusblk"_n)
         clear_table(_consensus_block, rows_to_clear);
     else if (table_name == "chainstate"_n)

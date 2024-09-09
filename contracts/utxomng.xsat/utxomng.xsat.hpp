@@ -401,23 +401,27 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     /**
      * ## TABLE `block.extra`
      *
-     * ### scope `height`
+     * ### scope `get_self()`
      * ### params
      *
+     * - `{uint64_t} height` - block height
      * - `{uint64_t} bucket_id` - the associated bucket number is used to obtain block data
      *
      * ### example
      *
      * ```json
      * {
-     *   "bucket_id": 1,
+     *   "height": 840001,
+     *   "bucket_id": 1
      * }
      * ```
      */
     struct [[eosio::table]] block_extra_row {
+        uint64_t height;
         uint64_t bucket_id;
+        uint64_t primary_key() const { return height; }
     };
-    typedef eosio::singleton<"block.extra"_n, block_extra_row> block_extra_table;
+    typedef eosio::multi_index<"block.extra"_n, block_extra_row> block_extra_table;
 
     /**
      * ## TABLE `consensusblk`
@@ -564,9 +568,8 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      *
      * - `{uint16_t} parse_timeout_seconds` - parsing timeout duration
      * - `{uint16_t} num_validators_per_distribution` - number of endorsing users each time rewards are distributed
-     * - `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
      * - `{uint16_t} retained_spent_utxo_blocks` - number of blocks to retain utxo
-     * - `{uint16_t} num_txs_per_verification` - the number of tx for each verification (2^n)
+     * - `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
      * - `{uint8_t} num_merkle_layer` - verify the number of merkle levels (log(num_txs_per_verification))
      * - `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of
      * blocks
@@ -684,6 +687,46 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      */
     [[eosio::action]]
     void delblock(const uint64_t height);
+
+    /**
+     * ## ACTION `delspentutxo`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Delete spent utxo.
+     *
+     * ### params
+     *
+     * - `{uint64_t} row` - number of rows to delete utxo
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action utxomng.xsat delspentutxo '[1000]' -p utxomng.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void delspentutxo(uint64_t rows);
+
+    /**
+     * ## ACTION `delblockdata`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Delete block data.
+     *
+     * ### params
+     *
+     * - `{uint64_t} row` - number of rows of block data to delete
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action utxomng.xsat delblockdata '[1000]' -p utxomng.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void delblockdata(uint64_t rows);
 
     /**
      * ## ACTION `processblock`
@@ -837,6 +880,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     // table init
     config_table _config = config_table(_self, _self.value);
     chain_state_table _chain_state = chain_state_table(_self, _self.value);
+    block_extra_table _block_extra = block_extra_table(_self, _self.value);
     utxo_table _utxo = utxo_table(_self, _self.value);
     pending_utxo_table _pending_utxo = pending_utxo_table(_self, _self.value);
     spent_utxo_table _spent_utxo = spent_utxo_table(_self, _self.value);
