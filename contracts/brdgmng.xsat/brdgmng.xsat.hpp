@@ -13,7 +13,6 @@
 #include "../internal/utils.hpp"
 #include "../internal/safemath.hpp"
 
-
 using namespace eosio;
 using namespace std;
 using std::vector;
@@ -50,8 +49,10 @@ public:
     [[eosio::action]]
     void initialize();
 
-    // [[eosio::action]]
-    // void updateconfig(const uint8_t status);
+    [[eosio::action]]
+    void updateconfig(bool deposit_enable, bool withdraw_enable, bool check_uxto_enable, uint64_t limit_amount,
+        uint64_t deposit_fee, uint64_t withdraw_fast_fee, uint64_t withdraw_slow_fee,
+        uint16_t withdraw_merge_count, uint16_t withdraw_timeout_minutes, uint16_t btc_address_inactive_clear_days);
 
     [[eosio::action]]
     void addperm(const uint64_t id, const vector<name>& actors);
@@ -69,8 +70,9 @@ public:
     void mappingaddr(const name& actor, const uint64_t permission_id, const checksum160 evm_address);
 
     [[eosio::action]]
-    void deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address, const string& order_no,
-        const uint64_t block_height, const string& tx_id, const uint64_t amount, const string& tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
+    void deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address,
+        const string& order_no, const uint64_t block_height, const string& tx_id, const uint64_t amount, const string& tx_status,
+        const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
 
     [[eosio::action]]
     void valdeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const string& tx_status, const optional<string>& remark_detail);
@@ -89,12 +91,12 @@ public:
 
     [[eosio::action]]
     void depositlog() {
-        require_auth(get_self());
+        require_auth(get_self()); //todo
     }
 
     [[eosio::action]]
     void withdrawlog() {
-        require_auth(get_self());
+        require_auth(get_self()); //todo
     }
 
 private:
@@ -143,7 +145,6 @@ private:
         uint64_t limit_amount;
         uint64_t deposit_fee;
         uint64_t withdraw_fast_fee;
-        uint64_t withdraw_avg_fee;
         uint64_t withdraw_slow_fee;
         uint16_t withdraw_merge_count;
         uint16_t withdraw_timeout_minutes;

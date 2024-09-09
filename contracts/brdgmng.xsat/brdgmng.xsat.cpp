@@ -11,16 +11,33 @@ void brdgmng::initialize() {
     boot_row boot = _boot.get_or_default();
     check(!boot.initialized, "brdgmng.xsat::boot: already initialized");
     // initialize issue 1 BTC
-    btc::issue_action issue(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+    btc::issue_action issue(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
     asset quantity = asset(BTC_BASE, BTC_SYMBOL);
     issue.send(BTC_CONTRACT, quantity, "initialize issue one BTC to boot.xsat");
     // transfer BTC to boot.xsat
-    btc::transfer_action transfer(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+    btc::transfer_action transfer(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
     transfer.send(BTC_CONTRACT, BOOT_ACCOUNT, quantity, "transfer one BTC to boot.xsat");
     boot.initialized = true;
     boot.returned = false;
     boot.quantity = quantity;
     _boot.set(boot, get_self());
+}
+
+[[eosio::action]]
+void brdgmng::updateconfig(bool deposit_enable, bool withdraw_enable, bool check_uxto_enable, uint64_t limit_amount, uint64_t deposit_fee, uint64_t withdraw_fast_fee, uint64_t withdraw_slow_fee, uint16_t withdraw_merge_count, uint16_t withdraw_timeout_minutes, uint16_t btc_address_inactive_clear_days) {
+    require_auth(get_self());
+    config_row config = _config.get_or_default();
+    config.deposit_enable = deposit_enable;
+    config.withdraw_enable = withdraw_enable;
+    config.check_uxto_enable = check_uxto_enable;
+    config.limit_amount = limit_amount;
+    config.deposit_fee = deposit_fee;
+    config.withdraw_fast_fee = withdraw_fast_fee;
+    config.withdraw_slow_fee = withdraw_slow_fee;
+    config.withdraw_merge_count = withdraw_merge_count;
+    config.withdraw_timeout_minutes = withdraw_timeout_minutes;
+    config.btc_address_inactive_clear_days = btc_address_inactive_clear_days;
+    _config.set(config, get_self());
 }
 
 [[eosio::action]]
@@ -66,8 +83,8 @@ void brdgmng::addaddresses(const name& actor, const uint64_t permission_id, stri
             row.permission_id = permission_id;
             row.b_id = b_id;
             row.wallet_code = wallet_code;
-            row.provider_actors = vector<name> { actor };
-            row.statuses = vector<string> { "initiated" };
+            row.provider_actors = vector<name>{actor};
+            row.statuses = vector<string>{"initiated"};
             row.confirmed_count = 1;
             row.status = global_status_initiated;
             row.btc_address = btc_address;
@@ -86,9 +103,9 @@ void brdgmng::valaddress(const name& actor, const uint64_t permission_id, const 
     check(address_itr->status != global_status_confirmed, "brdgmng.xsat::valaddress: btc_address status is already confirmed");
 
     auto actor_itr = std::find_if(address_itr->provider_actors.begin(),
-        address_itr->provider_actors.end(), [&](const auto& u) {
-            return u == actor;
-        });
+                                  address_itr->provider_actors.end(), [&](const auto& u) {
+                                      return u == actor;
+                                  });
     check(actor_itr == address_itr->provider_actors.end(), "brdgmng.xsat::valaddress: actor already exists in the provider actors list");
     _address.modify(address_itr, same_payer, [&](auto& row) {
         row.provider_actors.push_back(actor);
@@ -152,17 +169,16 @@ void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const
 }
 
 [[eosio::action]]
-void brdgmng::deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address, const string& order_no,
-        const uint64_t block_height, const string& tx_id, const uint64_t amount, const string& tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
+void brdgmng::deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address, const string& order_no, const uint64_t block_height, const string& tx_id, const uint64_t amount, const string& tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
     check_permission(actor, permission_id);
     check(_config.get_or_default().deposit_enable, "brdgmng.xsat::deposit: deposit is disabled");
 
-    //todo Determine whether the order_no is unique
+    // todo Determine whether the order_no is unique
     _deposit.emplace(get_self(), [&](auto& row) {
         row.id = next_deposit_id();
         row.permission_id = permission_id;
-        row.provider_actors = vector<name> { actor };
-        row.tx_statuses = vector<string> { tx_status };
+        row.provider_actors = vector<name>{actor};
+        row.tx_statuses = vector<string>{tx_status};
         row.confirmed_count = 1;
         row.status = global_status_initiated;
         row.b_id = b_id;
@@ -188,9 +204,9 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
     check(deposit_itr->status != global_status_failed, "brdgmng.xsat::valdeposit: deposit status is already failed");
 
     auto actor_itr = std::find_if(deposit_itr->provider_actors.begin(),
-        deposit_itr->provider_actors.end(), [&](const auto& u) {
-            return u == actor;
-        });
+                                  deposit_itr->provider_actors.end(), [&](const auto& u) {
+                                      return u == actor;
+                                  });
     check(actor_itr == deposit_itr->provider_actors.end(), "brdgmng.xsat::valdeposit: actor already exists in the provider actors list");
     _deposit.modify(deposit_itr, same_payer, [&](auto& row) {
         row.provider_actors.push_back(actor);
@@ -215,7 +231,8 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
 [[eosio::on_notify("*::transfer")]]
 void brdgmng::on_transfer(const name& from, const name& to, const asset& quantity, const string& memo) {
     // ignore transfers
-    if (to != get_self()) return;
+    if (to != get_self())
+        return;
 
     const name contract = get_first_receiver();
     check(contract == BTC_CONTRACT && quantity.symbol == BTC_SYMBOL, "brdgmng.xsat: only transfer [btc.xsat/BTC]");
@@ -232,9 +249,9 @@ void brdgmng::do_return(const name& from, const name& contract, const asset& qua
     check(!boot.returned, "brdgmng.xsat: already returned");
     check(quantity == boot.quantity, "brdgmng.xsat: refund amount does not match, must be " + boot.quantity.to_string());
     // burn BTC
-    btc::transfer_action transfer(contract, { get_self(), "active"_n });
+    btc::transfer_action transfer(contract, {get_self(), "active"_n});
     transfer.send(get_self(), BTC_CONTRACT, quantity, "return BTC to btc.xsat");
-    btc::retire_action retire(contract, { BTC_CONTRACT, "active"_n });
+    btc::retire_action retire(contract, {BTC_CONTRACT, "active"_n});
     retire.send(quantity, "retire BTC from boot.xsat");
 
     boot.returned = true;
@@ -248,7 +265,7 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
     auto INVALID_MEMO = "brdgmng.xsat: invalid memo ex: \"<btc_address>,<gas_level>\"";
     check(parts.size() == 2, INVALID_MEMO);
     string btc_address = parts[0];
-    string gas_level = parts[1]; //fast, avg, slow
+    string gas_level = parts[1];  // fast, avg, slow
     string order_no = "";
     uint64_t withdraw_id = next_withdraw_id();
     if (gas_level == "fast") {
@@ -266,10 +283,9 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
     });
 }
 
-//得根据订单号来批量处理
+// 得根据订单号来批量处理
 [[eosio::action]]
-void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
-        const uint64_t block_height, const string& tx_id, const string& tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
+void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code, const uint64_t block_height, const string& tx_id, const string& tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
     check_permission(actor, permission_id);
     check_permission(actor, permission_id);
     auto withdraw_itr = _withdraw.require_find(withdraw_id, "brdgmng.xsat::valwithdraw: withdraw id does not exists");
@@ -277,9 +293,9 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
     check(withdraw_itr->status != global_status_failed, "brdgmng.xsat::valwithdraw: withdraw status is failed");
 
     auto actor_itr = std::find_if(withdraw_itr->provider_actors.begin(),
-        withdraw_itr->provider_actors.end(), [&](const auto& u) {
-            return u == actor;
-        });
+                                  withdraw_itr->provider_actors.end(), [&](const auto& u) {
+                                      return u == actor;
+                                  });
     check(actor_itr == withdraw_itr->provider_actors.end(), "brdgmng.xsat::confirmwithdraw: actor already exists in the provider actors list");
     _withdraw.modify(withdraw_itr, same_payer, [&](auto& row) {
         row.provider_actors.push_back(actor);
@@ -293,10 +309,10 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
                 if (withdraw_itr->amount >= _config.get_or_default().limit_amount) {
                     // issue BTC
                     asset quantity = asset(withdraw_itr->amount, BTC_SYMBOL);
-                    btc::issue_action issue(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+                    btc::issue_action issue(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
                     issue.send(BTC_CONTRACT, quantity, "issue BTC to evm address");
                     // transfer BTC to evm address
-                    btc::transfer_action transfer(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+                    btc::transfer_action transfer(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
                     transfer.send(BTC_CONTRACT, ERC20_CONTRACT, quantity, "0x" + xsat::utils::sha1_to_hex(withdraw_itr->evm_address));
                 }
             } else {
@@ -366,10 +382,10 @@ void brdgmng::handle_btc_deposit(const uint64_t amount, const checksum160& evm_a
         const uint64_t issue_amount = safemath::sub(amount, _config.get_or_default().deposit_fee);
         // issue BTC
         asset quantity = asset(issue_amount, BTC_SYMBOL);
-        btc::issue_action issue(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+        btc::issue_action issue(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
         issue.send(BTC_CONTRACT, quantity, "issue BTC to evm address");
         // transfer BTC to evm address
-        btc::transfer_action transfer(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+        btc::transfer_action transfer(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
         transfer.send(BTC_CONTRACT, ERC20_CONTRACT, quantity, "0x" + xsat::utils::sha1_to_hex(evm_address));
 
         statistics_row statistics = _statistics.get_or_default();
@@ -389,6 +405,6 @@ string brdgmng::generate_order_no(const std::vector<uint64_t>& ids) {
             order_no += "-";
         }
     }
-    order_no += "-" + std::to_string(timestamp); // 添加时间戳
+    order_no += "-" + std::to_string(timestamp);  // 添加时间戳
     return order_no;
 }
