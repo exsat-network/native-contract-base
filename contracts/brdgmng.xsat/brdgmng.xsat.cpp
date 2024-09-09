@@ -24,7 +24,7 @@ void brdgmng::initialize() {
 }
 
 [[eosio::action]]
-void brdgmng::addperm(const uint64_t id, const vector<name> actors) {
+void brdgmng::addperm(const uint64_t id, const vector<name>& actors) {
     require_auth(get_self());
     if (actors.empty()) {
         check(false, "brdgmng.xsat::addperm: actors cannot be empty");
@@ -45,7 +45,7 @@ void brdgmng::delperm(const uint64_t id) {
 }
 
 [[eosio::action]]
-void brdgmng::addaddresses(const name actor, const uint64_t permission_id, string b_id, string wallet_code, const vector<string> btc_addresses) {
+void brdgmng::addaddresses(const name& actor, const uint64_t permission_id, string b_id, string wallet_code, const vector<string>& btc_addresses) {
     require_auth(actor);
     if (btc_addresses.empty()) {
         check(false, "brdgmng.xsat::addaddresses: btc_addresses cannot be empty");
@@ -79,7 +79,7 @@ void brdgmng::addaddresses(const name actor, const uint64_t permission_id, strin
 }
 
 [[eosio::action]]
-void brdgmng::valaddress(const name actor, const uint64_t permission_id, const uint64_t address_id, const string status) {
+void brdgmng::valaddress(const name& actor, const uint64_t permission_id, const uint64_t address_id, const string& status) {
     check_permission(actor, permission_id);
 
     auto address_itr = _address.require_find(address_id, "brdgmng.xsat::valaddress: address_id does not exists in address");
@@ -107,7 +107,7 @@ void brdgmng::valaddress(const name actor, const uint64_t permission_id, const u
 }
 
 [[eosio::action]]
-void brdgmng::mappingaddr(const name actor, const uint64_t permission_id, const checksum160 evm_address) {
+void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const checksum160 evm_address) {
     check_permission(actor, permission_id);
 
     auto evm_address_mapping_idx = _address_mapping.get_index<"byevmaddr"_n>();
@@ -152,8 +152,8 @@ void brdgmng::mappingaddr(const name actor, const uint64_t permission_id, const 
 }
 
 [[eosio::action]]
-void brdgmng::deposit(const name actor, uint64_t permission_id, string b_id, string wallet_code, string btc_address, string order_no,
-    uint64_t block_height, string tx_id, uint64_t amount, string tx_status, string remark_detail, uint64_t tx_time_stamp, uint64_t create_time_stamp) {
+void brdgmng::deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address, const string& order_no,
+        const uint64_t block_height, const string& tx_id, const uint64_t amount, const string& tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
     check_permission(actor, permission_id);
     check(_config.get_or_default().deposit_enable, "brdgmng.xsat::deposit: deposit is disabled");
 
@@ -172,19 +172,20 @@ void brdgmng::deposit(const name actor, uint64_t permission_id, string b_id, str
         row.block_height = block_height;
         row.tx_id = tx_id;
         row.amount = amount;
-        row.remark_detail = remark_detail;
+        if (remark_detail.has_value()) {
+            row.remark_detail = *remark_detail;
+        }
         row.tx_time_stamp = tx_time_stamp;
         row.create_time_stamp = create_time_stamp;
     });
 }
 
 [[eosio::action]]
-void brdgmng::valdeposit(const name actor, const uint64_t permission_id, const uint64_t deposit_id, string tx_status, optional<string> remark_detail) {
+void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const string& tx_status, const optional<string>& remark_detail) {
     check_permission(actor, permission_id);
     auto deposit_itr = _deposit.require_find(deposit_id, "brdgmng.xsat::valdeposit: deposit id does not exists");
     check(deposit_itr->status != global_status_confirmed, "brdgmng.xsat::valdeposit: deposit status is already confirmed");
     check(deposit_itr->status != global_status_failed, "brdgmng.xsat::valdeposit: deposit status is already failed");
-    check(deposit_itr->status != global_status_error, "brdgmng.xsat::valdeposit: deposit status is already error");
 
     auto actor_itr = std::find_if(deposit_itr->provider_actors.begin(),
         deposit_itr->provider_actors.end(), [&](const auto& u) {
@@ -265,15 +266,15 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
     });
 }
 
+//得根据订单号来批量处理
 [[eosio::action]]
-void brdgmng::valwithdraw(const name actor, uint64_t permission_id, uint64_t withdraw_id, string b_id, string wallet_code,
-    uint64_t block_height, string tx_id, string tx_status, string remark_detail, uint64_t tx_time_stamp, uint64_t create_time_stamp) {
+void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
+        const uint64_t block_height, const string& tx_id, const string& tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
     check_permission(actor, permission_id);
     check_permission(actor, permission_id);
     auto withdraw_itr = _withdraw.require_find(withdraw_id, "brdgmng.xsat::valwithdraw: withdraw id does not exists");
     check(withdraw_itr->status != global_status_initiated, "brdgmng.xsat::valwithdraw: withdraw status is already confirmed");
     check(withdraw_itr->status != global_status_failed, "brdgmng.xsat::valwithdraw: withdraw status is failed");
-    check(withdraw_itr->status != global_status_error, "brdgmng.xsat::valwithdraw: withdraw status is error");
 
     auto actor_itr = std::find_if(withdraw_itr->provider_actors.begin(),
         withdraw_itr->provider_actors.end(), [&](const auto& u) {
@@ -305,7 +306,7 @@ void brdgmng::valwithdraw(const name actor, uint64_t permission_id, uint64_t wit
     });
 }
 
-void brdgmng::check_permission(const name actor, uint64_t permission_id) {
+void brdgmng::check_permission(const name& actor, const uint64_t permission_id) {
     require_auth(actor);
     auto permission_itr = _permission.require_find(permission_id, "brdgmng.xsat::check_permission: permission id does not exists");
     bool has_permission = false;
@@ -346,7 +347,7 @@ uint64_t brdgmng::next_withdraw_id() {
     return global_id.withdraw_id;
 }
 
-bool brdgmng::verifyProviders(std::vector<name> requested_actors, std::vector<name> provider_actors) {
+bool brdgmng::verifyProviders(const std::vector<name>& requested_actors, const std::vector<name>& provider_actors) {
     for (const auto& request : requested_actors) {
         if (std::find(provider_actors.begin(), provider_actors.end(), request) == provider_actors.end()) {
             return false;

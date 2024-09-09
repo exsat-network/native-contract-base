@@ -12,14 +12,26 @@ void brdgmng::cleartable(const name table_name, const optional<name> scope, cons
     const uint64_t rows_to_clear = (!max_rows || *max_rows == 0) ? -1 : *max_rows;
     const uint64_t value = scope ? scope->value : get_self().value;
 
-    if (table_name == "global_id"_n) {
-        _global.remove();
-    } else if (table_name == "custodies"_n) {
-        brdgmng_index _brdgmng(get_self(), get_self().value);
-        clear_table(_brdgmng, rows_to_clear);
-    } else if (table_name == "vaults"_n) {
-        vault_index _vault(get_self(), get_self().value);
-        clear_table(_vault, rows_to_clear);
+    if (table_name == "boot"_n) {
+        _boot.remove();
+    } else if (table_name == "globalid"_n) {
+        _global_id.remove();
+    } else if (table_name == "configs"_n) {
+        _config.remove();
+    } else if (table_name == "statistics"_n) {
+        _statistics.remove();
+    } else if (table_name == "permissions"_n) {
+        permission_index _permissions(get_self(), get_self().value);
+        clear_table(_permissions, rows_to_clear);
+    } else if (table_name == "addresses"_n) {
+        address_index _address(get_self(), get_self().value);
+        clear_table(_address, rows_to_clear);
+    } else if (table_name == "addrmappings"_n) {
+        address_mapping_index _address_mapping(get_self(), get_self().value);
+        clear_table(_address_mapping, rows_to_clear);
+    } else if (table_name == "deposits"_n) {
+        deposit_index _deposit(get_self(), get_self().value);
+        clear_table(_deposit, rows_to_clear);
     } else {
         check(false, "brdgmng::cleartable: [table_name] unknown table to clear");
     }
