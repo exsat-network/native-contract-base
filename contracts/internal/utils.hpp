@@ -35,6 +35,8 @@ namespace xsat::utils {
 
     static checksum256 hash(const string& data) { return sha256(data.c_str(), data.size()); }
 
+    static checksum160 hash_ripemd160(const string& data) { return ripemd160(data.c_str(), data.size()); }
+
     static checksum256 hash(const vector<uint8_t>& data) { return sha256((char*)data.data(), data.size()); }
 
     static name parse_name(const string& str) {
@@ -233,6 +235,17 @@ namespace xsat::utils {
         uint64_t second_part = data[1];
 
         return first_part == 0 && (second_part & 0xFFFFFFFF00000000) == 0;
+    }
+
+    string checksum160_to_string(const checksum160& cs) {
+        auto arr = cs.extract_as_byte_array();
+        string result;
+        for (auto byte : arr) {
+            char buf[3];
+            snprintf(buf, sizeof(buf), "%02x", byte);
+            result += buf;
+        }
+        return result;
     }
 
 }  // namespace xsat::utils

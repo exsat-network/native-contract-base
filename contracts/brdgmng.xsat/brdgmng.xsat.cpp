@@ -24,7 +24,9 @@ void brdgmng::initialize() {
 }
 
 [[eosio::action]]
-void brdgmng::updateconfig(bool deposit_enable, bool withdraw_enable, bool check_uxto_enable, uint64_t limit_amount, uint64_t deposit_fee, uint64_t withdraw_fast_fee, uint64_t withdraw_slow_fee, uint16_t withdraw_merge_count, uint16_t withdraw_timeout_minutes, uint16_t btc_address_inactive_clear_days) {
+void brdgmng::updateconfig(bool deposit_enable, bool withdraw_enable, bool check_uxto_enable, uint64_t limit_amount, uint64_t deposit_fee,
+                           uint64_t withdraw_fast_fee, uint64_t withdraw_slow_fee, uint16_t withdraw_merge_count, uint16_t withdraw_timeout_minutes,
+                           uint16_t btc_address_inactive_clear_days) {
     require_auth(get_self());
     config_row config = _config.get_or_default();
     config.deposit_enable = deposit_enable;
@@ -84,7 +86,7 @@ void brdgmng::addaddresses(const name& actor, const uint64_t permission_id, stri
             row.b_id = b_id;
             row.wallet_code = wallet_code;
             row.provider_actors = vector<name>{actor};
-            row.statuses = vector<string>{"initiated"};
+            row.statuses = vector<address_status>{address_status_initiated};
             row.confirmed_count = 1;
             row.status = global_status_initiated;
             row.btc_address = btc_address;
@@ -96,26 +98,23 @@ void brdgmng::addaddresses(const name& actor, const uint64_t permission_id, stri
 }
 
 [[eosio::action]]
-void brdgmng::valaddress(const name& actor, const uint64_t permission_id, const uint64_t address_id, const string& status) {
+void brdgmng::valaddress(const name& actor, const uint64_t permission_id, const uint64_t address_id, const address_status status) {
     check_permission(actor, permission_id);
 
     auto address_itr = _address.require_find(address_id, "brdgmng.xsat::valaddress: address_id does not exists in address");
-    check(address_itr->status != global_status_confirmed, "brdgmng.xsat::valaddress: btc_address status is already confirmed");
+    check(address_itr->status != global_status_succeed, "brdgmng.xsat::valaddress: btc_address status is already confirmed");
 
-    auto actor_itr = std::find_if(address_itr->provider_actors.begin(),
-                                  address_itr->provider_actors.end(), [&](const auto& u) {
-                                      return u == actor;
-                                  });
+    auto actor_itr = std::find_if(address_itr->provider_actors.begin(), address_itr->provider_actors.end(), [&](const auto& u) { return u == actor; });
     check(actor_itr == address_itr->provider_actors.end(), "brdgmng.xsat::valaddress: actor already exists in the provider actors list");
     _address.modify(address_itr, same_payer, [&](auto& row) {
         row.provider_actors.push_back(actor);
         row.statuses.push_back(status);
-        if (status == "confirmed") {
+        if (status == address_status_confirmed) {
             row.confirmed_count++;
         }
         if (verifyProviders(_permission.get(permission_id).actors, address_itr->provider_actors)) {
             if (row.confirmed_count == address_itr->provider_actors.size()) {
-                row.status = global_status_confirmed;
+                row.status = global_status_succeed;
             } else {
                 row.status = global_status_failed;
             }
@@ -140,7 +139,7 @@ void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const
     auto address_itr = address_lower;
     string btc_address;
     for (; address_itr != address_upper; ++address_itr) {
-        if (address_itr->status == global_status_confirmed) {
+        if (address_itr->status == global_status_succeed) {
             btc_address = address_itr->btc_address;
             break;
         }
@@ -169,21 +168,32 @@ void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const
 }
 
 [[eosio::action]]
-void brdgmng::deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address, const string& order_no, const uint64_t block_height, const string& tx_id, const uint64_t amount, const string& tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
+void brdgmng::deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address,
+                      const string& order_id, const string& order_no, const uint64_t block_height, const string& tx_id, const uint64_t amount,
+                      const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
     check_permission(actor, permission_id);
     check(_config.get_or_default().deposit_enable, "brdgmng.xsat::deposit: deposit is disabled");
 
-    // todo Determine whether the order_no is unique
-    _deposit.emplace(get_self(), [&](auto& row) {
+    // check order_id is unique in the deposit table
+    deposit_index _deposit_pending = deposit_index(_self, pending_scope);
+    auto deposit_idx_pending = _deposit_pending.get_index<"byorderid"_n>();
+    auto deposit_itr_pending = deposit_idx_pending.find(xsat::utils::hash(order_id));
+    check(deposit_itr_pending == deposit_idx_pending.end(), "brdgmng.xsat::deposit: order_id already exists in deposit");
+
+    deposit_index _deposit_confirmed = deposit_index(_self, confirmed_scope);
+    auto deposit_idx_confirmed = _deposit_confirmed.get_index<"byorderid"_n>();
+    auto deposit_itr_confirmed = deposit_idx_confirmed.find(xsat::utils::hash(order_id));
+    check(deposit_itr_confirmed == deposit_idx_confirmed.end(), "brdgmng.xsat::deposit: order_id already exists in deposit");
+
+    _deposit_pending.emplace(get_self(), [&](auto& row) {
         row.id = next_deposit_id();
         row.permission_id = permission_id;
-        row.provider_actors = vector<name>{actor};
-        row.tx_statuses = vector<string>{tx_status};
-        row.confirmed_count = 1;
-        row.status = global_status_initiated;
+        row.provider_actors = vector<provider_actor_info>{provider_actor_info{actor, tx_status_initiated}};
+        row.global_status = global_status_initiated;
         row.b_id = b_id;
         row.wallet_code = wallet_code;
         row.btc_address = btc_address;
+        row.order_id = order_id;
         row.order_no = order_no;
         row.block_height = block_height;
         row.tx_id = tx_id;
@@ -197,42 +207,75 @@ void brdgmng::deposit(const name& actor, const uint64_t permission_id, const str
 }
 
 [[eosio::action]]
-void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const string& tx_status, const optional<string>& remark_detail) {
+void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const tx_status tx_status,
+                         const optional<string>& remark_detail) {
     check_permission(actor, permission_id);
-    auto deposit_itr = _deposit.require_find(deposit_id, "brdgmng.xsat::valdeposit: deposit id does not exists");
-    check(deposit_itr->status != global_status_confirmed, "brdgmng.xsat::valdeposit: deposit status is already confirmed");
-    check(deposit_itr->status != global_status_failed, "brdgmng.xsat::valdeposit: deposit status is already failed");
+    deposit_index _deposit_pending = deposit_index(_self, pending_scope);
+    deposit_index _deposit_confirmed = deposit_index(_self, confirmed_scope);
+    auto deposit_itr_confirmed = _deposit_confirmed.find(deposit_id);
+    if (deposit_itr_confirmed != _deposit_confirmed.end()) {
+        check(deposit_itr_confirmed->global_status != global_status_succeed, "brdgmng.xsat::valdeposit: deposit status is already succeed");
+        check(deposit_itr_confirmed->global_status != global_status_failed, "brdgmng.xsat::valdeposit: deposit status is already failed");
+    }
+    auto deposit_itr_pending = _deposit_pending.require_find(deposit_id, "brdgmng.xsat::valdeposit: deposit id does not exists");
 
-    auto actor_itr = std::find_if(deposit_itr->provider_actors.begin(),
-                                  deposit_itr->provider_actors.end(), [&](const auto& u) {
-                                      return u == actor;
-                                  });
-    check(actor_itr == deposit_itr->provider_actors.end(), "brdgmng.xsat::valdeposit: actor already exists in the provider actors list");
-    _deposit.modify(deposit_itr, same_payer, [&](auto& row) {
-        row.provider_actors.push_back(actor);
-        row.tx_statuses.push_back(tx_status);
-        if (tx_status == "confirmed") {
+    auto actor_itr =
+        std::find_if(deposit_itr_pending->provider_actors.begin(), deposit_itr_pending->provider_actors.end(), [&](const auto& u) { return u.actor == actor; });
+
+    _deposit_pending.modify(deposit_itr_pending, same_payer, [&](auto& row) {
+        if (actor_itr != deposit_itr->provider_actors.end()) {
+            // actor exist, check the corresponding tx_status
+            check(tx_status != tx_status_confirmed && tx_status != tx_status_failed && tx_status != tx_status_rollbacked,
+                  "brdgmng.xsat::valdeposit: the tx_status is final and cannot be modified");
+            actor_itr->tx_status = tx_status;
+        } else {
+            // actor not exist, add the actor and tx_status
+            row.provider_actors.push_back({actor, tx_status});
+        }
+        if (tx_status == tx_status_confirmed) {
             row.confirmed_count++;
+        } else if (tx_status == tx_status_failed || tx_status == tx_status_rollbacked) {
+            row.global_status = global_status_failed;
         }
         if (remark_detail.has_value()) {
             row.remark_detail = *remark_detail;
         }
-        if (verifyProviders(_permission.get(permission_id).actors, deposit_itr->provider_actors)) {
-            if (row.confirmed_count == deposit_itr->provider_actors.size()) {
-                row.status = global_status_confirmed;
-                handle_btc_deposit(deposit_itr->amount, deposit_itr->evm_address);
-            } else {
-                row.status = global_status_failed;
+        if (verifyProviders(_permission.get(permission_id).actors, row.provider_actors)) {
+            if (row.confirmed_count == row.provider_actors.size()) {
+                row.global_status = global_status_succeed;
             }
         }
     });
+    //move pending deposit to confirmed deposit
+    if (deposit_itr_pending->global_status == global_status_succeed || deposit_itr_pending->global_status == global_status_failed) {
+        if (deposit_itr_pending->global_status == global_status_succeed) {
+            handle_btc_deposit(deposit_itr_pending->amount, deposit_itr_pending->evm_address);
+        }
+        _deposit_confirmed.emplace(get_self(), [&](auto& row) {
+            row.id = deposit_itr_pending->id;
+            row.permission_id = deposit_itr_pending->permission_id;
+            row.provider_actors = deposit_itr_pending->provider_actors;
+            row.global_status = deposit_itr_pending->status;
+            row.b_id = deposit_itr_pending->b_id;
+            row.wallet_code = deposit_itr_pending->wallet_code;
+            row.btc_address = deposit_itr_pending->btc_address;
+            row.order_id = deposit_itr_pending->order_id;
+            row.order_no = deposit_itr_pending->order_no;
+            row.block_height = deposit_itr_pending->block_height;
+            row.tx_id = deposit_itr_pending->tx_id;
+            row.amount = deposit_itr_pending->amount;
+            row.remark_detail = deposit_itr_pending->remark_detail;
+            row.tx_time_stamp = deposit_itr_pending->tx_time_stamp;
+            row.create_time_stamp = deposit_itr_pending->create_time_stamp;
+        });
+        _deposit_pending.erase(deposit_itr_pending);
+    }
 }
 
 [[eosio::on_notify("*::transfer")]]
 void brdgmng::on_transfer(const name& from, const name& to, const asset& quantity, const string& memo) {
     // ignore transfers
-    if (to != get_self())
-        return;
+    if (to != get_self()) return;
 
     const name contract = get_first_receiver();
     check(contract == BTC_CONTRACT && quantity.symbol == BTC_SYMBOL, "brdgmng.xsat: only transfer [btc.xsat/BTC]");
@@ -264,62 +307,129 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
     auto parts = xsat::utils::split(memo, ",");
     auto INVALID_MEMO = "brdgmng.xsat: invalid memo ex: \"<btc_address>,<gas_level>\"";
     check(parts.size() == 2, INVALID_MEMO);
-    string btc_address = parts[0];
-    string gas_level = parts[1];  // fast, avg, slow
-    string order_no = "";
+    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope);
     uint64_t withdraw_id = next_withdraw_id();
-    if (gas_level == "fast") {
-        order_no = generate_order_no({withdraw_id});
-    }
-    _withdraw.emplace(get_self(), [&](auto& row) {
+    _withdraw_pending.emplace(get_self(), [&](auto& row) {
         row.id = withdraw_id;
-        row.btc_address = btc_address;
+        row.btc_address = parts[0];
+        row.gas_level = parts[1];
         row.amount = quantity.amount;
-        row.gas_level = gas_level;
         row.status = global_status_initiated;
-        if (!order_no.empty()) {
-            row.order_no = order_no;
+        if (gas_level == "fast") {
+            row.order_no = generate_order_no({withdraw_id});
         }
     });
 }
 
-// 得根据订单号来批量处理
 [[eosio::action]]
-void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code, const uint64_t block_height, const string& tx_id, const string& tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
-    check_permission(actor, permission_id);
-    check_permission(actor, permission_id);
-    auto withdraw_itr = _withdraw.require_find(withdraw_id, "brdgmng.xsat::valwithdraw: withdraw id does not exists");
-    check(withdraw_itr->status != global_status_initiated, "brdgmng.xsat::valwithdraw: withdraw status is already confirmed");
-    check(withdraw_itr->status != global_status_failed, "brdgmng.xsat::valwithdraw: withdraw status is failed");
+void brdgmng::genorderno() {
+    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope);
+    auto withdraw_idx_pending = _withdraw_pending.get_index<"byorderno"_n>();
+    //根据lower_bound和upper_bound查找order_no为空的记录
+    checksum160 order_no_hash = xsat::utils::hash_ripemd160("");
+    auto lower_bound = withdraw_idx_pending.lower_bound(order_no_hash);
+    auto upper_bound = withdraw_idx_pending.upper_bound(order_no_hash);
+    // for (auto itr = lower_bound; itr != upper_bound; ++itr) {
+    //     _withdraw_pending.modify(itr, same_payer, [&](auto& row) {
+    //         row.order_no = generate_order_no({itr->id});
+    //     });
+    // }
 
-    auto actor_itr = std::find_if(withdraw_itr->provider_actors.begin(),
-                                  withdraw_itr->provider_actors.end(), [&](const auto& u) {
-                                      return u == actor;
-                                  });
-    check(actor_itr == withdraw_itr->provider_actors.end(), "brdgmng.xsat::confirmwithdraw: actor already exists in the provider actors list");
-    _withdraw.modify(withdraw_itr, same_payer, [&](auto& row) {
-        row.provider_actors.push_back(actor);
-        row.tx_statuses.push_back(tx_status);
-        if (tx_status == "confirmed") {
-            row.confirmed_count++;
+}
+
+[[eosio::action]]
+void brdgmng::withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
+                     const string& order_id, const uint64_t block_height, const string& tx_id, const optional<string>& remark_detail,
+                     const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
+    check_permission(actor, permission_id);
+    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope);
+    auto withdraw_itr_pending = _withdraw_pending.require_find(withdraw_id, "brdgmng.xsat::withdrawinfo: withdraw id does not exists");
+    check(withdraw_itr_pending->order_id.empty(), "brdgmng.xsat::withdrawinfo: order info already exists in withdraw");
+
+    _withdraw_pending.modify(withdraw_itr_pending, same_payer, [&](auto& row) {
+        row.b_id = b_id;
+        row.wallet_code = wallet_code;
+        row.order_id = order_id;
+        row.block_height = block_height;
+        row.tx_id = tx_id;
+        row.tx_time_stamp = tx_time_stamp;
+        row.create_time_stamp = create_time_stamp;
+        if (remark_detail.has_value()) {
+            row.remark_detail = *remark_detail;
         }
-        if (verifyProviders(_permission.get(permission_id).actors, withdraw_itr->provider_actors)) {
-            if (row.confirmed_count == withdraw_itr->provider_actors.size()) {
-                row.status = global_status_confirmed;
-                if (withdraw_itr->amount >= _config.get_or_default().limit_amount) {
-                    // issue BTC
-                    asset quantity = asset(withdraw_itr->amount, BTC_SYMBOL);
-                    btc::issue_action issue(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
-                    issue.send(BTC_CONTRACT, quantity, "issue BTC to evm address");
-                    // transfer BTC to evm address
-                    btc::transfer_action transfer(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
-                    transfer.send(BTC_CONTRACT, ERC20_CONTRACT, quantity, "0x" + xsat::utils::sha1_to_hex(withdraw_itr->evm_address));
-                }
-            } else {
-                row.status = global_status_failed;
+    });
+}
+
+// todo It has to be processed in batches according to the order number
+[[eosio::action]]
+void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id,
+                     const withdraw_status withdraw_status, const uint8_t tx_status,
+                     const optional<string>& remark_detail) {
+    check_permission(actor, permission_id);
+    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope);
+    withdraw_index _withdraw_confirmed = withdraw_index(_self, confirmed_scope);
+    auto withdraw_itr_confirmed = _withdraw_confirmed.find(withdraw_id);
+    if (withdraw_itr_confirmed != _withdraw_confirmed.end()) {
+        check(withdraw_itr_confirmed->global_status != global_status_succeed, "brdgmng.xsat::valwithdraw: withdraw status is already succeed");
+        check(withdraw_itr_confirmed->global_status != global_status_failed, "brdgmng.xsat::valwithdraw: withdraw status is already failed");
+    }
+    auto withdraw_itr_pending = _withdraw_pending.require_find(withdraw_id, "brdgmng.xsat::valwithdraw: withdraw id does not exists");
+    auto actor_itr = std::find_if(withdraw_itr_pending->provider_actors.begin(), withdraw_itr_pending->provider_actors.end(), [&](const auto& u) { return u.actor == actor; });
+    check(withdraw_status >= withdraw_itr_pending->withdraw_status, "brdgmng.xsat::valwithdraw: the withdraw_status must increase forward");
+
+    _withdraw_pending.modify(withdraw_itr_pending, same_payer, [&](auto& row) {
+        row.withdraw_status = withdraw_status;
+        if (actor_itr != withdraw_itr->provider_actors.end()) {
+            // actor exist, check the corresponding tx_status
+            check(tx_status != tx_status_confirmed && tx_status != tx_status_failed && tx_status != tx_status_rollbacked,
+                  "brdgmng.xsat::valwithdraw: the tx_status is final and cannot be modified");
+            actor_itr->tx_status = tx_status;
+        } else {
+            // actor not exist, add the actor and tx_status
+            row.provider_actors.push_back({actor, tx_status});
+        }
+        if (tx_status == tx_status_confirmed) {
+            row.confirmed_count++;
+        } else if (tx_status == tx_status_failed || tx_status == tx_status_rollbacked) {
+            row.status = global_status_failed;
+        }
+        if (remark_detail.has_value()) {
+            row.remark_detail = *remark_detail;
+        }
+        if (verifyProviders(_permission.get(permission_id).actors, row.provider_actors)) {
+            if (row.confirmed_count == row.provider_actors.size()) {
+                row.status = global_status_succeed;
             }
         }
     });
+    //move pending withdraw to confirmed withdraw
+    if (withdraw_itr_pending->global_status == global_status_succeed || withdraw_itr_pending->global_status == global_status_failed) {
+        if (withdraw_itr_pending->global_status == global_status_succeed) {
+            handle_btc_withdraw(withdraw_itr_pending->amount);
+        }
+        _withdraw_confirmed.emplace(get_self(), [&](auto& row) {
+            row.id = withdraw_itr_pending->id;
+            row.permission_id = withdraw_itr_pending->permission_id;
+            row.provider_actors = withdraw_itr_pending->provider_actors;
+            row.confirmed_count = withdraw_itr_pending->confirmed_count;
+            row.tx_status = withdraw_itr_pending->tx_status;
+            row.withdraw_status = withdraw_itr_pending->withdraw_status;
+            row.global_status = withdraw_itr_pending->global_status;
+            row.b_id = withdraw_itr_pending->b_id;
+            row.wallet_code = withdraw_itr_pending->wallet_code;
+            row.btc_address = withdraw_itr_pending->btc_address;
+            row.gas_level = withdraw_itr_pending->gas_level;
+            row.order_id = withdraw_itr_pending->order_id;
+            row.order_no = withdraw_itr_pending->order_no;
+            row.block_height = withdraw_itr_pending->block_height;
+            row.tx_id = withdraw_itr_pending->tx_id;
+            row.amount = withdraw_itr_pending->amount;
+            row.remark_detail = withdraw_itr_pending->remark_detail;
+            row.tx_time_stamp = withdraw_itr_pending->tx_time_stamp;
+            row.create_time_stamp = withdraw_itr_pending->create_time_stamp;
+        });
+        _withdraw_pending.erase(withdraw_itr_pending);
+    }
 }
 
 void brdgmng::check_permission(const name& actor, const uint64_t permission_id) {
@@ -363,7 +473,7 @@ uint64_t brdgmng::next_withdraw_id() {
     return global_id.withdraw_id;
 }
 
-bool brdgmng::verifyProviders(const std::vector<name>& requested_actors, const std::vector<name>& provider_actors) {
+bool brdgmng::verifyProviders(const std::vector<provider_actor_info>& requested_actors, const std::vector<provider_actor_info>& provider_actors) {
     for (const auto& request : requested_actors) {
         if (std::find(provider_actors.begin(), provider_actors.end(), request) == provider_actors.end()) {
             return false;
@@ -394,7 +504,23 @@ void brdgmng::handle_btc_deposit(const uint64_t amount, const checksum160& evm_a
     }
 }
 
-string brdgmng::generate_order_no(const std::vector<uint64_t>& ids) {
+void brdgmng::handle_btc_withdraw(const uint64_t amount) {
+    if (amount >= _config.get_or_default().limit_amount) {
+        // transfer BTC btc.xsat
+        asset quantity = asset(amount, BTC_SYMBOL);
+        btc::transfer_action transfer(BTC_CONTRACT, {get_self(), "active"_n});
+        transfer.send(get_self(), BTC_CONTRACT, quantity, "transfer BTC to btc.xsat");
+        // retire BTC
+        btc::retire_action retire(BTC_CONTRACT, { BTC_CONTRACT, "active"_n });
+        retire.send(quantity, "retire BTC from withdraw");
+
+        statistics_row statistics = _statistics.get_or_default();
+        statistics.total_withdraw_amount += amount;
+        _statistics.set(statistics, get_self());
+    }
+}
+
+checksum160 brdgmng::generate_order_no(const std::vector<uint64_t>& ids) {
     auto timestamp = current_time_point().sec_since_epoch();
     std::vector<uint64_t> sorted_ids = ids;
     std::sort(sorted_ids.begin(), sorted_ids.end());
@@ -405,6 +531,6 @@ string brdgmng::generate_order_no(const std::vector<uint64_t>& ids) {
             order_no += "-";
         }
     }
-    order_no += "-" + std::to_string(timestamp);  // 添加时间戳
-    return order_no;
+    order_no += "-" + std::to_string(timestamp);
+    return xsat::utils::hash_ripemd160(order_no);
 }
