@@ -7,7 +7,7 @@
 | name                                                  | description                    | docs                                                              |
 | ----------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
 | [btc.xsat](https://bloks.io/account/btc.xsat)         | BTC Token Contract             |                                                                   |
-| [xsat.xsat](https://bloks.io/account/xsat.xsat)       | XSAT Contract                  |                                                                   |
+| [exsat.xsat](https://bloks.io/account/exsat.xsat)       | XSAT Contract                  |                                                                   |
 | [poolreg.xsat](https://bloks.io/account/poolreg.xsat) | Pool Register Contract         | [poolreg.xsat document](./contracts/poolreg.xsat/poolreg.xsat.md) |
 | [rescmng.xsat](https://bloks.io/account/rescmng.xsat) | Resource Manage Contract       | [rescmng.xsat document](./contracts/rescmng.xsat/rescmng.xsat.md) |
 | [utxomng.xsat](https://bloks.io/account/utxomng.xsat) | UTXO Manage Contract           | [utxomng.xsat document](./contracts/utxomng.xsat/utxomng.xsat.md) |
