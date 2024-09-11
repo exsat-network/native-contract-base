@@ -326,49 +326,57 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
             = bitcoin::be_checksum256_from_uint(bitcoin::be_uint_from_checksum256(verify_info.work)
                                                 + bitcoin::be_uint_from_checksum256(*parent_cumulative_work));
 
-        passed_index_table _passed_index(get_self(), height);
-        auto passed_index_id = _passed_index.available_primary_key();
-
-        status = verify_pass;
         auto miner = verify_info.miner;
-        if (miner) {
-            // The first verification passes and the miner’s latest block height is updated.
-            if (passed_index_id == 0) {
-                pool::updateheight_action _updateheight(POOL_REGISTER_CONTRACT, {get_self(), "active"_n});
-                _updateheight.send(miner, height, verify_info.btc_miners);
-            }
 
-            // save the miner information that passed for the first time
-            block_miner_table _block_miner(get_self(), height);
-            auto block_miner_idx = _block_miner.get_index<"byhash"_n>();
-            auto block_miner_itr = block_miner_idx.find(hash);
-            uint32_t expired_block_num;
-            if (block_miner_itr == block_miner_idx.end()) {
+        // save the miner information that passed for the first time
+        block_miner_table _block_miner(get_self(), height);
+        auto block_miner_idx = _block_miner.get_index<"byhash"_n>();
+        auto block_miner_itr = block_miner_idx.find(hash);
+        uint32_t expired_block_num = 0;
+        uint64_t block_id = 0;
+        if (block_miner_itr == block_miner_idx.end()) {
+            if (miner) {
                 utxo_manage::config_table _config(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
                 auto config = _config.get();
-
                 expired_block_num = current_block_number() + config.num_miner_priority_blocks;
-                _block_miner.emplace(get_self(), [&](auto& row) {
-                    row.id = _block_miner.available_primary_key();
-                    row.hash = hash;
-                    row.miner = miner;
-                    row.expired_block_num = expired_block_num;
-                });
-            } else {
-                expired_block_num = block_miner_itr->expired_block_num;
             }
-
-            // miners give priority to index 0
-            if (passed_index_id != 0 && miner == synchronizer && expired_block_num > current_block_number()) {
-                passed_index_id = 0;
-            } else if (passed_index_id == 0 && miner != synchronizer) {
-                passed_index_id = 1;
-            }
-
-            if (synchronizer != miner && expired_block_num > current_block_number()) {
-                status = waiting_miner_verification;
-            }
+            block_id = _block_miner.available_primary_key();
+            _block_miner.emplace(get_self(), [&](auto& row) {
+                row.id = block_id;
+                row.hash = hash;
+                row.miner = miner;
+                row.expired_block_num = expired_block_num;
+            });
+        } else {
+            expired_block_num = block_miner_itr->expired_block_num;
+            block_id = block_miner_itr->id;
         }
+
+        passed_index_table _passed_index(get_self(), height);
+        auto passed_index_itr = _passed_index.lower_bound(compute_passed_index_id(block_id, 0, 0));
+        auto passed_index_end
+            = _passed_index.upper_bound(compute_passed_index_id(block_id, 1, std::numeric_limits<uint16_t>::max()));
+        auto has_passed_index = passed_index_itr != passed_index_end;
+        auto last_passed_index = has_passed_index ? passed_index_end-- : passed_index_end;
+
+        // The first verification passes and the miner’s latest block height is updated.
+        if (miner && !has_passed_index) {
+            pool::updateheight_action _updateheight(POOL_REGISTER_CONTRACT, {get_self(), "active"_n});
+            _updateheight.send(miner, height, verify_info.btc_miners);
+        }
+
+        // If it is a miner and has not exceeded expired block_num, it is 0, otherwise it is 1
+        uint64_t miner_priority = 1;
+        if (miner == synchronizer && expired_block_num > current_block_number()) {
+            miner_priority = 0;
+        }
+
+        uint64_t pass_number = 1;
+        if (has_passed_index) {
+            pass_number = last_passed_index->id & 0xFFFFFF + 1;
+        }
+
+        uint64_t passed_index_id = compute_passed_index_id(block_id, miner_priority, pass_number);
 
         // save passed index
         _passed_index.emplace(get_self(), [&](auto& row) {
@@ -380,6 +388,11 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
             row.cumulative_work = cumulative_work;
             row.created_at = current_time_point();
         });
+
+        status = verify_pass;
+        if (synchronizer != miner && expired_block_num > current_block_number()) {
+            status = waiting_miner_verification;
+        }
 
         if (status == verify_pass) {
             utxo_manage::consensus_action _consensus(UTXO_MANAGE_CONTRACT, {get_self(), "active"_n});
