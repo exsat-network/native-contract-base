@@ -52,6 +52,16 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     static const tx_status tx_status_unconfirmed_alarm = 5;
     static const tx_status tx_status_error = 6;
 
+    typedef uint8_t order_status;
+    static const order_status order_status_processing = 0;
+    static const order_status order_status_partially_failed = 1;
+    static const order_status order_status_manual_approval = 2;
+    static const order_status order_status_failed = 3;
+    static const order_status order_status_order_send_out = 4;
+    static const order_status order_status_finished = 5;
+    static const order_status order_status_canceled = 6;
+
+
     static const uint64_t BTC_BASE = 100000000;
 
     [[eosio::action]]
@@ -79,7 +89,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
 
     [[eosio::action]]
     void deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address,
-                 const string& order_id, const uint64_t block_height, const string& tx_id, const uint64_t amount,
+                 const string& order_id, const uint64_t block_height, const string& tx_id, const uint64_t amount, const tx_status tx_status,
                  const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
 
     [[eosio::action]]
@@ -93,12 +103,12 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
 
     [[eosio::action]]
     void withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
-                      const string& order_id, const uint64_t block_height, const string& tx_id, const optional<string>& remark_detail,
+                      const string& order_id, const order_status order_status, const uint64_t block_height, const string& tx_id, const optional<string>& remark_detail,
                       const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
 
     [[eosio::action]]
     void valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status,
-                     const tx_status tx_status, const optional<string>& remark_detail);
+                     const order_status order_status, const optional<string>& remark_detail);
 
 #ifdef DEBUG
     [[eosio::action]]
@@ -234,7 +244,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     struct [[eosio::table]] deposit_row {
         uint64_t id;
         uint64_t permission_id;
-        std::vector<provider_actor_info> provider_actors;
+        std::vector<name> provider_actors;
         uint8_t confirmed_count;
         tx_status tx_status;
         global_status global_status;
@@ -267,9 +277,9 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     struct [[eosio::table]] withdraw_row {
         uint64_t id;
         uint64_t permission_id;
-        std::vector<provider_actor_info> provider_actors;
+        std::vector<name> provider_actors;
         uint8_t confirmed_count;
-        tx_status tx_status;
+        order_status order_status;
         withdraw_status withdraw_status;
         global_status global_status;
         string b_id;
@@ -314,8 +324,11 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     uint64_t next_address_mapping_id();
     uint64_t next_deposit_id();
     uint64_t next_withdraw_id();
-    bool address_verify_providers(const std::vector<name>& requested_actors, const std::vector<name>& provider_actors);
-    bool verify_providers(const std::vector<name>& requested_actors, const std::vector<provider_actor_info>& provider_actors);
+    bool is_final_tx_status(const tx_status tx_status);
+    bool is_final_order_status(const order_status order_status);
+    bool verify_providers(const std::vector<name>& requested_actors, const std::vector<name>& provider_actors);
+    // bool address_verify_providers(const std::vector<name>& requested_actors, const std::vector<name>& provider_actors);
+    // bool verify_providers(const std::vector<name>& requested_actors, const std::vector<provider_actor_info>& provider_actors);
     void do_return(const name& from, const name& contract, const asset& quantity, const string& memo);
     void do_withdraw(const name& from, const name& contract, const asset& quantity, const string& memo);
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
