@@ -42,7 +42,7 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     auto chain_state = _chain_state.get();
     check(chain_state.irreversible_height < height && chain_state.migrating_height != height,
-          "1002:blkendt.xsat::endorse: the block has been parsed and does not need to be endorsed");
+          "1002:blkendt.xsat::endorse: the current block is irreversible and does not need to be endorsed");
 
     check(
         config.limit_num_endorsed_blocks == 0 || chain_state.parsed_height + config.limit_num_endorsed_blocks >= height,

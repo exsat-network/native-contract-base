@@ -417,8 +417,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action blksync.xsat initbucket '["alice", 840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9, 25600]' -p alice
+     * $ cleos push action blksync.xsat initbucket '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9, 25600]' -p alice
      * ```
      */
     [[eosio::action]]
@@ -443,8 +442,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action blksync.xsat pushchunk '["alice", 840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 0, ""]' -p alice
+     * $ cleos push action blksync.xsat pushchunk '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 0, ""]' -p alice
      * ```
      */
     [[eosio::action]]
@@ -468,8 +466,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action blksync.xsat delchunk '["alice", 840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 0]' -p alice
+     * $ cleos push action blksync.xsat delchunk '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 0]' -p alice
      * ```
      */
     [[eosio::action]]
@@ -491,8 +488,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action blksync.xsat delbucket '["alice", 840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+     * $ cleos push action blksync.xsat delbucket '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
      * ```
      */
     [[eosio::action]]
@@ -515,8 +511,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action blksync.xsat verify '["alice", 840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+     * $ cleos push action blksync.xsat verify '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
      * ```
      */
     [[eosio::action]]

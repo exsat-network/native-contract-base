@@ -141,8 +141,7 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
      * ### example
      *
      * ```bash
-     * $ cleos push action rescmng.xsat init '["fee.xsat", "0.00000001 BTC",, "0.00000001 BTC", "0.00000001 BTC",
-     * "0.00000001 BTC", "0.00000001 BTC"]' -p rescmng.xsat
+     * $ cleos push action rescmng.xsat init '["fee.xsat", "0.00000001 BTC",, "0.00000001 BTC", "0.00000001 BTC", "0.00000001 BTC", "0.00000001 BTC"]' -p rescmng.xsat
      * ```
      */
     [[eosio::action]]
@@ -187,8 +186,7 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
      * ### example
      *
      * ```bash
-     * $ cleos push action rescmng.xsat pay '[840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "alice", 1, 1]' -p blksync.xsat
+     * $ cleos push action rescmng.xsat pay '[840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "alice", 1, 1]' -p blksync.xsat
      * ```
      */
     [[eosio::action]]
