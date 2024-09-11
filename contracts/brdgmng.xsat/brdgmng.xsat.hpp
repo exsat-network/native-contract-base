@@ -334,7 +334,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
     void handle_btc_deposit(const uint64_t amount, const checksum160& evm_address);
     void handle_btc_withdraw(const uint64_t amount);
-    checksum160 generate_order_no(const std::vector<uint64_t>& ids);
+    string generate_order_no(const std::vector<uint64_t>& ids);
 
 #ifdef DEBUG
     template <typename T>

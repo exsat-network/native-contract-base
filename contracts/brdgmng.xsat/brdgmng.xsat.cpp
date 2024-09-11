@@ -319,24 +319,45 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
         row.amount = quantity.amount;
         row.global_status = global_status_initiated;
         if (row.gas_level == "fast") {
-            // row.order_no = generate_order_no({withdraw_id}); //todo
+            row.order_no = generate_order_no({withdraw_id});
         }
     });
 }
 
 [[eosio::action]]
 void brdgmng::genorderno() {
-    // withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope);
-    // auto withdraw_idx_pending = _withdraw_pending.get_index<"byorderno"_n>();
-    // //根据lower_bound和upper_bound查找order_no为空的记录
-    // checksum160 order_no_hash = xsat::utils::hash_ripemd160("");
-    // auto lower_bound = withdraw_idx_pending.lower_bound(order_no_hash);
-    // auto upper_bound = withdraw_idx_pending.upper_bound(order_no_hash);
-    // for (auto itr = lower_bound; itr != upper_bound; ++itr) {
-    //     _withdraw_pending.modify(itr, same_payer, [&](auto& row) {
-    //         row.order_no = generate_order_no({itr->id});
-    //     });
-    // }
+    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope);
+    auto withdraw_idx_pending = _withdraw_pending.get_index<"byorderno"_n>();
+    checksum256 empty_order_no_hash = xsat::utils::hash("");
+    auto lower_bound = withdraw_idx_pending.lower_bound(empty_order_no_hash);
+    auto upper_bound = withdraw_idx_pending.upper_bound(empty_order_no_hash);
+
+    std::vector<uint64_t> pending_ids;
+    uint64_t count = 0;
+    uint64_t earliest_timestamp = std::numeric_limits<uint64_t>::max();
+
+    config_row config = _config.get_or_default();
+    uint64_t current_time = current_time_point().sec_since_epoch();
+    check(lower_bound != upper_bound, "brdgmng.xsat::genorderno: pending withdraw order is empty");
+    for (auto itr = lower_bound; itr != upper_bound; ++itr) {
+        pending_ids.push_back(itr->id);
+        count++;
+        earliest_timestamp = std::min(earliest_timestamp, itr->create_time_stamp);
+
+        if (count >= config.withdraw_merge_count ||
+            (current_time - earliest_timestamp) / 60 >= config.withdraw_timeout_minutes) {
+            string new_order_no = generate_order_no(pending_ids);
+            for (const auto& id : pending_ids) {
+                auto update_itr = _withdraw_pending.find(id);
+                if (update_itr != _withdraw_pending.end()) {
+                    _withdraw_pending.modify(update_itr, same_payer, [&](auto& row) {
+                        row.order_no = new_order_no;
+                    });
+                }
+            }
+            return;
+        }
+    }
 }
 
 [[eosio::action]]
@@ -554,7 +575,7 @@ void brdgmng::handle_btc_withdraw(const uint64_t amount) {
     }
 }
 
-checksum160 brdgmng::generate_order_no(const std::vector<uint64_t>& ids) {
+string brdgmng::generate_order_no(const std::vector<uint64_t>& ids) {
     auto timestamp = current_time_point().sec_since_epoch();
     std::vector<uint64_t> sorted_ids = ids;
     std::sort(sorted_ids.begin(), sorted_ids.end());
@@ -566,5 +587,6 @@ checksum160 brdgmng::generate_order_no(const std::vector<uint64_t>& ids) {
         }
     }
     order_no += "-" + std::to_string(timestamp);
-    return xsat::utils::hash_ripemd160(order_no);
+    checksum160 order_no_hash = xsat::utils::hash_ripemd160(order_no);
+    return xsat::utils::checksum160_to_string(order_no_hash);
 }
