@@ -357,7 +357,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
         auto passed_index_end
             = _passed_index.upper_bound(compute_passed_index_id(block_id, 1, std::numeric_limits<uint16_t>::max()));
         auto has_passed_index = passed_index_itr != passed_index_end;
-        auto last_passed_index = passed_index_end--;
+        auto last_passed_index = has_passed_index ? passed_index_end-- : passed_index_end;
 
         // The first verification passes and the miner’s latest block height is updated.
         if (miner && !has_passed_index) {
