@@ -169,7 +169,7 @@ void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const
 
 [[eosio::action]]
 void brdgmng::deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address,
-                      const string& order_id, const string& order_no, const uint64_t block_height, const string& tx_id, const uint64_t amount,
+                      const string& order_id, const uint64_t block_height, const string& tx_id, const uint64_t amount,
                       const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
     check_permission(actor, permission_id);
     check(_config.get_or_default().deposit_enable, "brdgmng.xsat::deposit: deposit is disabled");
@@ -194,7 +194,6 @@ void brdgmng::deposit(const name& actor, const uint64_t permission_id, const str
         row.wallet_code = wallet_code;
         row.btc_address = btc_address;
         row.order_id = order_id;
-        row.order_no = order_no;
         row.block_height = block_height;
         row.tx_id = tx_id;
         row.amount = amount;
@@ -260,7 +259,6 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
             row.wallet_code = deposit_itr_pending->wallet_code;
             row.btc_address = deposit_itr_pending->btc_address;
             row.order_id = deposit_itr_pending->order_id;
-            row.order_no = deposit_itr_pending->order_no;
             row.block_height = deposit_itr_pending->block_height;
             row.tx_id = deposit_itr_pending->tx_id;
             row.amount = deposit_itr_pending->amount;

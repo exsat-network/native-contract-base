@@ -79,7 +79,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
 
     [[eosio::action]]
     void deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address,
-                 const string& order_id, const string& order_no, const uint64_t block_height, const string& tx_id, const uint64_t amount,
+                 const string& order_id, const uint64_t block_height, const string& tx_id, const uint64_t amount,
                  const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
 
     [[eosio::action]]
@@ -243,7 +243,6 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         string btc_address;
         checksum160 evm_address;
         string order_id;
-        string order_no;
         uint64_t block_height;
         string tx_id;
         uint64_t amount;
@@ -254,7 +253,6 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         checksum256 by_btc_address() const { return xsat::utils::hash(btc_address); }
         checksum256 by_evm_address() const { return xsat::utils::compute_id(evm_address); }
         checksum256 by_order_id() const { return xsat::utils::hash(order_id); }
-        checksum256 by_order_no() const { return xsat::utils::hash(order_no); }
         checksum256 by_tx_id() const { return xsat::utils::hash(tx_id); }
         uint64_t by_tx_time_stamp() const { return tx_time_stamp; }
     };
@@ -262,7 +260,6 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_btc_address>>,
         eosio::indexed_by<"byevmaddr"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_evm_address>>,
         eosio::indexed_by<"byorderid"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_order_id>>,
-        eosio::indexed_by<"byorderno"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_order_no>>,
         eosio::indexed_by<"bytxid"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_tx_id>>,
         eosio::indexed_by<"bytxtime"_n, const_mem_fun<deposit_row, uint64_t, &deposit_row::by_tx_time_stamp>>>
         deposit_index;
