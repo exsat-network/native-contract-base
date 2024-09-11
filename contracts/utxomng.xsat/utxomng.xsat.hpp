@@ -21,7 +21,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     static const parsing_status distributing_rewards = 4;
     static const parsing_status parsing = 5;
 
-    //@notice parsing_progress.num_transactions == parsing_progress.parsed_transactions => return status `parsing_completed`
+    //@notice parsing_progress.num_transactions == parsing_progress.parsed_transactions => return status parsing_completed`
     static std::string get_parsing_status_name(const parsing_status status) {
         switch (status) {
             // Because wait starts from a new block, the return name is parsing completed.
@@ -359,10 +359,8 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
      * - `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
      * - `{uint32_t} timestamp` - the block time is a Unix epoch time
-     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
-     * equal to
-     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
-     * less than or
+     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or equal to
+     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash less than or
      *
      * ### example
      *
@@ -437,10 +435,8 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
      * - `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
      * - `{uint32_t} timestamp` - the block time is a Unix epoch time
-     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
-     * equal to
-     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
-     * less than or
+     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or equal to
+     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash less than or
      * - `{name} miner` - block miner account
      * - `{name} synchronizer` - block synchronizer account
      * - `{name} parser` - the last parser of the parsing block
@@ -571,8 +567,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{uint16_t} retained_spent_utxo_blocks` - number of blocks to retain utxo
      * - `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
      * - `{uint8_t} num_merkle_layer` - verify the number of merkle levels (log(num_txs_per_verification))
-     * - `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of
-     * blocks
+     * - `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of blocks
      *
      * ### example
      *
@@ -647,20 +642,13 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
      * - `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
      * - `{uint32_t} timestamp` - the block time is a Unix epoch time
-     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
-     * equal to
-     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
-     * less than or
+     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or equal to
+     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash less than or
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action utxomng.xsat addblock '[840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5",
-     * "0000000000000000000172014ba58d66455762add0512355ad651207918494ab", 710926336,
-     * "0000000000000000000172014ba58d66455762add0512355ad651207918494ab",
-     * "031b417c3a1828ddf3d6527fc210daafcc9218e81f98257f88d4d43bd7a5894f", 1713571767, 3932395645, 386089497
-     * ]' -p utxomng.xsat
+     * $ cleos push action utxomng.xsat addblock '[840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "0000000000000000000172014ba58d66455762add0512355ad651207918494ab", 710926336, "0000000000000000000172014ba58d66455762add0512355ad651207918494ab", "031b417c3a1828ddf3d6527fc210daafcc9218e81f98257f88d4d43bd7a5894f", 1713571767, 3932395645, 386089497]' -p utxomng.xsat
      * ```
      */
     [[eosio::action]]
@@ -764,8 +752,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action utxomng.xsat consensus '[840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p blksync.xsat
+     * $ cleos push action utxomng.xsat consensus '[840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p blksync.xsat
      * ```
      */
     [[eosio::action]]

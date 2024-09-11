@@ -448,9 +448,7 @@ static const parsing_status migrating = 5;
 ### example
 
 ```bash
-$ cleos push action utxomng.xsat init '[839999,
-"0000000000000000000172014ba58d66455762add0512355ad651207918494ab",
-"0000000000000000000000000000000000000000753b8c1eaae701e1f0146360"]' -p utxomng.xsat
+$ cleos push action utxomng.xsat init '[839999, "0000000000000000000172014ba58d66455762add0512355ad651207918494ab", "0000000000000000000000000000000000000000753b8c1eaae701e1f0146360"]' -p utxomng.xsat
 ```
 
 ## ACTION `config`
@@ -491,8 +489,7 @@ $ cleos push action utxomng.xsat config '[600, 100, 5000, 100, 11, 10]' -p utxom
 ### example
 
 ```bash
-$ cleos push action utxomng.xsat addutxo '[1, "c323eae524ce3b49f0868396eb9a61bea0e5fb3dc2e52cb46e04c2dba28a3c0d",
-1, "001435f6de260c9f3bdee47524c473a6016c0c055cb9", 636813647]' -p utxomng.xsat
+$ cleos push action utxomng.xsat addutxo '[1, "c323eae524ce3b49f0868396eb9a61bea0e5fb3dc2e52cb46e04c2dba28a3c0d", 1, "001435f6de260c9f3bdee47524c473a6016c0c055cb9", 636813647]' -p utxomng.xsat
 ```
 
 ## ACTION `delutxo`
@@ -532,12 +529,8 @@ $ cleos push action utxomng.xsat delutxo '[1]' -p utxomng.xsat
 ### example
 
 ```bash
-$ cleos push action utxomng.xsat addblock '[840000,
-"0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5",
-"0000000000000000000172014ba58d66455762add0512355ad651207918494ab", 710926336,
-"0000000000000000000172014ba58d66455762add0512355ad651207918494ab",
-"031b417c3a1828ddf3d6527fc210daafcc9218e81f98257f88d4d43bd7a5894f", 1713571767, 3932395645, 386089497
-]' -p utxomng.xsat
+$ cleos push action utxomng.xsat addblock '[840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "0000000000000000000172014ba58d66455762add0512355ad651207918494ab", 710926336,
+"0000000000000000000172014ba58d66455762add0512355ad651207918494ab", "031b417c3a1828ddf3d6527fc210daafcc9218e81f98257f88d4d43bd7a5894f", 1713571767, 3932395645, 386089497 ]' -p utxomng.xsat
 ```
 
 ## ACTION `delblock`
@@ -619,6 +612,5 @@ $ cleos push action utxomng.xsat processblock '["alice", 1000]' -p alice
 ### example
 
 ```bash
-$ cleos push action utxomng.xsat consensus '[840000,
-"0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p blksync.xsat
+$ cleos push action utxomng.xsat consensus '[840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p blksync.xsat
 ```

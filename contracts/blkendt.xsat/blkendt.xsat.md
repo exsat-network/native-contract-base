@@ -155,8 +155,7 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
 ### example
 
 ```bash
-$ cleos push action blkendt.xsat endorse '["alice", 840000,
-"0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+$ cleos push action blkendt.xsat endorse '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
 ```
 
 ## ACTION `erase`
