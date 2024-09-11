@@ -565,6 +565,12 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     using delchunklog_action = eosio::action_wrapper<"delchunklog"_n, &block_sync::delchunklog>;
     using delbucketlog_action = eosio::action_wrapper<"delbucketlog"_n, &block_sync::delbucketlog>;
 
+    static uint64_t compute_passed_index_id(const uint64_t block_id, const uint64_t miner_priority,
+                                            const uint64_t pass_number) {
+        // block_id (32 bit) + miner priority (8 bit) + pass number (24)
+        return block_id << 32 | miner_priority << 24 | pass_number;
+    }
+
     // [start, end)
     inline static std::vector<char> read_bucket(const eosio::name &code, const uint64_t bucket_id,
                                                 const eosio::name &table, const uint64_t start, const uint64_t end) {
