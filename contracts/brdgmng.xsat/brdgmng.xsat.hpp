@@ -293,7 +293,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         checksum256 by_tx_id() const { return xsat::utils::hash(tx_id); }
         uint64_t by_tx_time_stamp() const { return tx_time_stamp; }
     };
-    typedef eosio::multi_index<"deposits"_n, withdraw_row,
+    typedef eosio::multi_index<"withdraws"_n, withdraw_row,
         eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_btc_address>>,
         eosio::indexed_by<"byevmaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_evm_address>>,
         eosio::indexed_by<"byorderid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_id>>,

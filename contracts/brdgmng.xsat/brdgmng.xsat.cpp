@@ -48,6 +48,9 @@ void brdgmng::addperm(const uint64_t id, const vector<name>& actors) {
     if (actors.empty()) {
         check(false, "brdgmng.xsat::addperm: actors cannot be empty");
     }
+    for (const auto& actor : actors) {
+        check(is_account(actor), "brdgmng.xsat::addperm: actor " + actor.to_string() + " does not exist");
+    }
     auto itr = _permission.find(id);
     check(itr == _permission.end(), "brdgmng.xsat::addperm: permission id already exists");
     _permission.emplace(get_self(), [&](auto& row) {
