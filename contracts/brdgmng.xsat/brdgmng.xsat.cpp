@@ -178,12 +178,12 @@ void brdgmng::deposit(const name& actor, const uint64_t permission_id, const str
     check(_config.get_or_default().deposit_enable, "brdgmng.xsat::deposit: deposit is disabled");
 
     // check order_id is unique in the deposit table
-    deposit_index _deposit_pending = deposit_index(_self, pending_scope);
+    deposit_index _deposit_pending = deposit_index(_self, pending_scope.value);
     auto deposit_idx_pending = _deposit_pending.get_index<"byorderid"_n>();
     auto deposit_itr_pending = deposit_idx_pending.find(xsat::utils::hash(order_id));
     check(deposit_itr_pending == deposit_idx_pending.end(), "6001:brdgmng.xsat::deposit: order_id already exists in deposit");
 
-    deposit_index _deposit_confirmed = deposit_index(_self, confirmed_scope);
+    deposit_index _deposit_confirmed = deposit_index(_self, confirmed_scope.value);
     auto deposit_idx_confirmed = _deposit_confirmed.get_index<"byorderid"_n>();
     auto deposit_itr_confirmed = deposit_idx_confirmed.find(xsat::utils::hash(order_id));
     check(deposit_itr_confirmed == deposit_idx_confirmed.end(), "6002:brdgmng.xsat::deposit: order_id already exists in deposit");
@@ -216,8 +216,8 @@ void brdgmng::deposit(const name& actor, const uint64_t permission_id, const str
 void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const tx_status tx_status,
                          const optional<string>& remark_detail) {
     check_permission(actor, permission_id);
-    deposit_index _deposit_pending = deposit_index(_self, pending_scope);
-    deposit_index _deposit_confirmed = deposit_index(_self, confirmed_scope);
+    deposit_index _deposit_pending = deposit_index(_self, pending_scope.value);
+    deposit_index _deposit_confirmed = deposit_index(_self, confirmed_scope.value);
     auto deposit_itr_confirmed = _deposit_confirmed.find(deposit_id);
     if (deposit_itr_confirmed != _deposit_confirmed.end()) {
         check(deposit_itr_confirmed->global_status != global_status_succeed, "6003:brdgmng.xsat::valdeposit: deposit status is already succeed");
@@ -310,7 +310,7 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
     auto parts = xsat::utils::split(memo, ",");
     auto INVALID_MEMO = "brdgmng.xsat: invalid memo ex: \"<btc_address>,<gas_level>\"";
     check(parts.size() == 2, INVALID_MEMO);
-    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope);
+    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope.value);
     uint64_t withdraw_id = next_withdraw_id();
     _withdraw_pending.emplace(get_self(), [&](auto& row) {
         row.id = withdraw_id;
@@ -326,7 +326,7 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
 
 [[eosio::action]]
 void brdgmng::genorderno() {
-    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope);
+    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope.value);
     auto withdraw_idx_pending = _withdraw_pending.get_index<"byorderno"_n>();
     checksum256 empty_order_no_hash = xsat::utils::hash("");
     auto lower_bound = withdraw_idx_pending.lower_bound(empty_order_no_hash);
@@ -365,7 +365,7 @@ void brdgmng::withdrawinfo(const name& actor, const uint64_t permission_id, cons
                            const string& order_id, const order_status order_status, const uint64_t block_height, const string& tx_id,
                            const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
     check_permission(actor, permission_id);
-    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope);
+    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope.value);
     auto withdraw_itr_pending = _withdraw_pending.require_find(withdraw_id, "brdgmng.xsat::withdrawinfo: withdraw id does not exists");
     check(withdraw_itr_pending->order_id.empty(), "brdgmng.xsat::withdrawinfo: order info already exists in withdraw");
     if (withdraw_itr_pending->provider_actors.size() >= 1) {
@@ -391,8 +391,8 @@ void brdgmng::withdrawinfo(const name& actor, const uint64_t permission_id, cons
 void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status,
                           const order_status order_status, const optional<string>& remark_detail) {
     check_permission(actor, permission_id);
-    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope);
-    withdraw_index _withdraw_confirmed = withdraw_index(_self, confirmed_scope);
+    withdraw_index _withdraw_pending = withdraw_index(_self, pending_scope.value);
+    withdraw_index _withdraw_confirmed = withdraw_index(_self, confirmed_scope.value);
     auto withdraw_itr_confirmed = _withdraw_confirmed.find(withdraw_id);
     if (withdraw_itr_confirmed != _withdraw_confirmed.end()) {
         check(withdraw_itr_confirmed->global_status != global_status_succeed, "brdgmng.xsat::valwithdraw: withdraw status is already succeed");

@@ -27,8 +27,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     static const global_status global_status_succeed = 1;
     static const global_status global_status_failed = 2;
 
-    static const uint64_t pending_scope = 0;
-    static const uint64_t confirmed_scope = 1;
+    static constexpr name pending_scope = "pending"_n;
+    static constexpr name confirmed_scope = "confirmed"_n;
 
     typedef uint8_t address_status;
     static const address_status address_status_initiated = 0;
