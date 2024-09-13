@@ -9,6 +9,7 @@
 #include <eosio/singleton.hpp>
 #include <btc.xsat/btc.xsat.hpp>
 #include <utxomng.xsat/utxomng.xsat.hpp>
+#include <bitcoin/utility/address_converter.hpp>
 
 #include "../internal/defines.hpp"
 #include "../internal/safemath.hpp"
@@ -256,6 +257,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         uint64_t block_height;
         string tx_id;
         uint64_t amount;
+        uint64_t fee;
         string remark_detail;
         uint64_t tx_time_stamp;
         uint64_t create_time_stamp;
@@ -292,6 +294,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         uint64_t block_height;
         string tx_id;
         uint64_t amount;
+        uint64_t fee;
         string remark_detail;
         uint64_t tx_time_stamp;
         uint64_t create_time_stamp;
