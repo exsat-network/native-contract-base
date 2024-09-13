@@ -317,10 +317,10 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
 
     // table init
     permission_index _permission = permission_index(_self, _self.value);
-    address_index _address = address_index(_self, _self.value);
-    address_mapping_index _address_mapping = address_mapping_index(_self, _self.value);
-    deposit_index _deposit = deposit_index(_self, _self.value);
-    withdraw_index _withdraw = withdraw_index(_self, _self.value);
+    // address_index _address = address_index(_self, _self.value);
+    // address_mapping_index _address_mapping = address_mapping_index(_self, _self.value);
+    // deposit_index _deposit = deposit_index(_self, _self.value);
+    // withdraw_index _withdraw = withdraw_index(_self, _self.value);
 
     void check_permission(const name& actor, const uint64_t permission_id);
     uint64_t next_address_id();

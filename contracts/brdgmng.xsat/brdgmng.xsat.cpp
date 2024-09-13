@@ -72,7 +72,8 @@ void brdgmng::addaddresses(const name& actor, const uint64_t permission_id, stri
     if (btc_addresses.empty()) {
         check(false, "brdgmng.xsat::addaddresses: btc_addresses cannot be empty");
     }
-
+    address_index _address = address_index(_self, permission_id);
+    address_mapping_index _address_mapping = address_mapping_index(_self, permission_id);
     auto address_idx = _address.get_index<"bybtcaddr"_n>();
     auto address_mapping_idx = _address_mapping.get_index<"bybtcaddr"_n>();
     for (const auto& btc_address : btc_addresses) {
@@ -105,6 +106,8 @@ void brdgmng::addaddresses(const name& actor, const uint64_t permission_id, stri
 void brdgmng::valaddress(const name& actor, const uint64_t permission_id, const uint64_t address_id, const address_status status) {
     check_permission(actor, permission_id);
 
+    address_index _address = address_index(_self, permission_id);
+    address_mapping_index _address_mapping = address_mapping_index(_self, permission_id);
     auto address_itr = _address.require_find(address_id, "brdgmng.xsat::valaddress: address_id does not exists in address");
     check(address_itr->global_status != global_status_succeed, "brdgmng.xsat::valaddress: btc_address status is already confirmed");
 
@@ -130,6 +133,8 @@ void brdgmng::valaddress(const name& actor, const uint64_t permission_id, const 
 void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const checksum160 evm_address) {
     check_permission(actor, permission_id);
 
+    address_index _address = address_index(_self, permission_id);
+    address_mapping_index _address_mapping = address_mapping_index(_self, permission_id);
     auto evm_address_mapping_idx = _address_mapping.get_index<"byevmaddr"_n>();
     checksum256 evm_address_hash = xsat::utils::compute_id(evm_address);
     auto evm_address_mapping_itr = evm_address_mapping_idx.find(evm_address_hash);
