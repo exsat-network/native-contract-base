@@ -19,20 +19,25 @@ void block_sync::consensus(const uint64_t height, const name& synchronizer, cons
     block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
     auto block_bucket_itr
         = _block_bucket.require_find(bucket_id, "blksync.xsat::consensus: block bucket does not exists");
+    auto hash = block_bucket_itr->hash;
     _block_bucket.erase(block_bucket_itr);
 
     // erase passed index
     passed_index_table _passed_index(get_self(), height);
-    auto passed_index_itr = _passed_index.begin();
-    while (passed_index_itr != _passed_index.end()) {
-        passed_index_itr = _passed_index.erase(passed_index_itr);
+    auto passed_index_idx = _passed_index.get_index<"byhash"_n>();
+    auto passed_index_itr = passed_index_idx.lower_bound(hash);
+    auto passed_index_end = passed_index_idx.upper_bound(hash);
+    while (passed_index_itr != passed_index_end) {
+        passed_index_itr = passed_index_idx.erase(passed_index_itr);
     }
 
     // erase block miner
     block_miner_table _block_miner(get_self(), height);
-    auto block_miner_itr = _block_miner.begin();
-    while (block_miner_itr != _block_miner.end()) {
-        block_miner_itr = _block_miner.erase(block_miner_itr);
+    auto block_miner_idx = _block_miner.get_index<"byhash"_n>();
+    auto block_miner_itr = block_miner_idx.lower_bound(hash);
+    auto block_miner_end = block_miner_idx.upper_bound(hash);
+    if (block_miner_itr != block_miner_end) {
+        block_miner_idx.erase(block_miner_itr);
     }
 }
 
@@ -354,10 +359,9 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
 
         passed_index_table _passed_index(get_self(), height);
         auto passed_index_itr = _passed_index.lower_bound(compute_passed_index_id(block_id, 0, 0));
-        auto passed_index_end
-            = _passed_index.upper_bound(compute_passed_index_id(block_id, 1, std::numeric_limits<uint16_t>::max()));
+        auto passed_index_end = _passed_index.upper_bound(compute_passed_index_id(block_id, 1, MAX_UINT_24));
         auto has_passed_index = passed_index_itr != passed_index_end;
-        auto last_passed_index = has_passed_index ? passed_index_end-- : passed_index_end;
+        auto last_passed_index = has_passed_index ? --passed_index_end : passed_index_end;
 
         // The first verification passes and the miner’s latest block height is updated.
         if (miner && !has_passed_index) {
@@ -373,7 +377,7 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
 
         uint64_t pass_number = 1;
         if (has_passed_index) {
-            pass_number = last_passed_index->id & 0xFFFFFF + 1;
+            pass_number = (last_passed_index->id & 0xFFFFFF) + 1;
         }
 
         uint64_t passed_index_id = compute_passed_index_id(block_id, miner_priority, pass_number);

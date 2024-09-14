@@ -56,6 +56,7 @@ static constexpr uint64_t RATE_BASE = 100000000LL;
 static constexpr uint64_t SYNCHRONIZER_REWARD_RATE = RATE_BASE / 10;
 static constexpr uint64_t MINER_REWARD_RATE = RATE_BASE / 2;
 static constexpr uint64_t CONSENSUS_REWARD_RATE = RATE_BASE / 10;
+static constexpr uint64_t MAX_UINT_24 = 16777215LL;  // 2^24 - 1
 
 // ENUMS
 typedef uint8_t fee_type;
