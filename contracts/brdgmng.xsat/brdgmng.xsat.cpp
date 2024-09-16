@@ -318,21 +318,27 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
     config_row config = _config.get_or_default();
     check(config.withdraw_enable, "brdgmng.xsat: withdraw is disabled");
     check(quantity.amount > 0, "brdgmng.xsat: must transfer positive quantity");
+    check(quantity.amount >= config.limit_amount, "brdgmng.xsat: withdraw amount must be more than " + quantity.to_string());
     auto parts = xsat::utils::split(memo, ",");
-    auto INVALID_MEMO = "brdgmng.xsat: invalid memo ex: \"<permission_id>,<btc_address>,<gas_level>\"";
-    check(parts.size() == 3, INVALID_MEMO);
+    auto INVALID_MEMO = "brdgmng.xsat: invalid memo ex: \"<permission_id>,<evm_address>,<btc_address>,<gas_level>\"";
+    check(parts.size() == 4, INVALID_MEMO);
     uint64_t permission_id = std::stoull(parts[0]);
+    auto permission_itr = _permission.require_find(permission_id, "brdgmng.xsat: permission id does not exists");
     withdrawing_index _withdraw_pending = withdrawing_index(_self, permission_id);
     uint64_t withdraw_id = next_withdraw_id();
     _withdraw_pending.emplace(get_self(), [&](auto& row) {
         row.id = withdraw_id;
-        row.btc_address = parts[0];
-        row.gas_level = parts[1];
+        row.permission_id = permission_id;
+        row.evm_address = xsat::utils::evm_address_to_checksum160(parts[1]);
+        row.btc_address = parts[2];
+        row.gas_level = parts[3];
         row.global_status = global_status_initiated;
+        row.create_time_stamp = current_time_point().sec_since_epoch();
         if (row.gas_level == "fast") {
             row.order_no = generate_order_no({withdraw_id});
             row.fee = config.withdraw_fast_fee;
         } else {
+            row.order_no = "";
             row.fee = config.withdraw_slow_fee;
         }
         row.amount = quantity.amount - row.fee;
@@ -341,6 +347,7 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
 
 [[eosio::action]]
 void brdgmng::genorderno(const uint64_t permission_id) {
+    auto permission_itr = _permission.require_find(permission_id, "brdgmng.xsat::genorderno: permission id does not exists");
     withdrawing_index _withdraw_pending = withdrawing_index(_self, permission_id);
     auto withdraw_idx_pending = _withdraw_pending.get_index<"byorderno"_n>();
     checksum256 empty_order_no_hash = xsat::utils::hash("");
@@ -358,27 +365,25 @@ void brdgmng::genorderno(const uint64_t permission_id) {
         pending_ids.push_back(itr->id);
         count++;
         earliest_timestamp = std::min(earliest_timestamp, itr->create_time_stamp);
-
-        if (count >= config.withdraw_merge_count ||
-            (current_time - earliest_timestamp) / 60 >= config.withdraw_timeout_minutes) {
-            string new_order_no = generate_order_no(pending_ids);
-            for (const auto& id : pending_ids) {
-                auto update_itr = _withdraw_pending.find(id);
-                if (update_itr != _withdraw_pending.end()) {
-                    _withdraw_pending.modify(update_itr, same_payer, [&](auto& row) {
-                        row.order_no = new_order_no;
-                    });
-                }
-            }
-            return;
+        if (count >= config.withdraw_merge_count) {
+            break;
         }
+    }
+    check((count >= config.withdraw_merge_count || (current_time - earliest_timestamp) / 60 >= config.withdraw_timeout_minutes),
+     "brdgmng.xsat::genorderno: pending withdraw order is not enough or not timeout");
+    string new_order_no = generate_order_no(pending_ids);
+    for (const auto& id : pending_ids) {
+        auto update_itr = _withdraw_pending.require_find(id, "brdgmng.xsat::genorderno: withdraw id does not exists");
+        _withdraw_pending.modify(update_itr, same_payer, [&](auto& row) {
+            row.order_no = new_order_no;
+        });
     }
 }
 
 [[eosio::action]]
 void brdgmng::withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
                            const string& order_id, const order_status order_status, const uint64_t block_height, const string& tx_id,
-                           const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
+                           const optional<string>& remark_detail, const uint64_t tx_time_stamp) {
     check_permission(actor, permission_id);
     withdrawing_index _withdraw_pending = withdrawing_index(_self, permission_id);
     auto withdraw_itr_pending = _withdraw_pending.require_find(withdraw_id, "brdgmng.xsat::withdrawinfo: withdraw id does not exists");
@@ -396,7 +401,6 @@ void brdgmng::withdrawinfo(const name& actor, const uint64_t permission_id, cons
         row.block_height = block_height;
         row.tx_id = tx_id;
         row.tx_time_stamp = tx_time_stamp;
-        row.create_time_stamp = create_time_stamp;
         if (remark_detail.has_value()) {
             row.remark_detail = *remark_detail;
         }
@@ -580,19 +584,17 @@ void brdgmng::handle_btc_deposit(const uint64_t amount,  const checksum160& evm_
 }
 
 void brdgmng::handle_btc_withdraw(const uint64_t amount) {
-    if (amount >= _config.get_or_default().limit_amount) {
-        // transfer BTC btc.xsat
-        asset quantity = asset(amount, BTC_SYMBOL);
-        btc::transfer_action transfer(BTC_CONTRACT, {get_self(), "active"_n});
-        transfer.send(get_self(), BTC_CONTRACT, quantity, "transfer BTC to btc.xsat");
-        // retire BTC
-        btc::retire_action retire(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
-        retire.send(quantity, "retire BTC from withdraw");
+    // transfer BTC btc.xsat
+    asset quantity = asset(amount, BTC_SYMBOL);
+    btc::transfer_action transfer(BTC_CONTRACT, {get_self(), "active"_n});
+    transfer.send(get_self(), BTC_CONTRACT, quantity, "transfer BTC to btc.xsat");
+    // retire BTC
+    btc::retire_action retire(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
+    retire.send(quantity, "retire BTC from withdraw");
 
-        statistics_row statistics = _statistics.get_or_default();
-        statistics.total_withdraw_amount += amount;
-        _statistics.set(statistics, get_self());
-    }
+    statistics_row statistics = _statistics.get_or_default();
+    statistics.total_withdraw_amount += amount;
+    _statistics.set(statistics, get_self());
 }
 
 string brdgmng::generate_order_no(const std::vector<uint64_t>& ids) {

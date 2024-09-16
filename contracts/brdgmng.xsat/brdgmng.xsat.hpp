@@ -105,7 +105,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     [[eosio::action]]
     void withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
                       const string& order_id, const order_status order_status, const uint64_t block_height, const string& tx_id, const optional<string>& remark_detail,
-                      const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
+                      const uint64_t tx_time_stamp);
 
     [[eosio::action]]
     void valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status,
@@ -268,6 +268,14 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         checksum256 by_tx_id() const { return xsat::utils::hash(tx_id); }
         uint64_t by_tx_time_stamp() const { return tx_time_stamp; }
     };
+    typedef eosio::multi_index<"depositings"_n, deposit_row,
+        eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_btc_address>>,
+        eosio::indexed_by<"byevmaddr"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_evm_address>>,
+        eosio::indexed_by<"byorderid"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_order_id>>,
+        eosio::indexed_by<"bytxid"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_tx_id>>,
+        eosio::indexed_by<"bytxtime"_n, const_mem_fun<deposit_row, uint64_t, &deposit_row::by_tx_time_stamp>>>
+        depositing_index;
+
     typedef eosio::multi_index<"deposits"_n, deposit_row,
         eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_btc_address>>,
         eosio::indexed_by<"byevmaddr"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_evm_address>>,
@@ -275,40 +283,6 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         eosio::indexed_by<"bytxid"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_tx_id>>,
         eosio::indexed_by<"bytxtime"_n, const_mem_fun<deposit_row, uint64_t, &deposit_row::by_tx_time_stamp>>>
         deposit_index;
-
-    struct [[eosio::table]] depositing_row {
-        uint64_t id;
-        uint64_t permission_id;
-        std::vector<name> provider_actors;
-        uint8_t confirmed_count;
-        tx_status tx_status;
-        global_status global_status;
-        string b_id;  // business id
-        string wallet_code;
-        string btc_address;
-        checksum160 evm_address;
-        string order_id;
-        uint64_t block_height;
-        string tx_id;
-        uint64_t amount;
-        uint64_t fee;
-        string remark_detail;
-        uint64_t tx_time_stamp;
-        uint64_t create_time_stamp;
-        uint64_t primary_key() const { return id; }
-        checksum256 by_btc_address() const { return xsat::utils::hash(btc_address); }
-        checksum256 by_evm_address() const { return xsat::utils::compute_id(evm_address); }
-        checksum256 by_order_id() const { return xsat::utils::hash(order_id); }
-        checksum256 by_tx_id() const { return xsat::utils::hash(tx_id); }
-        uint64_t by_tx_time_stamp() const { return tx_time_stamp; }
-    };
-    typedef eosio::multi_index<"depositings"_n, depositing_row,
-        eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<depositing_row, checksum256, &depositing_row::by_btc_address>>,
-        eosio::indexed_by<"byevmaddr"_n, const_mem_fun<depositing_row, checksum256, &depositing_row::by_evm_address>>,
-        eosio::indexed_by<"byorderid"_n, const_mem_fun<depositing_row, checksum256, &depositing_row::by_order_id>>,
-        eosio::indexed_by<"bytxid"_n, const_mem_fun<depositing_row, checksum256, &depositing_row::by_tx_id>>,
-        eosio::indexed_by<"bytxtime"_n, const_mem_fun<depositing_row, uint64_t, &depositing_row::by_tx_time_stamp>>>
-        depositing_index;
 
     struct [[eosio::table]] withdraw_row {
         uint64_t id;
@@ -340,6 +314,15 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         checksum256 by_tx_id() const { return xsat::utils::hash(tx_id); }
         uint64_t by_tx_time_stamp() const { return tx_time_stamp; }
     };
+    typedef eosio::multi_index<"withdrawings"_n, withdraw_row,
+        eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_btc_address>>,
+        eosio::indexed_by<"byevmaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_evm_address>>,
+        eosio::indexed_by<"byorderid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_id>>,
+        eosio::indexed_by<"byorderno"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_no>>,
+        eosio::indexed_by<"bytxid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_tx_id>>,
+        eosio::indexed_by<"bytxtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>>
+        withdrawing_index;
+
     typedef eosio::multi_index<"withdraws"_n, withdraw_row,
         eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_btc_address>>,
         eosio::indexed_by<"byevmaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_evm_address>>,
@@ -348,45 +331,6 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         eosio::indexed_by<"bytxid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_tx_id>>,
         eosio::indexed_by<"bytxtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>>
         withdraw_index;
-
-    struct [[eosio::table]] withdrawing_row {
-        uint64_t id;
-        uint64_t permission_id;
-        std::vector<name> provider_actors;
-        uint8_t confirmed_count;
-        order_status order_status;
-        withdraw_status withdraw_status;
-        global_status global_status;
-        string b_id;
-        string wallet_code;
-        string btc_address;
-        checksum160 evm_address;
-        string gas_level;
-        string order_id;
-        string order_no;
-        uint64_t block_height;
-        string tx_id;
-        uint64_t amount;
-        uint64_t fee;
-        string remark_detail;
-        uint64_t tx_time_stamp;
-        uint64_t create_time_stamp;
-        uint64_t primary_key() const { return id; }
-        checksum256 by_btc_address() const { return xsat::utils::hash(btc_address); }
-        checksum256 by_evm_address() const { return xsat::utils::compute_id(evm_address); }
-        checksum256 by_order_id() const { return xsat::utils::hash(order_id); }
-        checksum256 by_order_no() const { return xsat::utils::hash(order_no); }
-        checksum256 by_tx_id() const { return xsat::utils::hash(tx_id); }
-        uint64_t by_tx_time_stamp() const { return tx_time_stamp; }
-    };
-    typedef eosio::multi_index<"withdrawings"_n, withdrawing_row,
-        eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<withdrawing_row, checksum256, &withdrawing_row::by_btc_address>>,
-        eosio::indexed_by<"byevmaddr"_n, const_mem_fun<withdrawing_row, checksum256, &withdrawing_row::by_evm_address>>,
-        eosio::indexed_by<"byorderid"_n, const_mem_fun<withdrawing_row, checksum256, &withdrawing_row::by_order_id>>,
-        eosio::indexed_by<"byorderno"_n, const_mem_fun<withdrawing_row, checksum256, &withdrawing_row::by_order_no>>,
-        eosio::indexed_by<"bytxid"_n, const_mem_fun<withdrawing_row, checksum256, &withdrawing_row::by_tx_id>>,
-        eosio::indexed_by<"bytxtime"_n, const_mem_fun<withdrawing_row, uint64_t, &withdrawing_row::by_tx_time_stamp>>>
-        withdrawing_index;
 
     // table init
     permission_index _permission = permission_index(_self, _self.value);
