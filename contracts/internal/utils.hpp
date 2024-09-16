@@ -248,4 +248,22 @@ namespace xsat::utils {
         return result;
     }
 
+    static uint8_t from_hex(char c) {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        eosio::check(false, "Invalid hex character");
+        return 0;
+    }
+
+    checksum160 evm_address_to_checksum160(const string& evm_address) {
+        std::string address = evm_address.substr(0, 2) == "0x" ? evm_address.substr(2) : evm_address;
+        eosio::check(address.length() == 40, "Invalid EVM address length");
+        std::array<uint8_t, 20> bytes;
+        for (int i = 0; i < 20; i++) {
+            bytes[i] = (from_hex(address[i*2]) << 4) | from_hex(address[i*2+1]);
+        }
+        return checksum160(bytes);
+    }
+
 }  // namespace xsat::utils

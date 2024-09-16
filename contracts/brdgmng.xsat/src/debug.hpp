@@ -29,11 +29,19 @@ void brdgmng::cleartable(const name table_name, const optional<name> scope, cons
     } else if (table_name == "addrmappings"_n) {
         address_mapping_index _address_mapping(get_self(), get_self().value);
         clear_table(_address_mapping, rows_to_clear);
+    } else if (table_name == "depositings"_n) {
+        depositing_index _depositing(get_self(), 0);
+        clear_table(_depositing, rows_to_clear);
     } else if (table_name == "deposits"_n) {
-        check(scope.has_value(), "brdgmng::cleartable: [scope] is required for deposits table");
-        deposit_index _deposit(get_self(), scope->value);
+        deposit_index _deposit(get_self(), 0);
         clear_table(_deposit, rows_to_clear);
+    } else if (table_name == "withdrawings"_n) {
+        withdrawing_index _withdraw(get_self(), 0);
+        clear_table(_withdraw, rows_to_clear);
     } else if (table_name == "withdraws"_n) {
+        withdraw_index _withdraw(get_self(), 0);
+        clear_table(_withdraw, rows_to_clear);
+    } else if (table_name == "withdraws2"_n) {
         check(scope.has_value(), "brdgmng::cleartable: [scope] is required for withdraws table");
         withdraw_index _withdraw(get_self(), scope->value);
         clear_table(_withdraw, rows_to_clear);
