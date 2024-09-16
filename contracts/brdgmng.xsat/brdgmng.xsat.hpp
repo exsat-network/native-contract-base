@@ -105,7 +105,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     [[eosio::action]]
     void withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
                       const string& order_id, const order_status order_status, const uint64_t block_height, const string& tx_id, const optional<string>& remark_detail,
-                      const uint64_t tx_time_stamp);
+                      const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
 
     [[eosio::action]]
     void valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status,
@@ -306,6 +306,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         string remark_detail;
         uint64_t tx_time_stamp;
         uint64_t create_time_stamp;
+        uint64_t withdraw_time_stamp;
         uint64_t primary_key() const { return id; }
         checksum256 by_btc_address() const { return xsat::utils::hash(btc_address); }
         checksum256 by_evm_address() const { return xsat::utils::compute_id(evm_address); }
@@ -313,6 +314,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         checksum256 by_order_no() const { return xsat::utils::hash(order_no); }
         checksum256 by_tx_id() const { return xsat::utils::hash(tx_id); }
         uint64_t by_tx_time_stamp() const { return tx_time_stamp; }
+        uint64_t by_withdraw_time_stamp() const { return withdraw_time_stamp; }
     };
     typedef eosio::multi_index<"withdrawings"_n, withdraw_row,
         eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_btc_address>>,
@@ -320,7 +322,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         eosio::indexed_by<"byorderid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_id>>,
         eosio::indexed_by<"byorderno"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_no>>,
         eosio::indexed_by<"bytxid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_tx_id>>,
-        eosio::indexed_by<"bytxtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>>
+        eosio::indexed_by<"bytxtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>,
+        eosio::indexed_by<"withdrawtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>>
         withdrawing_index;
 
     typedef eosio::multi_index<"withdraws"_n, withdraw_row,
@@ -329,7 +332,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         eosio::indexed_by<"byorderid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_id>>,
         eosio::indexed_by<"byorderno"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_no>>,
         eosio::indexed_by<"bytxid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_tx_id>>,
-        eosio::indexed_by<"bytxtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>>
+        eosio::indexed_by<"bytxtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>,
+        eosio::indexed_by<"withdrawtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>>
         withdraw_index;
 
     // table init

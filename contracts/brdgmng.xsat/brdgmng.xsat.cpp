@@ -333,7 +333,7 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
         row.btc_address = parts[2];
         row.gas_level = parts[3];
         row.global_status = global_status_initiated;
-        row.create_time_stamp = current_time_point().sec_since_epoch();
+        row.withdraw_time_stamp = current_time_point().sec_since_epoch();
         if (row.gas_level == "fast") {
             row.order_no = generate_order_no({withdraw_id});
             row.fee = config.withdraw_fast_fee;
@@ -364,7 +364,7 @@ void brdgmng::genorderno(const uint64_t permission_id) {
     for (auto itr = lower_bound; itr != upper_bound; ++itr) {
         pending_ids.push_back(itr->id);
         count++;
-        earliest_timestamp = std::min(earliest_timestamp, itr->create_time_stamp);
+        earliest_timestamp = std::min(earliest_timestamp, itr->withdraw_time_stamp);
         if (count >= config.withdraw_merge_count) {
             break;
         }
@@ -383,7 +383,7 @@ void brdgmng::genorderno(const uint64_t permission_id) {
 [[eosio::action]]
 void brdgmng::withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
                            const string& order_id, const order_status order_status, const uint64_t block_height, const string& tx_id,
-                           const optional<string>& remark_detail, const uint64_t tx_time_stamp) {
+                           const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
     check_permission(actor, permission_id);
     withdrawing_index _withdraw_pending = withdrawing_index(_self, permission_id);
     auto withdraw_itr_pending = _withdraw_pending.require_find(withdraw_id, "brdgmng.xsat::withdrawinfo: withdraw id does not exists");
@@ -401,6 +401,7 @@ void brdgmng::withdrawinfo(const name& actor, const uint64_t permission_id, cons
         row.block_height = block_height;
         row.tx_id = tx_id;
         row.tx_time_stamp = tx_time_stamp;
+        row.create_time_stamp = create_time_stamp;
         if (remark_detail.has_value()) {
             row.remark_detail = *remark_detail;
         }
