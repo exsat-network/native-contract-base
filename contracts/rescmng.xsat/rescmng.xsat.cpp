@@ -1,7 +1,8 @@
-#include <rescmng.xsat/rescmng.xsat.hpp>
-#include <poolreg.xsat/poolreg.xsat.hpp>
-#include <endrmng.xsat/endrmng.xsat.hpp>
 #include <btc.xsat/btc.xsat.hpp>
+#include <endrmng.xsat/endrmng.xsat.hpp>
+#include <poolreg.xsat/poolreg.xsat.hpp>
+#include <rescmng.xsat/rescmng.xsat.hpp>
+
 #include "../internal/utils.hpp"
 
 #ifdef DEBUG
@@ -35,6 +36,18 @@ resource_management::CheckResult resource_management::checkclient(const name& cl
     }
 
     bool success = result.has_auth && result.is_exists && result.balance.amount > 0;
+
+    // heartbeats
+    auto heartbeat_itr = _heartbeat.find(client.value);
+    if (heartbeat_itr == _heartbeat.end()) {
+        _heartbeat.emplace(get_self(), [&](auto& row) {
+            row.client = client;
+            row.type = type;
+            row.last_heartbeat = current_time_point();
+        });
+    } else {
+        _heartbeat.modify(heartbeat_itr, same_payer, [&](auto& row) { row.last_heartbeat = current_time_point(); });
+    }
 
     // log
     resource_management::checklog_action _checklog(get_self(), {get_self(), "active"_n});
@@ -81,8 +94,8 @@ void resource_management::setstatus(const bool disabled_withdraw) {
 [[eosio::action]]
 void resource_management::pay(const uint64_t height, const checksum256& hash, const name& owner, const fee_type type,
                               const uint64_t quantity) {
-    check(has_auth(BLOCK_SYNC_CONTRACT) || has_auth(BLOCK_ENDORSE_CONTRACT) || has_auth(UTXO_MANAGE_CONTRACT)
-              || has_auth(POOL_REGISTER_CONTRACT),
+    check(has_auth(BLOCK_SYNC_CONTRACT) || has_auth(BLOCK_ENDORSE_CONTRACT) || has_auth(UTXO_MANAGE_CONTRACT) ||
+              has_auth(POOL_REGISTER_CONTRACT),
           "3001:rescmng.xsat::pay: missing auth [blksync.xsat/blkendt.xsat/utxmng.xsat/poolreg.xsat]");
 
     check(quantity > 0, "3002:rescmng.xsat::pay: must pay positive quantity");
@@ -92,9 +105,7 @@ void resource_management::pay(const uint64_t height, const checksum256& hash, co
     check(account_itr != _account.end() && account_itr->balance >= fee_amount,
           "3003:rescmng.xsat::pay: insufficient balance");
 
-    _account.modify(account_itr, same_payer, [&](auto& row) {
-        row.balance -= fee_amount;
-    });
+    _account.modify(account_itr, same_payer, [&](auto& row) { row.balance -= fee_amount; });
     auto config = _config.get();
     if (fee_amount.amount > 0) {
         token_transfer(get_self(), config.fee_account, {fee_amount, BTC_CONTRACT}, "fee");
@@ -118,9 +129,7 @@ void resource_management::withdraw(const name& owner, const asset& quantity) {
           "rescmng.xsat::withdraw: no balance to withdraw");
     auto balance = account_itr->balance - quantity;
     if (balance.amount > 0) {
-        _account.modify(account_itr, same_payer, [&](auto& row) {
-            row.balance -= quantity;
-        });
+        _account.modify(account_itr, same_payer, [&](auto& row) { row.balance -= quantity; });
     } else {
         _account.erase(account_itr);
     }
@@ -154,9 +163,7 @@ void resource_management::do_deposit(const name& from, const name& contract, con
             row.balance = quantity;
         });
     } else {
-        _account.modify(account_itr, same_payer, [&](auto& row) {
-            row.balance += quantity;
-        });
+        _account.modify(account_itr, same_payer, [&](auto& row) { row.balance += quantity; });
     }
 
     // log
