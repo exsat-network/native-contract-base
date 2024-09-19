@@ -382,8 +382,9 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     [[eosio::action]]
     void depositlog(const uint64_t permission_id, const uint64_t deposit_id, const string& b_id,
                     const string& wallet_code, const global_status global_status, const string& btc_address,
-                    const string& order_id, const uint64_t block_height, const string& tx_id, const uint64_t amount,
-                    const uint64_t fee, const optional<string>& remark_detail, const uint64_t tx_time_stamp,
+                    const checksum160& evm_address, const string& order_id, const uint64_t block_height,
+                    const string& tx_id, const uint64_t amount, const uint64_t fee,
+                    const optional<string>& remark_detail, const uint64_t tx_time_stamp,
                     const uint64_t create_time_stamp) {
         require_auth(get_self());
     }
@@ -542,7 +543,6 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         uint64_t total_withdraw_amount;
     };
     typedef singleton<"statistics"_n, statistics_row> statistics_table;
-    statistics_table _statistics = statistics_table(_self, _self.value);
 
     /**
      * ## TABLE `permissions`
@@ -887,8 +887,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     void do_return(const name& from, const name& contract, const asset& quantity, const string& memo);
     void do_withdraw(const name& from, const name& contract, const asset& quantity, const string& memo);
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
-    void handle_btc_deposit(const uint64_t amount, const checksum160& evm_address);
-    void handle_btc_withdraw(const uint64_t amount);
+    void handle_btc_deposit(const uint64_t permission_id, const uint64_t amount, const checksum160& evm_address);
+    void handle_btc_withdraw(const uint64_t permission_id, const uint64_t amount);
     string generate_order_no(const std::vector<uint64_t>& ids);
 
 #ifdef DEBUG

@@ -57,14 +57,14 @@ $ cleos push action brdgmng.xsat valwithdraw '["actor1.xsat", 0, 1, 1, 1, null]'
 $ cleos get table brdgmng.xsat brdgmng.xsat boot
 $ cleos get table brdgmng.xsat brdgmng.xsat globalid
 $ cleos get table brdgmng.xsat brdgmng.xsat configs
-$ cleos get table brdgmng.xsat brdgmng.xsat statistics
 $ cleos get table brdgmng.xsat brdgmng.xsat permissions
-$ cleos get table brdgmng.xsat 0 addresses
-$ cleos get table brdgmng.xsat 0 addrmappings
-$ cleos get table brdgmng.xsat 0 depositings
-$ cleos get table brdgmng.xsat 0 deposits
-$ cleos get table brdgmng.xsat 0 withdrawings
-$ cleos get table brdgmng.xsat 0 withdraws
+$ cleos get table brdgmng.xsat <permission_id> statistics
+$ cleos get table brdgmng.xsat <permission_id> addresses
+$ cleos get table brdgmng.xsat <permission_id> addrmappings
+$ cleos get table brdgmng.xsat <permission_id> depositings
+$ cleos get table brdgmng.xsat <permission_id> deposits
+$ cleos get table brdgmng.xsat <permission_id> withdrawings
+$ cleos get table brdgmng.xsat <permission_id> withdraws
 ```
 
 ## Table of Content

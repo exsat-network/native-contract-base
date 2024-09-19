@@ -99,6 +99,7 @@ void brdgmng::addaddresses(const name& actor, const uint64_t permission_id, stri
             row.btc_address = btc_address;
         });
     }
+    statistics_table _statistics = statistics_table(_self, permission_id);
     statistics_row statistics = _statistics.get_or_default();
     statistics.total_btc_address_count += btc_addresses.size();
     _statistics.set(statistics, get_self());
@@ -177,6 +178,7 @@ void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const
         _address.require_find(address_itr->id, "brdgmng.xsat::mappingaddr: address id does not exists in address");
     _address.erase(address_id_itr);
 
+    statistics_table _statistics = statistics_table(_self, permission_id);
     statistics_row statistics = _statistics.get_or_default();
     statistics.mapped_address_count++;
     _statistics.set(statistics, get_self());
@@ -206,6 +208,13 @@ void brdgmng::deposit(const name& actor, const uint64_t permission_id, const str
     check(deposit_itr_confirmed == deposit_idx_confirmed.end(),
           "6002:brdgmng.xsat::deposit: order_id already exists in deposit");
 
+    check(!btc_address.empty(), "brdgmng.xsat::deposit: btc_address cannot be empty, must be a valid BTC address");
+    address_mapping_index _address_mapping = address_mapping_index(_self, permission_id);
+    auto btc_address_mapping_idx = _address_mapping.get_index<"bybtcaddr"_n>();
+    checksum256 btc_address_hash = xsat::utils::hash(btc_address);
+    auto btc_address_mapping_itr = btc_address_mapping_idx.require_find(
+        btc_address_hash, "brdgmng.xsat::deposit: bitcoin address does not map evm address yet");
+
     _deposit_pending.emplace(get_self(), [&](auto& row) {
         row.id = next_deposit_id();
         row.permission_id = permission_id;
@@ -214,6 +223,7 @@ void brdgmng::deposit(const name& actor, const uint64_t permission_id, const str
         row.b_id = b_id;
         row.wallet_code = wallet_code;
         row.btc_address = btc_address;
+        row.evm_address = btc_address_mapping_itr->evm_address;
         row.order_id = order_id;
         row.block_height = block_height;
         row.tx_id = tx_id;
@@ -286,7 +296,7 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
         if (deposit_itr_pending->global_status == global_status_succeed &&
             deposit_itr_pending->amount >= _config.get_or_default().limit_amount) {
             const uint64_t issue_amount = safemath::sub(deposit_itr_pending->amount, deposit_itr_pending->fee);
-            handle_btc_deposit(issue_amount, deposit_itr_pending->evm_address);
+            handle_btc_deposit(permission_id, issue_amount, deposit_itr_pending->evm_address);
         }
         _deposit_confirmed.emplace(get_self(), [&](auto& row) {
             row.id = deposit_itr_pending->id;
@@ -296,6 +306,7 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
             row.b_id = deposit_itr_pending->b_id;
             row.wallet_code = deposit_itr_pending->wallet_code;
             row.btc_address = deposit_itr_pending->btc_address;
+            row.evm_address = deposit_itr_pending->evm_address;
             row.order_id = deposit_itr_pending->order_id;
             row.block_height = deposit_itr_pending->block_height;
             row.tx_id = deposit_itr_pending->tx_id;
@@ -311,9 +322,9 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
         brdgmng::depositlog_action _depositlog(get_self(), {get_self(), "active"_n});
         _depositlog.send(deposit_itr_pending->permission_id, deposit_itr_pending->id, deposit_itr_pending->b_id,
                          deposit_itr_pending->wallet_code, deposit_itr_pending->global_status,
-                         deposit_itr_pending->btc_address, deposit_itr_pending->order_id,
-                         deposit_itr_pending->block_height, deposit_itr_pending->tx_id, deposit_itr_pending->amount,
-                         deposit_itr_pending->fee, deposit_itr_pending->remark_detail,
+                         deposit_itr_pending->btc_address, deposit_itr_pending->evm_address,
+                         deposit_itr_pending->order_id, deposit_itr_pending->block_height, deposit_itr_pending->tx_id,
+                         deposit_itr_pending->amount, deposit_itr_pending->fee, deposit_itr_pending->remark_detail,
                          deposit_itr_pending->tx_time_stamp, deposit_itr_pending->create_time_stamp);
 
         _deposit_pending.erase(deposit_itr_pending);
@@ -513,7 +524,7 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
     if (withdraw_itr_pending->global_status == global_status_succeed ||
         withdraw_itr_pending->global_status == global_status_failed) {
         if (withdraw_itr_pending->global_status == global_status_succeed) {
-            handle_btc_withdraw(withdraw_itr_pending->amount);
+            handle_btc_withdraw(permission_id, withdraw_itr_pending->amount);
         }
         _withdraw_confirmed.emplace(get_self(), [&](auto& row) {
             row.id = withdraw_itr_pending->id;
@@ -526,6 +537,7 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
             row.b_id = withdraw_itr_pending->b_id;
             row.wallet_code = withdraw_itr_pending->wallet_code;
             row.btc_address = withdraw_itr_pending->btc_address;
+            row.evm_address = withdraw_itr_pending->evm_address;
             row.gas_level = withdraw_itr_pending->gas_level;
             row.order_id = withdraw_itr_pending->order_id;
             row.order_no = withdraw_itr_pending->order_no;
@@ -617,7 +629,7 @@ void brdgmng::token_transfer(const name& from, const name& to, const extended_as
     transfer.send(from, to, value.quantity, memo);
 }
 
-void brdgmng::handle_btc_deposit(const uint64_t amount, const checksum160& evm_address) {
+void brdgmng::handle_btc_deposit(const uint64_t permission_id, const uint64_t amount, const checksum160& evm_address) {
     // issue BTC
     asset quantity = asset(amount, BTC_SYMBOL);
     btc::issue_action issue(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
@@ -626,12 +638,13 @@ void brdgmng::handle_btc_deposit(const uint64_t amount, const checksum160& evm_a
     btc::transfer_action transfer(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
     transfer.send(BTC_CONTRACT, ERC20_CONTRACT, quantity, "0x" + xsat::utils::sha1_to_hex(evm_address));
 
+    statistics_table _statistics = statistics_table(_self, permission_id);
     statistics_row statistics = _statistics.get_or_default();
     statistics.total_deposit_amount += amount;
     _statistics.set(statistics, get_self());
 }
 
-void brdgmng::handle_btc_withdraw(const uint64_t amount) {
+void brdgmng::handle_btc_withdraw(const uint64_t permission_id, const uint64_t amount) {
     // transfer BTC btc.xsat
     asset quantity = asset(amount, BTC_SYMBOL);
     btc::transfer_action transfer(BTC_CONTRACT, {get_self(), "active"_n});
@@ -640,6 +653,7 @@ void brdgmng::handle_btc_withdraw(const uint64_t amount) {
     btc::retire_action retire(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
     retire.send(quantity, "retire BTC from withdraw");
 
+    statistics_table _statistics = statistics_table(_self, permission_id);
     statistics_row statistics = _statistics.get_or_default();
     statistics.total_withdraw_amount += amount;
     _statistics.set(statistics, get_self());

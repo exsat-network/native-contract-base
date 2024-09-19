@@ -19,6 +19,7 @@ void brdgmng::cleartable(const name table_name, const optional<name> scope, cons
     } else if (table_name == "configs"_n) {
         _config.remove();
     } else if (table_name == "statistics"_n) {
+        statistics_table _statistics = statistics_table(_self, 0);
         _statistics.remove();
     } else if (table_name == "permissions"_n) {
         permission_index _permissions(get_self(), get_self().value);
