@@ -1,15 +1,15 @@
 #pragma once
 
 #include <algorithm>
-#include <sstream>
-#include <vector>
+#include <bitcoin/utility/address_converter.hpp>
+#include <btc.xsat/btc.xsat.hpp>
 #include <eosio/asset.hpp>
 #include <eosio/eosio.hpp>
 #include <eosio/name.hpp>
 #include <eosio/singleton.hpp>
-#include <btc.xsat/btc.xsat.hpp>
+#include <sstream>
 #include <utxomng.xsat/utxomng.xsat.hpp>
-#include <bitcoin/utility/address_converter.hpp>
+#include <vector>
 
 #include "../internal/defines.hpp"
 #include "../internal/safemath.hpp"
@@ -59,7 +59,6 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     static const order_status order_status_finished = 5;
     static const order_status order_status_canceled = 6;
 
-
     static const uint64_t BTC_BASE = 100000000;
 
     /**
@@ -99,12 +98,14 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      *
      * ### example
      * ```bash
-     * $ cleos push action brdgmng.xsat updateconfig '[true, true, false, 1000000, 1000, 2000, 1000, 10, 60, 30]' -p brdgmng.xsat
+     * $ cleos push action brdgmng.xsat updateconfig '[true, true, false, 1000000, 1000, 2000, 1000, 10, 60, 30]' -p
+     * brdgmng.xsat
      * ```
      */
     [[eosio::action]]
-    void updateconfig(bool deposit_enable, bool withdraw_enable, bool check_uxto_enable, uint64_t limit_amount, uint64_t deposit_fee,
-                      uint64_t withdraw_fast_fee, uint64_t withdraw_slow_fee, uint16_t withdraw_merge_count, uint16_t withdraw_timeout_minutes,
+    void updateconfig(bool deposit_enable, bool withdraw_enable, bool check_uxto_enable, uint64_t limit_amount,
+                      uint64_t deposit_fee, uint64_t withdraw_fast_fee, uint64_t withdraw_slow_fee,
+                      uint16_t withdraw_merge_count, uint16_t withdraw_timeout_minutes,
                       uint16_t btc_address_inactive_clear_days);
 
     /**
@@ -163,11 +164,13 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      *
      * ### example
      * ```bash
-     * $ cleos push action brdgmng.xsat addaddresses '[ "actor1.xsat", 0, 1, "walletcode", ["3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN"] ]' -p actor1.xsat
+     * $ cleos push action brdgmng.xsat addaddresses '[ "actor1.xsat", 0, 1, "walletcode",
+     * ["3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN"] ]' -p actor1.xsat
      * ```
      */
     [[eosio::action]]
-    void addaddresses(const name& actor, const uint64_t permission_id, string b_id, string wallet_code, const vector<string>& btc_addresses);
+    void addaddresses(const name& actor, const uint64_t permission_id, string b_id, string wallet_code,
+                      const vector<string>& btc_addresses);
 
     /**
      * ## ACTION `valaddress`
@@ -189,7 +192,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      * ```
      */
     [[eosio::action]]
-    void valaddress(const name& actor, const uint64_t permission_id, const uint64_t address_id, const address_status status);
+    void valaddress(const name& actor, const uint64_t permission_id, const uint64_t address_id,
+                    const address_status status);
 
     /**
      * ## ACTION `mappingaddr`
@@ -206,7 +210,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      *
      * ### example
      * ```bash
-     * $ cleos push action brdgmng.xsat mappingaddr '["actor1.xsat", 0, "2614e5588275b02B23CdbeFed8E5dA6D2f59d1c6"]' -p actor1.xsat
+     * $ cleos push action brdgmng.xsat mappingaddr '["actor1.xsat", 0, "2614e5588275b02B23CdbeFed8E5dA6D2f59d1c6"]' -p
+     * actor1.xsat
      * ```
      */
     [[eosio::action]]
@@ -237,13 +242,16 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      *
      * ### example
      * ```bash
-     * $ cleos push action brdgmng.xsat deposit '["actor1.xsat", 0, "b_id", "walletcode", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", "order_id", 840000, "tx_id", 1000000, 1, "remark", 1000000, 1000000]' -p actor1.xsat
+     * $ cleos push action brdgmng.xsat deposit '["actor1.xsat", 0, "b_id", "walletcode",
+     * "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", "order_id", 840000, "tx_id", 1000000, 1, "remark", 1000000, 1000000]' -p
+     * actor1.xsat
      * ```
      */
     [[eosio::action]]
-    void deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address,
-                 const string& order_id, const uint64_t block_height, const string& tx_id, const uint64_t amount, const tx_status tx_status,
-                 const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
+    void deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code,
+                 const string& btc_address, const string& order_id, const uint64_t block_height, const string& tx_id,
+                 const uint64_t amount, const tx_status tx_status, const optional<string>& remark_detail,
+                 const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
 
     /**
      * ## ACTION `valdeposit`
@@ -266,7 +274,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      * ```
      */
     [[eosio::action]]
-    void valdeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const tx_status tx_status, const optional<string>& remark_detail);
+    void valdeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id,
+                    const tx_status tx_status, const optional<string>& remark_detail);
 
     /**
      * ## ACTION `on_transfer`
@@ -329,12 +338,14 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      *
      * ### example
      * ```bash
-     * $ cleos push action brdgmng.xsat withdrawinfo '["actor1.xsat", 0, 1, "b_id", "walletcode", "order_id", 1, 840000, "tx_id", null, 1726734182, 1726734182]' -p actor1.xsat
+     * $ cleos push action brdgmng.xsat withdrawinfo '["actor1.xsat", 0, 1, "b_id", "walletcode", "order_id", 1, 840000,
+     * "tx_id", null, 1726734182, 1726734182]' -p actor1.xsat
      * ```
      */
     [[eosio::action]]
-    void withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
-                      const string& order_id, const order_status order_status, const uint64_t block_height, const string& tx_id, const optional<string>& remark_detail,
+    void withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id,
+                      const string& wallet_code, const string& order_id, const order_status order_status,
+                      const uint64_t block_height, const string& tx_id, const optional<string>& remark_detail,
                       const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
 
     /**
@@ -359,8 +370,9 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      * ```
      */
     [[eosio::action]]
-    void valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status,
-                     const order_status order_status, const optional<string>& remark_detail);
+    void valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id,
+                     const withdraw_status withdraw_status, const order_status order_status,
+                     const optional<string>& remark_detail);
 
 #ifdef DEBUG
     [[eosio::action]]
@@ -368,17 +380,28 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
 #endif
 
     [[eosio::action]]
-    void depositlog() {
-        require_auth(get_self());  // todo
+    void depositlog(const uint64_t permission_id, const uint64_t deposit_id, const string& b_id,
+                    const string& wallet_code, const global_status global_status, const string& btc_address,
+                    const string& order_id, const uint64_t block_height, const string& tx_id, const uint64_t amount,
+                    const uint64_t fee, const optional<string>& remark_detail, const uint64_t tx_time_stamp,
+                    const uint64_t create_time_stamp) {
+        require_auth(get_self());
     }
 
     [[eosio::action]]
-    void withdrawlog() {
-        require_auth(get_self());  // todo
+    void withdrawlog(const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id,
+                     const string& wallet_code, const global_status global_status, const string& btc_address,
+                     const checksum160& evm_address, const string& order_id, const string& order_no,
+                     const order_status order_status, const uint64_t block_height, const string& tx_id,
+                     const uint64_t amount, const uint64_t fee, const optional<string>& remark_detail,
+                     const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
+        require_auth(get_self());
     }
 
-   private:
+    using depositlog_action = eosio::action_wrapper<"depositlog"_n, &brdgmng::depositlog>;
+    using withdrawlog_action = eosio::action_wrapper<"withdrawlog"_n, &brdgmng::withdrawlog>;
 
+   private:
     /**
      * ## TABLE `boot`
      *
@@ -591,7 +614,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         uint64_t primary_key() const { return id; }
         checksum256 by_btc_addrress() const { return xsat::utils::hash(btc_address); }
     };
-    typedef eosio::multi_index<"addresses"_n, address_row,
+    typedef eosio::multi_index<
+        "addresses"_n, address_row,
         eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<address_row, checksum256, &address_row::by_btc_addrress>>>
         address_index;
 
@@ -633,10 +657,14 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         checksum256 by_evm_address() const { return xsat::utils::compute_id(evm_address); }
         uint64_t by_last_bridge_time() const { return last_bridge_time.sec_since_epoch(); }
     };
-    typedef eosio::multi_index<"addrmappings"_n, address_mapping_row,
-        eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<address_mapping_row, checksum256, &address_mapping_row::by_btc_address>>,
-        eosio::indexed_by<"byevmaddr"_n, const_mem_fun<address_mapping_row, checksum256, &address_mapping_row::by_evm_address>>,
-        eosio::indexed_by<"lastbrdgtime"_n, const_mem_fun<address_mapping_row, uint64_t, &address_mapping_row::by_last_bridge_time>>>
+    typedef eosio::multi_index<
+        "addrmappings"_n, address_mapping_row,
+        eosio::indexed_by<"bybtcaddr"_n,
+                          const_mem_fun<address_mapping_row, checksum256, &address_mapping_row::by_btc_address>>,
+        eosio::indexed_by<"byevmaddr"_n,
+                          const_mem_fun<address_mapping_row, checksum256, &address_mapping_row::by_evm_address>>,
+        eosio::indexed_by<"lastbrdgtime"_n,
+                          const_mem_fun<address_mapping_row, uint64_t, &address_mapping_row::by_last_bridge_time>>>
         address_mapping_index;
 
     /**
@@ -715,7 +743,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         checksum256 by_tx_id() const { return xsat::utils::hash(tx_id); }
         uint64_t by_tx_time_stamp() const { return tx_time_stamp; }
     };
-    typedef eosio::multi_index<"depositings"_n, deposit_row,
+    typedef eosio::multi_index<
+        "depositings"_n, deposit_row,
         eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_btc_address>>,
         eosio::indexed_by<"byevmaddr"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_evm_address>>,
         eosio::indexed_by<"byorderid"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_order_id>>,
@@ -723,7 +752,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         eosio::indexed_by<"bytxtime"_n, const_mem_fun<deposit_row, uint64_t, &deposit_row::by_tx_time_stamp>>>
         depositing_index;
 
-    typedef eosio::multi_index<"deposits"_n, deposit_row,
+    typedef eosio::multi_index<
+        "deposits"_n, deposit_row,
         eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_btc_address>>,
         eosio::indexed_by<"byevmaddr"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_evm_address>>,
         eosio::indexed_by<"byorderid"_n, const_mem_fun<deposit_row, checksum256, &deposit_row::by_order_id>>,
@@ -821,7 +851,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         uint64_t by_tx_time_stamp() const { return tx_time_stamp; }
         uint64_t by_withdraw_time_stamp() const { return withdraw_time_stamp; }
     };
-    typedef eosio::multi_index<"withdrawings"_n, withdraw_row,
+    typedef eosio::multi_index<
+        "withdrawings"_n, withdraw_row,
         eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_btc_address>>,
         eosio::indexed_by<"byevmaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_evm_address>>,
         eosio::indexed_by<"byorderid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_id>>,
@@ -831,7 +862,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         eosio::indexed_by<"withdrawtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>>
         withdrawing_index;
 
-    typedef eosio::multi_index<"withdraws"_n, withdraw_row,
+    typedef eosio::multi_index<
+        "withdraws"_n, withdraw_row,
         eosio::indexed_by<"bybtcaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_btc_address>>,
         eosio::indexed_by<"byevmaddr"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_evm_address>>,
         eosio::indexed_by<"byorderid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_id>>,
