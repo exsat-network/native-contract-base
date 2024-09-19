@@ -1,7 +1,6 @@
 #include <brdgmng.xsat/brdgmng.xsat.hpp>
 
 #ifdef DEBUG
-// #include <bitcoin/script/address.hpp>
 #include "./src/debug.hpp"
 #endif
 
@@ -178,6 +177,7 @@ void brdgmng::deposit(const name& actor, const uint64_t permission_id, const str
     check_permission(actor, permission_id);
     config_row config = _config.get_or_default();
     check(config.deposit_enable, "brdgmng.xsat::deposit: deposit is disabled");
+    check(amount > 0, "brdgmng.xsat::deposit: amount must be positive");
 
     // check order_id is unique in the deposit table
     depositing_index _deposit_pending = depositing_index(_self, permission_id);
@@ -545,25 +545,6 @@ bool brdgmng::verify_providers(const std::vector<name>& requested_actors, const 
     }
     return true;
 }
-
-// bool brdgmng::address_verify_providers(const std::vector<name>& requested_actors, const std::vector<name>& provider_actors) {
-//     for (const auto& request : requested_actors) {
-//         if (std::find(provider_actors.begin(), provider_actors.end(), request) == provider_actors.end()) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
-// bool brdgmng::verify_providers(const std::vector<name>& requested_actors, const std::vector<provider_actor_info>& provider_actors) {
-//     for (const auto& request : requested_actors) {
-//         auto it = std::find_if(provider_actors.begin(), provider_actors.end(), [&](const provider_actor_info& info) { return info.actor == request; });
-//         if (it == provider_actors.end()) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
 
 void brdgmng::token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo) {
     btc::transfer_action transfer(value.contract, {from, "active"_n});
