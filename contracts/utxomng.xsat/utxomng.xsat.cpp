@@ -177,6 +177,7 @@ void utxo_manage::delblockdata(uint64_t rows) {
 
     while (block_extra_itr != block_extra_end && rows--) {
         block_extra_itr = _block_extra.erase(block_extra_itr);
+        _delchunks.send(block_extra_itr->bucket_id);
     }
 }
 
