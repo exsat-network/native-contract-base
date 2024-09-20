@@ -47,7 +47,7 @@ void block_sync::delchunks(const uint64_t bucket_id) {
     require_auth(UTXO_MANAGE_CONTRACT);
 
     // erase block.chunk
-    auto iter = eosio::internal_use_do_not_use::db_find_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
+    auto iter = eosio::internal_use_do_not_use::db_lowerbound_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
     while (iter >= 0) {
         uint64_t ignored;
         auto next_iter = eosio::internal_use_do_not_use::db_next_i64(iter, &ignored);
@@ -249,7 +249,7 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
     auto bucket_id = block_bucket_itr->bucket_id;
 
     // erase block.chunk
-    auto iter = eosio::internal_use_do_not_use::db_find_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
+    auto iter = eosio::internal_use_do_not_use::db_lowerbound_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
     while (iter >= 0) {
         uint64_t ignored;
         auto next_iter = eosio::internal_use_do_not_use::db_next_i64(iter, &ignored);

@@ -21,7 +21,8 @@ void block_sync::cleartable(const name table_name, const name &synchronizer, con
     else if (table_name == "blockbuckets"_n)
         clear_table(_block_bucket, rows_to_clear);
     else if (table_name == "block.chunk"_n) {
-        auto iter = eosio::internal_use_do_not_use::db_find_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
+        auto iter
+            = eosio::internal_use_do_not_use::db_lowerbound_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
         while (iter >= 0) {
             uint64_t ignored;
             auto next_iter = eosio::internal_use_do_not_use::db_next_i64(iter, &ignored);

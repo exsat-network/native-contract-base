@@ -573,7 +573,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         std::vector<std::tuple<int32_t, int32_t, int32_t, int32_t>> ranges;
         auto last_position = 0;
         auto total_size = 0;
-        auto iter = eosio::internal_use_do_not_use::db_find_i64(code.value, bucket_id, table.value, 0);
+        auto iter = eosio::internal_use_do_not_use::db_lowerbound_i64(code.value, bucket_id, table.value, 0);
 
         while (iter >= 0) {
             auto size = eosio::internal_use_do_not_use::db_get_i64(iter, nullptr, 0);
