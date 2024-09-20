@@ -229,7 +229,9 @@ describe('blksync.xsat', () => {
         const height = 840000
         const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
         await expectToThrow(
-            contracts.blksync.actions.initbucket(['alice', height, hash, 2097152, 0, max_chunk_size]).send('alice@active'),
+            contracts.blksync.actions
+                .initbucket(['alice', height, hash, 2097152, 0, max_chunk_size])
+                .send('alice@active'),
             'eosio_assert: 2003:blksync.xsat::initbucket: num_chunks must be greater than 0 and less than or equal to 64'
         )
 
@@ -426,7 +428,27 @@ describe('blksync.xsat', () => {
                 reason: '',
                 status: 7,
                 updated_at: TimePointSec.from(blockchain.timestamp).toString(),
-                verify_info: null,
+                verify_info: {
+                    btc_miners: ['18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX'],
+                    has_witness: true,
+                    header_merkle: '4f89a5d73bd4d4887f25981fe81892ccafda10c27f52d6f3dd28183a7c411b03',
+                    miner: 'bob',
+                    num_transactions: 3050,
+                    previous_block_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
+                    processed_position: 2325617,
+                    processed_transactions: 3050,
+                    relay_header_merkle: [
+                        'e52ff6e4f7be9cf93f374f79941226df819d509a8b4e0ddb1b88124fbb6a18df',
+                        '0a310ba044ed34509e5e19d6327d2e925466870803b67bdb5e74787ff34abb3c',
+                    ],
+                    relay_witness_merkle: [
+                        '075fc704b1a2333ee9c9bc832a8889e60a4f2bcdb3e5d872c75f7a0f6b8dc4f2',
+                        '3afde37403aaaaf752e3c4839e99643d9e4e9f75e2d20f5f87f1de13b51cc206',
+                    ],
+                    witness_commitment: '88601d3d03ccce017fe2131c4c95a7292e4372983148e62996bb5e2de0e4d1d8',
+                    witness_reserve_value: '0000000000000000000000000000000000000000000000000000000000000000',
+                    work: '000000000000000000000000000000000000000000004e9235f043634662e0cb',
+                },
             },
         ])
     })

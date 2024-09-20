@@ -215,6 +215,15 @@ void utxo_manage::consensus(const uint64_t height, const checksum256& hash) {
         }
     }
 
+    if (passed_index_itr->miner) {
+        block_sync::block_bucket_table _block_bucket(BLOCK_SYNC_CONTRACT, passed_index_itr->synchronizer.value);
+        auto block_bucket_itr = _block_bucket.require_find(passed_index_itr->bucket_id,
+                                                           "utxomng.xsat::consensus: block bucket does not exists");
+        // update height and btc miners
+        pool::updateheight_action _updateheight(POOL_REGISTER_CONTRACT, {get_self(), "active"_n});
+        _updateheight.send(block_bucket_itr->verify_info->miner, height, block_bucket_itr->verify_info->btc_miners);
+    }
+
     // get header
     auto block_data
         = block_sync::read_bucket(BLOCK_SYNC_CONTRACT, passed_index_itr->bucket_id, BLOCK_CHUNK, 0, BLOCK_HEADER_SIZE);

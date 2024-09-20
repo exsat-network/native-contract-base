@@ -8,11 +8,11 @@
 #include "./src/debug.hpp"
 #endif
 
-//@auth blksync.xsat
+//@auth utxomng.xsat
 [[eosio::action]]
 void pool::updateheight(const name& synchronizer, const uint64_t latest_produced_block_height,
                         const std::vector<string>& miners) {
-    require_auth(BLOCK_SYNC_CONTRACT);
+    require_auth(UTXO_MANAGE_CONTRACT);
 
     check(is_account(synchronizer), "poolreg.xsat::updateheight: synchronizer does not exists");
 

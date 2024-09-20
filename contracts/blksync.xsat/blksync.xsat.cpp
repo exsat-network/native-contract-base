@@ -364,23 +364,17 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
             block_id = block_miner_itr->id;
         }
 
-        passed_index_table _passed_index(get_self(), height);
-        auto passed_index_itr = _passed_index.lower_bound(compute_passed_index_id(block_id, 0, 0));
-        auto passed_index_end = _passed_index.upper_bound(compute_passed_index_id(block_id, 1, MAX_UINT_24));
-        auto has_passed_index = passed_index_itr != passed_index_end;
-        auto last_passed_index = has_passed_index ? --passed_index_end : passed_index_end;
-
-        // The first verification passes and the miner’s latest block height is updated.
-        if (miner && !has_passed_index) {
-            pool::updateheight_action _updateheight(POOL_REGISTER_CONTRACT, {get_self(), "active"_n});
-            _updateheight.send(miner, height, verify_info.btc_miners);
-        }
-
         // If it is a miner and has not exceeded expired block_num, it is 0, otherwise it is 1
         uint64_t miner_priority = 1;
         if (miner == synchronizer && expired_block_num > current_block_number()) {
             miner_priority = 0;
         }
+
+        passed_index_table _passed_index(get_self(), height);
+        auto passed_index_itr = _passed_index.lower_bound(compute_passed_index_id(block_id, 0, 0));
+        auto passed_index_end = _passed_index.upper_bound(compute_passed_index_id(block_id, 1, MAX_UINT_24));
+        auto has_passed_index = passed_index_itr != passed_index_end;
+        auto last_passed_index = has_passed_index ? --passed_index_end : passed_index_end;
 
         uint64_t pass_number = 1;
         if (has_passed_index) {
@@ -413,7 +407,6 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
         // update block status
         block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
             row.status = status;
-            row.verify_info = std::nullopt;
             row.updated_at = current_time_point();
         });
         return {.status = get_block_status_name(status), .block_hash = hash};
