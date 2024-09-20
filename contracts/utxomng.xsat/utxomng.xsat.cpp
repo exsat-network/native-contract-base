@@ -273,7 +273,6 @@ utxo_manage::process_block_result utxo_manage::processblock(const name& synchron
     auto chain_state = _chain_state.get();
     auto height = chain_state.parsing_height;
     check(height > 0, "4001:utxomng.xsat::processblock: there are currently no block to parse");
-    check(height > chain_state.irreversible_height, "4002:utxomng.xsat::processblock: the block has been parsed");
 
     // Find parsable hash
     auto current_time = current_time_point();
