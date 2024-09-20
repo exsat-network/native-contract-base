@@ -514,10 +514,15 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_in
         = verify_info.witness_reserve_value.has_value() && verify_info.witness_commitment.has_value();
 
     // obtain relay merkle
-    bitcoin::uint256_t header_merkle = bitcoin::core::generate_header_merkle(transactions);
+    bool mutated;
+    bitcoin::uint256_t header_merkle = bitcoin::core::generate_header_merkle(transactions, &mutated);
+    if (mutated) {
+        return "bad_txns_duplicate";
+    }
+
     bitcoin::uint256_t witness_merkle;
     if (need_witness_check) {
-        witness_merkle = bitcoin::core::generate_witness_merkle(transactions);
+        witness_merkle = bitcoin::core::generate_witness_merkle(transactions, /*mutated=*/nullptr);
     }
 
     // calculate to the same layer
