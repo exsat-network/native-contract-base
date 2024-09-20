@@ -197,9 +197,10 @@ describe('blksync.xsat', () => {
 
     it('height must be greater than 840000', async () => {
         const height = 839999
-        const block_size = read_block(height).length / 2
-        const num_chunks = Math.ceil(block_size / max_chunk_size)
         const hash = '000000000000000000029730547464f056f8b6e2e0a02eaf69c24389983a04f5'
+        const block = read_block(height)
+        const block_size = block.length / 2
+        const num_chunks = Math.ceil(block.length / max_chunk_size)
         await expectToThrow(
             contracts.blksync.actions
                 .initbucket(['alice', height, hash, block_size, num_chunks, max_chunk_size])
@@ -208,14 +209,65 @@ describe('blksync.xsat', () => {
         )
     })
 
+    it('block_size must be greater than 80 and less than or equal to 4194304', async () => {
+        const height = 840000
+        const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
+        await expectToThrow(
+            contracts.blksync.actions.initbucket(['alice', height, hash, 1, 1, max_chunk_size]).send('alice@active'),
+            'eosio_assert: 2002:blksync.xsat::initbucket: block_size must be greater than 80 and less than or equal to 4194304'
+        )
+
+        await expectToThrow(
+            contracts.blksync.actions
+                .initbucket(['alice', height, hash, 4194305, 1, max_chunk_size])
+                .send('alice@active'),
+            'eosio_assert: 2002:blksync.xsat::initbucket: block_size must be greater than 80 and less than or equal to 4194304'
+        )
+    })
+
+    it('block_size must be greater than 80 and less than or equal to 4194304', async () => {
+        const height = 840000
+        const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
+        await expectToThrow(
+            contracts.blksync.actions.initbucket(['alice', height, hash, 2097152, 0, max_chunk_size]).send('alice@active'),
+            'eosio_assert: 2003:blksync.xsat::initbucket: num_chunks must be greater than 0 and less than or equal to 64'
+        )
+
+        await expectToThrow(
+            contracts.blksync.actions
+                .initbucket(['alice', height, hash, 2097152, 65, max_chunk_size])
+                .send('alice@active'),
+            'eosio_assert: 2003:blksync.xsat::initbucket: num_chunks must be greater than 0 and less than or equal to 64'
+        )
+    })
+
     it('init bucket', async () => {
         const height = 840000
-        const block_size = read_block(height).length / 2
-        const num_chunks = Math.ceil(block_size / max_chunk_size)
         const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
+        const block = read_block(height)
+        const block_size = block.length / 2
+        const num_chunks = Math.ceil(block.length / max_chunk_size)
         await contracts.blksync.actions
             .initbucket(['alice', height, hash, block_size, num_chunks, max_chunk_size])
             .send('alice@active')
+
+        expect(get_block_bucket('alice')).toEqual([
+            {
+                bucket_id: 1,
+                height,
+                hash,
+                num_chunks: num_chunks,
+                size: block_size,
+                uploaded_size: 0,
+                chunk_size: max_chunk_size,
+                chunk_ids: [],
+                status: 1,
+                uploaded_num_chunks: 0,
+                updated_at: TimePointSec.from(blockchain.timestamp).toString(),
+                reason: '',
+                verify_info: null,
+            },
+        ])
     })
 
     it('pushchunk', async () => {
@@ -288,8 +340,9 @@ describe('blksync.xsat', () => {
 
         await contracts.blksync.actions.delbucket(['alice', height, hash]).send('alice@active')
 
-        const block_size = read_block(height).length / 2
-        const num_chunks = Math.ceil(read_block(height).length / max_chunk_size)
+        const block = read_block(height)
+        const block_size = block.length / 2
+        const num_chunks = Math.ceil(block.length / max_chunk_size)
         await contracts.blksync.actions
             .initbucket(['bob', height, hash, block_size, num_chunks, max_chunk_size])
             .send('bob@active')
@@ -349,10 +402,10 @@ describe('blksync.xsat', () => {
         expect(retval.status).toBe('verify_pass')
         expect(get_pass_index(height)).toEqual([
             {
+                id: 1,
                 bucket_id: 3,
                 hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
                 cumulative_work: '0000000000000000000000000000000000000000753bdab0e0d745453677442b',
-                id: 0,
                 synchronizer: 'bob',
                 miner: 'bob',
                 created_at: TimePointSec.from(blockchain.timestamp).toString(),

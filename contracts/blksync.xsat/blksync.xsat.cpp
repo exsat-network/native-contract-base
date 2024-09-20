@@ -63,8 +63,10 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
     require_auth(synchronizer);
 
     check(height > START_HEIGHT, "2001:blksync.xsat::initbucket: height must be greater than 840000");
-    check(block_size > BLOCK_HEADER_SIZE, "2002:blksync.xsat::initbucket: block size must be greater than 80");
-    check(num_chunks > 0, "2003:blksync.xsat::initbucket: the number of chunks must be greater than 0");
+    check(block_size > BLOCK_HEADER_SIZE && block_size <= MAX_BLOCK_SIZE,
+          "2002:blksync.xsat::initbucket: block_size must be greater than 80 and less than or equal to 4194304");
+    check(num_chunks > 0 && num_chunks <= MAX_NUM_CHUNKS,
+          "2003:blksync.xsat::initbucket: num_chunks must be greater than 0 and less than or equal to 64");
 
     // check whether it is a synchronizer
     pool::synchronizer_table _synchronizer(POOL_REGISTER_CONTRACT, POOL_REGISTER_CONTRACT.value);
@@ -170,6 +172,11 @@ void block_sync::pushchunk(const name& synchronizer, const uint64_t height, cons
             row.chunk_ids.insert(chunk_id);
         }
         row.uploaded_size = row.uploaded_size + data_size - pre_size;
+
+        check(row.uploaded_num_chunks <= row.num_chunks,
+              "2023:blksync.xsat::pushchunk: the number of uploaded chunks has exceeded [num_chunks]");
+        check(row.uploaded_size <= row.size,
+              "2024:blksync.xsat::pushchunk: the upload chunk data size has exceeded [size]");
 
         if (row.uploaded_size == row.size && row.uploaded_num_chunks == row.num_chunks) {
             row.status = upload_complete;

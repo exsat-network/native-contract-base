@@ -42,8 +42,11 @@ static constexpr uint64_t XSAT_REWARD_PER_BLOCK = 50LL * DECIMAL;
 
 static constexpr uint64_t START_HEIGHT = 839999;
 static constexpr uint64_t IRREVERSIBLE_BLOCKS = 6;
-static constexpr uint64_t BLOCK_HEADER_SIZE = 80;
 static constexpr uint64_t SUBSIDY_HALVING_INTERVAL = 210000;
+
+static constexpr uint64_t BLOCK_HEADER_SIZE = 80;
+static constexpr uint64_t MAX_BLOCK_SIZE = 4LL * 1024 * 1024;
+static constexpr uint8_t MAX_NUM_CHUNKS = 64;
 
 static constexpr uint64_t DEFAULT_PRODUCTED_BLOCK_LIMIT = 432;
 static constexpr uint64_t DEFAULT_NUM_SLOTS = 2;
