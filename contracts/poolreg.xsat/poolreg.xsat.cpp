@@ -227,6 +227,9 @@ void pool::buyslot(const name& synchronizer, const name& receiver, const uint16_
 
     auto synchronizer_itr
         = _synchronizer.require_find(receiver.value, "recsmng.xsat::buyslot: [synchronizer] does not exists");
+
+    check(synchronizer_itr->num_slots + num_slots <= MAX_NUM_SLOTS,
+          "recsmng.xsat::buyslot: the total number of slots purchased cannot exceed [1000]");
     _synchronizer.modify(synchronizer_itr, same_payer, [&](auto& row) {
         row.num_slots += num_slots;
     });
