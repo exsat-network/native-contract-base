@@ -11,6 +11,7 @@
 - deposit
 - valdeposit
 - genorderno
+- withdraw
 - withdrawinfo
 - valwithdraw
 
@@ -43,6 +44,11 @@ $ cleos push action brdgmng.xsat deposit '["actor1.xsat", 0, "b_id", "walletcode
 
 # genorderno @trigger.xsat
 $ cleos push action brdgmng.xsat genorderno '[0]' -p trigger.xsat
+
+# withdraw @user
+# memo format: <permission_id>,<evm_address>,<btc_address>,<gas_level>
+# gas_level: fast or slow
+$ cleos push action btc.xsat transfer '["test.xsat", "brdgmng.xsat", "0.01100000 BTC", "0,0x2614e5588275b02B23CdbeFed8E5dA6D2f59d1c6,18cBEMRxXHqzWWCxZNtU91F5sbUNKhL5PX,fast" ]' -p test.xsat
 
 # withdrawinfo @actor1.xsat
 $ cleos push action brdgmng.xsat withdrawinfo '["actor1.xsat", 0, 1, "b_id", "walletcode", "order_id", 1, 840000, "tx_id", null, 1726734182, 1726734182]' -p actor1.xsat
