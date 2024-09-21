@@ -476,8 +476,10 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
     }
     auto withdraw_itr_pending =
         _withdraw_pending.require_find(withdraw_id, "brdgmng.xsat::valwithdraw: withdraw id does not exists");
-    check(is_final_order_status(withdraw_itr_pending->order_status) && is_final_order_status(order_status),
-          "brdgmng.xsat::valwithdraw: the order_status is final and cannot be modified");
+    if (is_final_order_status(withdraw_itr_pending->order_status)) {
+        check(is_final_order_status(order_status),
+              "brdgmng.xsat::valwithdraw: the order_status is final and cannot be modified");
+    }
     name creator;
     if (withdraw_itr_pending->provider_actors.size() >= 1) {
         creator = withdraw_itr_pending->provider_actors[0];
@@ -663,7 +665,7 @@ string brdgmng::generate_order_no(const std::vector<uint64_t>& ids) {
     auto timestamp = current_time_point().sec_since_epoch();
     std::vector<uint64_t> sorted_ids = ids;
     std::sort(sorted_ids.begin(), sorted_ids.end());
-    std::string order_no;
+    std::string order_no = std::to_string(timestamp) + "-";
     for (size_t i = 0; i < sorted_ids.size(); ++i) {
         order_no += std::to_string(sorted_ids[i]);
         if (i < sorted_ids.size() - 1) {
@@ -671,5 +673,5 @@ string brdgmng::generate_order_no(const std::vector<uint64_t>& ids) {
         }
     }
     checksum160 order_no_hash = xsat::utils::hash_ripemd160(order_no);
-    return std::to_string(timestamp) + xsat::utils::checksum160_to_string(order_no_hash);
+    return xsat::utils::checksum160_to_string(order_no_hash);
 }
