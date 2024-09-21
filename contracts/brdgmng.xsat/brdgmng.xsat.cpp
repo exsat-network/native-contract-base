@@ -239,14 +239,15 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
     auto deposit_itr_pending = _deposit_pending.require_find(deposit_id, "6005:brdgmng.xsat::valdeposit: deposit id does not exists");
     if (is_final_tx_status(deposit_itr_pending->tx_status)) {
         check(is_final_tx_status(tx_status), "brdgmng.xsat::valdeposit: the tx_status is final and cannot be modified");
+        auto actor_itr =
+            std::find_if(deposit_itr_pending->provider_actors.begin(), deposit_itr_pending->provider_actors.end(), [&](const auto& u) { return u == actor; });
+        check(actor_itr == deposit_itr_pending->provider_actors.end(), "brdgmng.xsat::valdeposit: actor already exists in the provider actors list");
     }
+    // The creator can update the tx_status until the final state, while non-creators can only wait until the final state and then confirm
     name creator = deposit_itr_pending->provider_actors[0];
     if (actor != creator) {
         check(is_final_tx_status(tx_status), "brdgmng.xsat::valdeposit: only creator can modify the tx_status to confirmed, failed or rollbacked");
         check(is_final_tx_status(deposit_itr_pending->tx_status), "brdgmng.xsat::valdeposit: only final tx_status can be confirmed by non-creator");
-        auto actor_itr =
-            std::find_if(deposit_itr_pending->provider_actors.begin(), deposit_itr_pending->provider_actors.end(), [&](const auto& u) { return u == actor; });
-        check(actor_itr == deposit_itr_pending->provider_actors.end(), "brdgmng.xsat::valdeposit: actor already exists in the provider actors list");
     }
     _deposit_pending.modify(deposit_itr_pending, same_payer, [&](auto& row) {
         row.tx_status = tx_status;
@@ -275,6 +276,8 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
             row.id = deposit_itr_pending->id;
             row.permission_id = deposit_itr_pending->permission_id;
             row.provider_actors = deposit_itr_pending->provider_actors;
+            row.confirmed_count = deposit_itr_pending->confirmed_count;
+            row.tx_status = deposit_itr_pending->tx_status;
             row.global_status = deposit_itr_pending->global_status;
             row.b_id = deposit_itr_pending->b_id;
             row.wallet_code = deposit_itr_pending->wallet_code;
@@ -285,7 +288,6 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
             row.tx_id = deposit_itr_pending->tx_id;
             row.amount = deposit_itr_pending->amount;
             row.fee = deposit_itr_pending->fee;
-            row.tx_status = deposit_itr_pending->tx_status;
             row.remark_detail = deposit_itr_pending->remark_detail;
             row.tx_time_stamp = deposit_itr_pending->tx_time_stamp;
             row.create_time_stamp = deposit_itr_pending->create_time_stamp;
@@ -337,8 +339,7 @@ void brdgmng::do_withdraw(const name& from, const name& contract, const asset& q
     check(quantity.amount > 0, "brdgmng.xsat: must transfer positive quantity");
     check(quantity.amount >= config.limit_amount, "brdgmng.xsat: withdraw amount must be more than " + quantity.to_string());
     auto parts = xsat::utils::split(memo, ",");
-    auto INVALID_MEMO = "brdgmng.xsat: invalid memo ex: \"<permission_id>,<evm_address>,<btc_address>,<gas_level>\"";
-    check(parts.size() == 4, INVALID_MEMO);
+    check(parts.size() == 4, "brdgmng.xsat: invalid memo ex: \"<permission_id>,<evm_address>,<btc_address>,<gas_level>\"");
     uint64_t permission_id = std::stoull(parts[0]);
     auto permission_itr = _permission.require_find(permission_id, "brdgmng.xsat: permission id does not exists");
     withdrawing_index _withdraw_pending = withdrawing_index(_self, permission_id);
@@ -435,45 +436,39 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
         check(withdraw_itr_confirmed->global_status != global_status_failed, "brdgmng.xsat::valwithdraw: withdraw status is already failed");
     }
     auto withdraw_itr_pending = _withdraw_pending.require_find(withdraw_id, "brdgmng.xsat::valwithdraw: withdraw id does not exists");
+    check(withdraw_status >= withdraw_itr_pending->withdraw_status, "brdgmng.xsat::valwithdraw: the withdraw_status must increase forward");
+
     if (is_final_order_status(withdraw_itr_pending->order_status)) {
         check(is_final_order_status(order_status), "brdgmng.xsat::valwithdraw: the order_status is final and cannot be modified");
+        auto actor_itr =
+            std::find_if(withdraw_itr_pending->provider_actors.begin(), withdraw_itr_pending->provider_actors.end(), [&](const auto& u) { return u == actor; });
+        check(actor_itr == withdraw_itr_pending->provider_actors.end(), "brdgmng.xsat::valwithdraw: actor already exists in the provider actors list");
     }
     name creator;
     if (withdraw_itr_pending->provider_actors.size() >= 1) {
         creator = withdraw_itr_pending->provider_actors[0];
         if (actor != creator) {
-            check(is_final_order_status(order_status),
-                  "brdgmng.xsat::valwithdraw: non-creators can only modify order status to partially_failed, failed, "
-                  "finished, canceled");
-            check(is_final_order_status(withdraw_itr_pending->order_status),
-                  "brdgmng.xsat::valwithdraw: non-creators can only confirm the final status of the order");
-            auto actor_itr = std::find_if(withdraw_itr_pending->provider_actors.begin(), withdraw_itr_pending->provider_actors.end(),
-                                          [&](const auto& u) { return u == actor; });
-            check(actor_itr == withdraw_itr_pending->provider_actors.end(), "brdgmng.xsat::valwithdraw: actor already exists in the provider actors list");
+            check(is_final_order_status(order_status), "brdgmng.xsat::valwithdraw: non-creators can only modify order status to partially_failed, failed, finished, canceled");
+            check(is_final_order_status(withdraw_itr_pending->order_status), "brdgmng.xsat::valwithdraw: non-creators can only confirm the final status of the order");
         }
     }
-    check(withdraw_status >= withdraw_itr_pending->withdraw_status, "brdgmng.xsat::valwithdraw: the withdraw_status must increase forward");
 
     _withdraw_pending.modify(withdraw_itr_pending, same_payer, [&](auto& row) {
         row.withdraw_status = withdraw_status;
+        row.order_status = order_status;
         if (actor != creator) {
             row.provider_actors.push_back(actor);
         }
-        if (!is_final_order_status(order_status)) {
-            row.order_status = order_status;
-        }
         if (order_status == order_status_finished) {
             row.confirmed_count++;
+            if (verify_providers(_permission.get(permission_id).actors, row.provider_actors) && row.confirmed_count >= row.provider_actors.size()) {
+                row.global_status = global_status_succeed;
+            }
         } else if (order_status == order_status_failed || order_status == order_status_partially_failed || order_status == order_status_canceled) {
             row.global_status = global_status_failed;
         }
         if (remark_detail.has_value()) {
             row.remark_detail = *remark_detail;
-        }
-        if (verify_providers(_permission.get(permission_id).actors, row.provider_actors)) {
-            if (row.confirmed_count >= row.provider_actors.size()) {
-                row.global_status = global_status_succeed;
-            }
         }
     });
     // move pending withdraw to confirmed withdraw
