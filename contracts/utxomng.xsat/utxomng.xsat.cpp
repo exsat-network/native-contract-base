@@ -221,7 +221,7 @@ void utxo_manage::consensus(const uint64_t height, const checksum256& hash) {
                                                            "utxomng.xsat::consensus: block bucket does not exists");
         // update height and btc miners
         pool::updateheight_action _updateheight(POOL_REGISTER_CONTRACT, {get_self(), "active"_n});
-        _updateheight.send(block_bucket_itr->verify_info->miner, height, block_bucket_itr->verify_info->btc_miners);
+        _updateheight.send(passed_index_itr->miner, height, block_bucket_itr->verify_info->btc_miners);
     }
 
     // get header
