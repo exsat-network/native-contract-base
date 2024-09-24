@@ -40,7 +40,7 @@ $ cleos push action brdgmng.xsat valaddress '["actor2.xsat", 0, 1, 1]' -p actor2
 $ cleos push action brdgmng.xsat mappingaddr '["actor1.xsat", 0, "2614e5588275b02B23CdbeFed8E5dA6D2f59d1c6"]' -p actor1.xsat
 
 # deposit @actor1.xsat
-$ cleos push action brdgmng.xsat deposit '["actor1.xsat", 0, "b_id", "walletcode", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", "order_id", 840000, "tx_id", 1000000, 1, "remark", 1000000, 1000000]' -p actor1.xsat
+$ cleos push action brdgmng.xsat deposit '["actor1.xsat", 0, "b_id", "walletcode", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", "order_id", 840000, "tx_id", 1, 1000000, 1, "remark", 1000000, 1000000]' -p actor1.xsat
 
 # genorderno @trigger.xsat
 $ cleos push action brdgmng.xsat genorderno '[0]' -p trigger.xsat
@@ -373,7 +373,8 @@ static const order_status order_status_canceled = 6;
 - `{checksum160} evm_address` - EVM address associated with the BTC address
 - `{string} order_id` - Order identifier
 - `{uint64_t} block_height` - Block height of the transaction
-- `{string} tx_id` - Transaction ID
+- `{checksum256} tx_id` - Transaction ID
+- `{uint32_t} index` - Transaction index
 - `{uint64_t} amount` - Amount deposited
 - `{uint64_t} fee` - Fee associated with the deposit
 - `{string} remark_detail` - Detailed remarks about the deposit
@@ -397,6 +398,7 @@ static const order_status order_status_canceled = 6;
   "order_id": "ORDER789",
   "block_height": 858901,
   "tx_id": "0x54579b87831bf37b9bf36da03f3990029a027f50acde4e86ea9e6d0b9adb377d",
+  "tx_index": 1,
   "amount": 1000000,
   "fee": 100,
   "remark_detail": null,
