@@ -33,6 +33,15 @@ namespace xsat::utils {
         return sha256((char*)result.data(), result.size());
     }
 
+    static checksum256 compute_utxo_id(const checksum256 &tx_id, const uint32_t index) {
+        std::vector<char> result;
+        result.resize(36);
+        eosio::datastream<char *> ds(result.data(), result.size());
+        ds << tx_id;
+        ds << index;
+        return eosio::sha256((char *)result.data(), result.size());
+    }
+
     static checksum256 hash(const string& data) { return sha256(data.c_str(), data.size()); }
 
     static checksum160 hash_ripemd160(const string& data) { return ripemd160(data.c_str(), data.size()); }

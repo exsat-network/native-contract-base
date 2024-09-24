@@ -174,8 +174,8 @@ void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const
 
 [[eosio::action]]
 void brdgmng::deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address,
-                      const string& order_id, const uint64_t block_height, const string& tx_id, const uint64_t amount, const tx_status tx_status,
-                      const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
+                      const string& order_id, const uint64_t block_height, const checksum256& tx_id, const uint32_t index, const uint64_t amount,
+                      const tx_status tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
     check_permission(actor, permission_id);
     config_row config = _config.get_or_default();
     check(config.deposit_enable, "brdgmng.xsat::deposit: deposit is disabled");
@@ -211,6 +211,7 @@ void brdgmng::deposit(const name& actor, const uint64_t permission_id, const str
         row.order_id = order_id;
         row.block_height = block_height;
         row.tx_id = tx_id;
+        row.index = index;
         row.amount = amount;
         row.fee = config.deposit_fee;
         row.tx_status = tx_status;
@@ -267,8 +268,13 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
         }
     });
     // move pending deposit to confirmed deposit
+    config_row config = _config.get_or_default();
     if (deposit_itr_pending->global_status == global_status_succeed || deposit_itr_pending->global_status == global_status_failed) {
-        if (deposit_itr_pending->global_status == global_status_succeed && deposit_itr_pending->amount >= _config.get_or_default().limit_amount) {
+        if (deposit_itr_pending->global_status == global_status_succeed && deposit_itr_pending->amount >= config.limit_amount) {
+            if (config.check_uxto_enable) {
+                bool uxto_exist = check_utxo_exist(deposit_itr_pending->tx_id, deposit_itr_pending->index);
+                check(uxto_exist, "brdgmng.xsat::valdeposit: utxo does not exist");
+            }
             const uint64_t issue_amount = safemath::sub(deposit_itr_pending->amount, deposit_itr_pending->fee);
             handle_btc_deposit(permission_id, issue_amount, deposit_itr_pending->evm_address);
         }
@@ -286,6 +292,7 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
             row.order_id = deposit_itr_pending->order_id;
             row.block_height = deposit_itr_pending->block_height;
             row.tx_id = deposit_itr_pending->tx_id;
+            row.index = deposit_itr_pending->index;
             row.amount = deposit_itr_pending->amount;
             row.fee = deposit_itr_pending->fee;
             row.remark_detail = deposit_itr_pending->remark_detail;
@@ -297,8 +304,9 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
         brdgmng::depositlog_action _depositlog(get_self(), {get_self(), "active"_n});
         _depositlog.send(deposit_itr_pending->permission_id, deposit_itr_pending->id, deposit_itr_pending->b_id, deposit_itr_pending->wallet_code,
                          deposit_itr_pending->global_status, deposit_itr_pending->btc_address, deposit_itr_pending->evm_address, deposit_itr_pending->order_id,
-                         deposit_itr_pending->block_height, deposit_itr_pending->tx_id, deposit_itr_pending->amount, deposit_itr_pending->fee,
-                         deposit_itr_pending->remark_detail, deposit_itr_pending->tx_time_stamp, deposit_itr_pending->create_time_stamp);
+                         deposit_itr_pending->block_height, deposit_itr_pending->tx_id, deposit_itr_pending->index, deposit_itr_pending->amount,
+                         deposit_itr_pending->fee, deposit_itr_pending->remark_detail, deposit_itr_pending->tx_time_stamp,
+                         deposit_itr_pending->create_time_stamp);
 
         _deposit_pending.erase(deposit_itr_pending);
     }
@@ -398,7 +406,7 @@ void brdgmng::genorderno(const uint64_t permission_id) {
 
 [[eosio::action]]
 void brdgmng::withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
-                           const string& order_id, const order_status order_status, const uint64_t block_height, const string& tx_id,
+                           const string& order_id, const order_status order_status, const uint64_t block_height, const checksum256& tx_id,
                            const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
     check_permission(actor, permission_id);
     withdrawing_index _withdraw_pending = withdrawing_index(_self, permission_id);
@@ -448,8 +456,10 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
     if (withdraw_itr_pending->provider_actors.size() >= 1) {
         creator = withdraw_itr_pending->provider_actors[0];
         if (actor != creator) {
-            check(is_final_order_status(order_status), "brdgmng.xsat::valwithdraw: non-creators can only modify order status to partially_failed, failed, finished, canceled");
-            check(is_final_order_status(withdraw_itr_pending->order_status), "brdgmng.xsat::valwithdraw: non-creators can only confirm the final status of the order");
+            check(is_final_order_status(order_status),
+                  "brdgmng.xsat::valwithdraw: non-creators can only modify order status to partially_failed, failed, finished, canceled");
+            check(is_final_order_status(withdraw_itr_pending->order_status),
+                  "brdgmng.xsat::valwithdraw: non-creators can only confirm the final status of the order");
         }
     }
 
@@ -573,6 +583,32 @@ bool brdgmng::verify_providers(const std::vector<name>& requested_actors, const 
         }
     }
     return true;
+}
+
+bool brdgmng::check_utxo_exist(const checksum256& tx_id, const uint32_t index) {
+    const checksum256 utxo_id = xsat::utils::compute_utxo_id(tx_id, index);
+    utxo_manage::utxo_table _utxo(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+    auto utxo_id_idx = _utxo.get_index<"byutxoid"_n>();
+    auto utxo_id_itr = utxo_id_idx.find(utxo_id);
+    if (utxo_id_itr != utxo_id_idx.end()) {
+        return true;
+    }
+
+    utxo_manage::pending_utxo_table _pending_utxo(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+    auto pending_utxo_id_idx = _pending_utxo.get_index<"byutxoid"_n>();
+    auto pending_utxo_id_itr = pending_utxo_id_idx.find(utxo_id);
+    if (pending_utxo_id_itr != pending_utxo_id_idx.end()) {
+        return true;
+    }
+
+    utxo_manage::spent_utxo_table _spent_utxo(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+    auto spent_utxo_id_idx = _spent_utxo.get_index<"byutxoid"_n>();
+    auto spent_utxo_id_itr = spent_utxo_id_idx.find(utxo_id);
+    if (spent_utxo_id_itr != spent_utxo_id_idx.end()) {
+        return true;
+    }
+
+    return false;
 }
 
 void brdgmng::token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo) {
