@@ -33,6 +33,15 @@ namespace xsat::utils {
         return sha256((char*)result.data(), result.size());
     }
 
+    static checksum256 compute_utxo_id(const checksum256& tx_id, const uint32_t index) {
+        std::vector<char> result;
+        result.resize(36);
+        eosio::datastream<char*> ds(result.data(), result.size());
+        ds << tx_id;
+        ds << index;
+        return eosio::sha256((char*)result.data(), result.size());
+    }
+
     static checksum256 hash(const string& data) { return sha256(data.c_str(), data.size()); }
 
     static checksum256 hash(const vector<uint8_t>& data) { return sha256((char*)data.data(), data.size()); }
@@ -51,11 +60,29 @@ namespace xsat::utils {
         return name{str};
     }
 
-    static string account_decode(const vector<uint8_t>& hexVec) {
+    static string account_decode(const vector<uint8_t>& name) {
         static const char* charmap = "abcdefghijklmnopqrstuvwxyz12345.";
         string result;
-        for (const uint8_t c : hexVec) {
+        for (const uint8_t c : name) {
             result.push_back(charmap[c]);
+        }
+        return result;
+    }
+
+    static vector<uint8_t> account_encode(const name& account) {
+        static const char* charmap = "abcdefghijklmnopqrstuvwxyz12345.";
+        const auto account_str = account.to_string();
+        vector<uint8_t> result;
+        result.reserve(account_str.size());
+        for (const auto c : account_str) {
+            uint8_t value = 0;
+            if (c == '.')
+                value = 32;
+            else if (c >= '1' && c <= '5')
+                value = (c - '1') + 26;
+            else if (c >= 'a' && c <= 'z')
+                value = c - 'a';
+            result.push_back(value);
         }
         return result;
     }
@@ -78,6 +105,14 @@ namespace xsat::utils {
         }
         vector<uint8_t> account_data(data.begin() + 8, data.end());
         return parse_name(account_decode(account_data));
+    }
+
+    static vector<uint8_t> encode_op_return_eos_account(const name& account) {
+        auto length = account.length();
+        vector<uint8_t> result = {0x6a, length, 0x45, 0x58, 0x53, 0x41, 0x54, 0x01};
+        auto encoded_account = account_encode(account);
+        copy(begin(encoded_account), end(encoded_account), end(result));
+        return result;
     }
 
     // OP_FALSE OP_RETURN or OP_RETURN

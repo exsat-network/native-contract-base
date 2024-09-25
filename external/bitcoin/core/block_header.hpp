@@ -67,7 +67,7 @@ namespace bitcoin::core {
             return bitcoin::dhash(header_data);
         }
 
-        bitcoin::uint256_t target() const { return bitcoin::compact::expand(bits); }
+        bitcoin::uint256_t target() const { return bitcoin::compact::decode(bits); }
 
         bitcoin::uint256_t work() const {
             // refer to
@@ -99,6 +99,12 @@ namespace bitcoin::core {
             auto expected_witness_commitment = bitcoin::dhash(concatenated_hashes);
 
             return witness_commitment == expected_witness_commitment;
+        }
+
+        bool version_are_invalid(const uint64_t height, const bitcoin::core::Params& params) {
+            return ((version < 2 && height > params.deployment_height(bitcoin::core::DEPLOYMENT_HEIGHTINCB))
+                    || (version < 3 && height > params.deployment_height(bitcoin::core::DEPLOYMENT_DERSIG))
+                    || (version < 4 && height > params.deployment_height(bitcoin::core::DEPLOYMENT_CLTV)));
         }
 
         EOSLIB_SERIALIZE(block_header, (version)(previous_block_hash)(merkle)(timestamp)(bits)(nonce))

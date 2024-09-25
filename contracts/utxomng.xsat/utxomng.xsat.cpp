@@ -62,7 +62,7 @@ void utxo_manage::addutxo(const uint64_t id, const checksum256& txid, const uint
     require_auth(get_self());
 
     auto utxo_idx = _utxo.get_index<"byutxoid"_n>();
-    auto utxo_itr = utxo_idx.find(compute_utxo_id(txid, index));
+    auto utxo_itr = utxo_idx.find(xsat::utils::compute_utxo_id(txid, index));
     if (utxo_itr == utxo_idx.end()) {
         _utxo.emplace(get_self(), [&](auto& row) {
             row.id = id;
@@ -711,7 +711,7 @@ utxo_manage::utxo_row utxo_manage::save_utxo(const checksum256& txid, const uint
 template <typename IDX>
 optional<utxo_manage::utxo_row> utxo_manage::remove_utxo(IDX& utxo_idx, const checksum256& prev_txid,
                                                          const uint32_t prev_index) {
-    auto utxo_itr = utxo_idx.find(compute_utxo_id(prev_txid, prev_index));
+    auto utxo_itr = utxo_idx.find(xsat::utils::compute_utxo_id(prev_txid, prev_index));
     if (utxo_itr != utxo_idx.end()) {
         auto found_utxo = *utxo_itr;
         utxo_idx.erase(utxo_itr);

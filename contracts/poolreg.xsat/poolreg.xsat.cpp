@@ -57,7 +57,7 @@ void pool::initpool(const name& synchronizer, const uint64_t latest_produced_blo
     check(is_account(synchronizer), "poolreg.xsat::initpool: synchronizer does not exists");
 
     for (const auto& miner : miners) {
-        check(bitcoin::IsValid(miner), "poolreg.xsat::initpool: invalid miner [\"" + miner + "\"]");
+        check(bitcoin::IsValid(miner, CHAIN_PARAMS), "poolreg.xsat::initpool: invalid miner [\"" + miner + "\"]");
     }
 
     bool is_eos_address = financial_account.size() <= 12;

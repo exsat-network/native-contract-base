@@ -4,11 +4,11 @@ cd wasm
 cdt-cpp ../../contracts/btc.xsat/btc.xsat.cpp -I ../../contracts/ 
 cdt-cpp ../../contracts/exsat.xsat/exsat.xsat.cpp -I ../../contracts/ 
 cdt-cpp ../../contracts/poolreg.xsat/poolreg.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include
-cdt-cpp ../../contracts/rescmng.xsat/rescmng.xsat.cpp -I ../../contracts/ 
-cdt-cpp ../../contracts/rwddist.xsat/rwddist.xsat.cpp -I ../../contracts/ 
-cdt-cpp ../../contracts/staking.xsat/staking.xsat.cpp -I ../../contracts/ 
-cdt-cpp ../../contracts/blkendt.xsat/blkendt.xsat.cpp -I ../../contracts/
-cdt-cpp ../../contracts/endrmng.xsat/endrmng.xsat.cpp -I ../../contracts/
+cdt-cpp ../../contracts/rescmng.xsat/rescmng.xsat.cpp -I ../../contracts/ -I ../../external  
+cdt-cpp ../../contracts/rwddist.xsat/rwddist.xsat.cpp -I ../../contracts/ -I ../../external 
+cdt-cpp ../../contracts/staking.xsat/staking.xsat.cpp -I ../../contracts/ -I ../../external 
+cdt-cpp ../../contracts/blkendt.xsat/blkendt.xsat.cpp -I ../../contracts/ -I ../../external 
+cdt-cpp ../../contracts/endrmng.xsat/endrmng.xsat.cpp -I ../../contracts/ -I ../../external 
 cdt-cpp ../../contracts/blksync.xsat/blksync.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include -DMAINNET
 cdt-cpp ../../contracts/utxomng.xsat/utxomng.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include -DMAINNET
 
@@ -25,8 +25,8 @@ cleos set contract utxomng.xsat . utxomng.xsat.wasm utxomng.xsat.abi
 
 cleos push action btc.xsat create '["btc.xsat", "21000000.00000000 BTC"]' -p btc.xsat
 cleos push action exsat.xsat create '["rwddist.xsat", "21000000.00000000 XSAT"]' -p exsat.xsat
-cleos push action blkendt.xsat config '[0, 10, 15]' -p blkendt.xsat
-cleos push action utxomng.xsat config '[600, 100, 5000, 100, 10, 10]' -p utxomng.xsat
+cleos push action blkendt.xsat config '[0, 4, 15]' -p blkendt.xsat
+cleos push action utxomng.xsat config '[600, 100, 1008, 100, 10, 10]' -p utxomng.xsat
 cleos push action utxomng.xsat init '[839999, '0000000000000000000172014ba58d66455762add0512355ad651207918494ab', '0000000000000000000000000000000000000000753b8c1eaae701e1f0146360']' -p utxomng.xsat
 cleos push action rescmng.xsat init '{"fee_account": "fees.xsat", "cost_per_slot": "0.00000001 BTC", "cost_per_upload": "0.00000001 BTC", "cost_per_verification": "0.00000001 BTC", "cost_per_endorsement": "0.00000001 BTC", "cost_per_parse": "0.00000001 BTC"}' -p rescmng.xsat
 

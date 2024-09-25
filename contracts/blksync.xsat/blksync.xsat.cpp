@@ -2,8 +2,9 @@
 #include <poolreg.xsat/poolreg.xsat.hpp>
 #include <rescmng.xsat/rescmng.xsat.hpp>
 #include <utxomng.xsat/utxomng.xsat.hpp>
-#include <bitcoin/core/block_header.hpp>
 #include <bitcoin/script/address.hpp>
+#include <bitcoin/core/block_header.hpp>
+#include <bitcoin/core/pow.hpp>
 #include <cmath>
 #include "../internal/defines.hpp"
 
@@ -330,13 +331,18 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
 
     if (status == verify_parent_hash) {
         // check parent
-        auto parent_cumulative_work = utxo_manage::get_cumulative_work(height - 1, verify_info.previous_block_hash);
-        check(parent_cumulative_work.has_value(),
-              "2020:blksync.xsat::verify: parent block hash did not reach consensus");
+        auto parent_block = utxo_manage::get_ancestor(height - 1, verify_info.previous_block_hash);
+        check(parent_block.has_value(), "2020:blksync.xsat::verify: parent block hash did not reach consensus");
 
         checksum256 cumulative_work
             = bitcoin::be_checksum256_from_uint(bitcoin::be_uint_from_checksum256(verify_info.work)
-                                                + bitcoin::be_uint_from_checksum256(*parent_cumulative_work));
+                                                + bitcoin::be_uint_from_checksum256(parent_block->cumulative_work));
+
+        auto expected_bits = bitcoin::core::get_next_work_required(*parent_block, verify_info.timestamp,
+                                                                   utxo_manage::get_ancestor, CHAIN_PARAMS);
+        if (verify_info.bits != expected_bits) {
+            return check_fail(block_bucket_idx, block_bucket_itr, "bad-diffbits", hash);
+        }
 
         auto miner = verify_info.miner;
 
@@ -435,6 +441,7 @@ template <typename ITR>
 optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_info_data& verify_info) {
     const auto block_size = block_bucket_itr->size;
     const auto bucket_id = block_bucket_itr->bucket_id;
+    const auto height = block_bucket_itr->height;
 
     auto block_data = read_bucket(get_self(), bucket_id, BLOCK_CHUNK, verify_info.processed_position, block_size);
     eosio::datastream<const char*> block_stream(block_data.data(), block_data.size());
@@ -451,19 +458,25 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_in
             return "hash_mismatch";
         }
 
-        if (block_header.target_is_valid() == false) {
+        if (block_header.version_are_invalid(height, CHAIN_PARAMS)) {
+            return "bad-version";
+        }
+
+        if (!block_header.target_is_valid()) {
             return "invalid_target";
         }
 
-        verify_info.previous_block_hash = bitcoin::be_checksum256_from_uint(block_header.previous_block_hash);
-        verify_info.work = bitcoin::be_checksum256_from_uint(block_header.work());
         verify_info.num_transactions = bitcoin::varint::decode(block_stream);
-        verify_info.header_merkle = bitcoin::le_checksum256_from_uint(block_header.merkle);
-
         // check transactions size
         if (verify_info.num_transactions == 0) {
             return "tx_size_limits";
         }
+
+        verify_info.previous_block_hash = bitcoin::be_checksum256_from_uint(block_header.previous_block_hash);
+        verify_info.work = bitcoin::be_checksum256_from_uint(block_header.work());
+        verify_info.header_merkle = bitcoin::le_checksum256_from_uint(block_header.merkle);
+        verify_info.timestamp = block_header.timestamp;
+        verify_info.bits = block_header.bits;
     }
 
     // deserialization transaction
@@ -498,6 +511,10 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_in
         }
         const auto& cbtrx = transactions.front();
         verify_info.witness_reserve_value = cbtrx.get_witness_reserve_value();
+        if (cbtrx.witness.size() > 0 && !verify_info.witness_reserve_value.has_value()) {
+            return "bad-witness-nonce-size";
+        }
+
         verify_info.witness_commitment = cbtrx.get_witness_commitment();
 
         find_miner(cbtrx.outputs, verify_info.miner, verify_info.btc_miners);
@@ -603,7 +620,7 @@ void block_sync::find_miner(std::vector<bitcoin::core::transaction_output> outpu
         }
 
         std::vector<string> to;
-        bitcoin::ExtractDestination(output.script.data, to);
+        bitcoin::ExtractDestination(output.script.data, CHAIN_PARAMS, to);
         if (to.size() == 1) {
             btc_miners.push_back(to[0]);
             if (!miner) {

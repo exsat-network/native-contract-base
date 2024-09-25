@@ -137,6 +137,8 @@ static const block_status verify_pass = 7;
 - `{uint64_t} num_transactions` - the number of transactions in the block
 - `{uint64_t} processed_position` - the location of the block that has been resolved
 - `{uint64_t} processed_transactions` - the number of processed transactions
+- `{uint32_t}` timestamp : the block time in seconds since epoch (Jan 1 1970 GMT)
+- `{uint32_t}` bits : the bits
 
 ### example
 
@@ -166,9 +168,12 @@ static const block_status verify_pass = 7;
   ],
   "num_transactions": 4899,
   "processed_transactions": 4096,
-  "processed_position": 1197889
+  "processed_position": 1197889,
+  "timestamp": 1713608213,
+  "bits": 386089497
 }
 ```
+
 
 ## TABLE `blockbuckets`
 
@@ -229,7 +234,9 @@ static const block_status verify_pass = 7;
       ],
       "num_transactions": 4899,
       "processed_transactions": 4096,
-      "processed_position": 1197889
+      "processed_position": 1197889,
+      "timestamp": 1713608213,
+      "bits": 386089497
   }
 }
 ```

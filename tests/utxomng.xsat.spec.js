@@ -3,7 +3,7 @@ const { Blockchain, expectToThrow } = require('@proton/vert')
 const { BTC, BTC_CONTRACT } = require('./src/constants')
 const fs = require('fs')
 const path = require('path')
-const { addTime, decodeReturn_addblock, max_chunk_size } = require('./src/help')
+const { addTime, decodeReturn_verify, max_chunk_size } = require('./src/help')
 
 // Vert EOS VM
 const blockchain = new Blockchain()
@@ -144,7 +144,7 @@ beforeAll(async () => {
             previous_block_hash: '00000000000000000001dcce6ce7c8a45872cafd1fb04732b447a14a91832591',
             merkle: '5cdb277afa34ea35aa620e5cad205f18acda80b80dec9dacf4b84636a5ad0448',
             timestamp: 1713571533,
-            bits: 17034219,
+            bits: 386089497,
             nonce: 3205594798,
         })
         .send('utxomng.xsat@active')
@@ -169,7 +169,10 @@ describe('utxomng.xsat', () => {
         expect(blockchain.actionTraces[0].returnValue[0]).toEqual(1)
 
         await contracts.utxomng.actions
-            .unspendable([840673, 'fabe6d6d553d6eb4ada3a4795b3da6bab58e55b7bfa362e40fb9350d4fa781057f9512d40100000000000000'])
+            .unspendable([
+                840673,
+                'fabe6d6d553d6eb4ada3a4795b3da6bab58e55b7bfa362e40fb9350d4fa781057f9512d40100000000000000',
+            ])
             .send('utxomng.xsat@active')
         expect(blockchain.actionTraces[0].returnValue[0]).toEqual(0)
     })
@@ -289,15 +292,15 @@ describe('utxomng.xsat', () => {
 
     it('addblock', async () => {
         const block = {
-            bits: 386089497,
-            cumulative_work: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
-            hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
             height: 839999,
+            hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
+            cumulative_work: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
             merkle: '5cdb277afa34ea35aa620e5cad205f18acda80b80dec9dacf4b84636a5ad0448',
-            nonce: 3205594798,
             previous_block_hash: '00000000000000000001dcce6ce7c8a45872cafd1fb04732b447a14a91832591',
             timestamp: 1713571533,
             version: 671088644,
+            nonce: 3205594798,
+            bits: 386089497,
         }
         await contracts.utxomng.actions.addblock(block).send('utxomng.xsat@active')
         expect(get_block(839999)).toEqual(block)
@@ -433,7 +436,7 @@ describe('utxomng.xsat', () => {
                 previous_block_hash: '00000000000000000001dcce6ce7c8a45872cafd1fb04732b447a14a91832591',
                 merkle: '5cdb277afa34ea35aa620e5cad205f18acda80b80dec9dacf4b84636a5ad0448',
                 timestamp: 1713571533,
-                bits: 17034219,
+                bits: 386089497,
                 nonce: 3205594798,
             })
             .send('utxomng.xsat@active')
@@ -448,11 +451,11 @@ describe('utxomng.xsat', () => {
         await contracts.blksync.actions
             .initbucket(['bob', height, hash, block_size, num_chunks, max_chunk_size])
             .send('bob@active')
-        await pushUpload('bob', height, hash, read_block(height))
+        await pushUpload('bob', height, hash, block)
         let max_times = 10
         while (max_times--) {
             await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
-            const retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
+            const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
 
@@ -608,11 +611,11 @@ describe('utxomng.xsat', () => {
         await contracts.blksync.actions
             .initbucket(['alice', height, hash, block_size, num_chunks, max_chunk_size])
             .send('alice@active')
-        await pushUpload('alice', height, hash, read_block(height))
+        await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
             await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-            const retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
+            const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
 
@@ -707,11 +710,11 @@ describe('utxomng.xsat', () => {
         await contracts.blksync.actions
             .initbucket(['alice', height, hash, block_size, num_chunks, max_chunk_size])
             .send('alice@active')
-        await pushUpload('alice', height, hash, read_block(height))
+        await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
             await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-            const retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
+            const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
 
@@ -730,11 +733,11 @@ describe('utxomng.xsat', () => {
         await contracts.blksync.actions
             .initbucket(['alice', height, hash, block_size, num_chunks, max_chunk_size])
             .send('alice@active')
-        await pushUpload('alice', height, hash, read_block(height))
+        await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
             await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-            const retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
+            const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
 
@@ -753,11 +756,11 @@ describe('utxomng.xsat', () => {
         await contracts.blksync.actions
             .initbucket(['alice', height, hash, block_size, num_chunks, max_chunk_size])
             .send('alice@active')
-        await pushUpload('alice', height, hash, read_block(height))
+        await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
             await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-            const retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
+            const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
 
@@ -776,11 +779,11 @@ describe('utxomng.xsat', () => {
         await contracts.blksync.actions
             .initbucket(['alice', height, hash, block_size, num_chunks, max_chunk_size])
             .send('alice@active')
-        await pushUpload('alice', height, hash, read_block(height))
+        await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
             await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-            const retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
+            const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
 
@@ -799,11 +802,11 @@ describe('utxomng.xsat', () => {
         await contracts.blksync.actions
             .initbucket(['alice', height, hash, block_size, num_chunks, max_chunk_size])
             .send('alice@active')
-        await pushUpload('alice', height, hash, read_block(height))
+        await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
             await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-            const retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
+            const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
 
@@ -822,11 +825,11 @@ describe('utxomng.xsat', () => {
         await contracts.blksync.actions
             .initbucket(['alice', height, hash, block_size, num_chunks, max_chunk_size])
             .send('alice@active')
-        await pushUpload('alice', height, hash, read_block(height))
+        await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
             await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-            const retval = decodeReturn_addblock(blockchain.actionTraces[0].returnValue)
+            const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
 
