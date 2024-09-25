@@ -271,8 +271,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      * ```
      */
     [[eosio::action]]
-    void valdeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const tx_status tx_status,
-                    const optional<string>& remark_detail);
+    void valdeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const tx_status tx_status);
 
     /**
      * ## ACTION `on_transfer`

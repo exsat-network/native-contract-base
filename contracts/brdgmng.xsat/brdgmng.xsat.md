@@ -42,7 +42,10 @@ $ cleos push action brdgmng.xsat mappingaddr '["actor1.xsat", 0, "2614e5588275b0
 # deposit @actor1.xsat
 $ cleos push action brdgmng.xsat deposit '["actor1.xsat", 0, "b_id", "walletcode", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", "order_id", 840000, "tx_id", 1, 1000000, 1, "remark", 1000000, 1000000]' -p actor1.xsat
 
-# genorderno @trigger.xsat
+# valdeposit @actor1.xsat
+cleos push action  brdgmng.xsat valdeposit '["actor1.xsat", 0, 9, 1]' -p actor1.xsat
+
+# genorderno @anyone
 $ cleos push action brdgmng.xsat genorderno '[0]' -p trigger.xsat
 
 # withdraw @user
@@ -54,7 +57,7 @@ $ cleos push action btc.xsat transfer '["test.xsat", "brdgmng.xsat", "0.01100000
 $ cleos push action brdgmng.xsat withdrawinfo '["actor1.xsat", 0, 1, "b_id", "walletcode", "order_id", 1, 840000, "tx_id", null, 1726734182, 1726734182]' -p actor1.xsat
 
 # valwithdraw @actor1.xsat
-$ cleos push action brdgmng.xsat valwithdraw '["actor1.xsat", 0, 1, 1, 1, null]' -p actor1.xsat
+$ cleos push action brdgmng.xsat valwithdraw '["actor1.xsat", 0, 1, 1]' -p actor1.xsat
 ```
 
 ## Table Information
