@@ -101,7 +101,7 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     /**
      * ## ACTION `updateheight`
      *
-     * - **authority**: `blksync.xsat`
+     * - **authority**: `utxomng.xsat`
      *
      * > Update synchronizer’s latest block height and add associated btc miners.
      *

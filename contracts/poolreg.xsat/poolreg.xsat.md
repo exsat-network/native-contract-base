@@ -14,8 +14,8 @@
 ## Quickstart 
 
 ```bash
-# updateheight @blksync.xsat
-$ cleos push action poolreg.xsat updateheight '{"validator": "alice", "height": 839999, "miners": ["3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv", "bc1p8k4v4xuz55dv49svzjg43qjxq2whur7ync9tm0xgl5t4wjl9ca9snxgmlt"]}' -p blksync.xsat
+# updateheight @utxomng.xsat
+$ cleos push action poolreg.xsat updateheight '{"validator": "alice", "height": 839999, "miners": ["3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv", "bc1p8k4v4xuz55dv49svzjg43qjxq2whur7ync9tm0xgl5t4wjl9ca9snxgmlt"]}' -p utxomng.xsat
 
 # initpool @poolreg.xsat
 $ cleos push action poolreg.xsat initpool '{"synchronizer": "alice", "latest_produced_block_height": 839999, "financial_account": "alice", "miners": [""]}' -p poolreg.xsat
@@ -135,7 +135,7 @@ $ cleos get table poolreg.xsat poolreg.xsat miners
 
 ## ACTION `updateheight`
 
-- **authority**: `blksync.xsat`
+- **authority**: `utxomng.xsat`
 
 > Update synchronizer’s latest block height and add associated btc miners.
 

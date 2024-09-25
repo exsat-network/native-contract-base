@@ -320,6 +320,13 @@ describe('poolreg.xsat', () => {
         expect(after_alice_slots - before_alice_slots).toEqual(1)
     })
 
+    it('buyslot: the total number of slots purchased cannot exceed [1000]', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.buyslot(['bob', 'bob', 1000]).send('bob@active'),
+            'eosio_assert: recsmng.xsat::buyslot: the total number of slots purchased cannot exceed [1000]'
+        )
+    })
+
     it('config: missing required authority', async () => {
         await expectToThrow(
             contracts.poolreg.actions.config(['bob', 1]).send('alice@active'),

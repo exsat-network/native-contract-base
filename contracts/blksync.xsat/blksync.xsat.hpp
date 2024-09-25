@@ -4,6 +4,7 @@
 #include <eosio/eosio.hpp>
 #include <eosio/singleton.hpp>
 #include <eosio/crypto.hpp>
+#include <eosio/binary_extension.hpp>
 #include <bitcoin/core/transaction.hpp>
 #include "../internal/utils.hpp"
 
@@ -83,6 +84,8 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * - `{uint64_t} num_transactions` - the number of transactions in the block
      * - `{uint64_t} processed_position` - the location of the block that has been resolved
      * - `{uint64_t} processed_transactions` - the number of processed transactions
+     * - `{uint32_t}` timestamp : the block time in seconds since epoch (Jan 1 1970 GMT)
+     * - `{uint32_t}` bits : the bits
      *
      * ### example
      *
@@ -112,7 +115,9 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *   ],
      *   "num_transactions": 4899,
      *   "processed_transactions": 4096,
-     *   "processed_position": 1197889
+     *   "processed_position": 1197889,
+     *   "timestamp": 1713608213,
+     *   "bits": 386089497
      * }
      * ```
      */
@@ -130,6 +135,8 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         uint64_t num_transactions = 0;
         uint64_t processed_transactions = 0;
         uint64_t processed_position = 0;
+        uint32_t timestamp;
+        uint32_t bits;
     };
 
     /**
@@ -192,7 +199,9 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      *       ],
      *       "num_transactions": 4899,
      *       "processed_transactions": 4096,
-     *       "processed_position": 1197889
+     *       "processed_position": 1197889,
+     *       "timestamp": 1713608213,
+     *       "bits": 386089497
      *   }
      * }
      * ```
@@ -206,7 +215,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         uint8_t num_chunks;
         uint8_t uploaded_num_chunks;
         uint32_t chunk_size;
-        std::set<uint8_t> chunk_ids;
+        std::set<uint16_t> chunk_ids;
         std::string reason;
         block_status status;
         time_point_sec updated_at;
@@ -529,6 +538,9 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     void updateparent(const name &synchronizer, const uint64_t height, const checksum256 &hash,
                       const checksum256 &parent);
 
+    [[eosio::action]]
+    void forkblock(const name &synchronizer, const uint64_t height, const checksum256 &hash, const name &account,
+                   const uint32_t nonce);
 #endif
 
     // logs
@@ -573,7 +585,7 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         std::vector<std::tuple<int32_t, int32_t, int32_t, int32_t>> ranges;
         auto last_position = 0;
         auto total_size = 0;
-        auto iter = eosio::internal_use_do_not_use::db_find_i64(code.value, bucket_id, table.value, 0);
+        auto iter = eosio::internal_use_do_not_use::db_lowerbound_i64(code.value, bucket_id, table.value, 0);
 
         while (iter >= 0) {
             auto size = eosio::internal_use_do_not_use::db_get_i64(iter, nullptr, 0);

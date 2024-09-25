@@ -236,7 +236,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         uint64_t value;
         uint64_t primary_key() const { return id; }
         checksum256 by_scriptpubkey() const { return xsat::utils::hash(scriptpubkey); }
-        checksum256 by_utxo_id() const { return compute_utxo_id(txid, index); }
+        checksum256 by_utxo_id() const { return xsat::utils::compute_utxo_id(txid, index); }
     };
     typedef eosio::multi_index<
         "utxos"_n, utxo_row,
@@ -285,9 +285,10 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         name type;  // vin/vout
         uint64_t primary_key() const { return id; }
         uint64_t by_height() const { return height; }
+        checksum256 by_utxo_id() const { return xsat::utils::compute_utxo_id(txid, index); }
         checksum256 by_scriptpubkey() const { return compute_scriptpubkey_id_for_block(height, hash, scriptpubkey); }
         checksum256 by_block_id() const { return xsat::utils::compute_block_id(height, hash); }
-        checksum256 by_utxo_id() const { return compute_utxo_id_for_block(height, hash, txid, index); }
+        checksum256 by_block_utxo_id() const { return compute_utxo_id_for_block(height, hash, txid, index); }
         checksum256 by_type() const { return compute_type_id_for_block(height, hash, type); }
     };
     typedef eosio::multi_index<
@@ -296,8 +297,10 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         eosio::indexed_by<"byblockid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_block_id>>,
         eosio::indexed_by<"scriptpubkey"_n,
                           const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_scriptpubkey>>,
-        eosio::indexed_by<"byutxoid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_utxo_id>>,
-        eosio::indexed_by<"bytype"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_type>>>
+        eosio::indexed_by<"byblkutxoid"_n,
+                          const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_block_utxo_id>>,
+        eosio::indexed_by<"bytype"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_type>>,
+        eosio::indexed_by<"byutxoid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_utxo_id>>>
         pending_utxo_table;
 
     /**
@@ -336,7 +339,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         uint64_t primary_key() const { return id; }
         uint64_t by_height() const { return height; }
         checksum256 by_scriptpubkey() const { return xsat::utils::hash(scriptpubkey); }
-        checksum256 by_utxo_id() const { return compute_utxo_id(txid, index); }
+        checksum256 by_utxo_id() const { return xsat::utils::compute_utxo_id(txid, index); }
     };
     typedef eosio::multi_index<
         "spentutxos"_n, spent_utxo_row,
@@ -776,6 +779,13 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     [[eosio::action]]
     bool unspendable(const uint64_t height, const vector<uint8_t> &script);
+
+    [[eosio::action]]
+    void addtestblock(const uint64_t height, const checksum256 &hash, const checksum256 &cumulative_work,
+                      const uint32_t version, const checksum256 &previous_block_hash, const checksum256 &merkle,
+                      const uint32_t timestamp, const uint32_t bits, const uint32_t nonce);
+
+    void resetpending(uint64_t row);
 #endif
 
     // logs
@@ -786,15 +796,6 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     using consensus_action = eosio::action_wrapper<"consensus"_n, &utxo_manage::consensus>;
     using lostutxolog_action = eosio::action_wrapper<"lostutxolog"_n, &utxo_manage::lostutxolog>;
-
-    static checksum256 compute_utxo_id(const checksum256 &tx_id, const uint32_t index) {
-        std::vector<char> result;
-        result.resize(36);
-        eosio::datastream<char *> ds(result.data(), result.size());
-        ds << tx_id;
-        ds << index;
-        return eosio::sha256((char *)result.data(), result.size());
-    }
 
     static checksum256 compute_type_id_for_block(const uint64_t height, const checksum256 &hash, const name &type) {
         std::vector<char> result;
@@ -844,23 +845,56 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         return block_itr != _block.end();
     }
 
-    static std::optional<eosio::checksum256> get_cumulative_work(const uint64_t height,
-                                                                 const eosio::checksum256 &hash) {
+    static optional<bitcoin::core::block> get_ancestor(const uint64_t height, const optional<checksum256> hash) {
         utxo_manage::consensus_block_table _consensus_block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
-        auto consensus_block_idx = _consensus_block.get_index<"byblockid"_n>();
-        auto consensus_block_itr = consensus_block_idx.find(xsat::utils::compute_block_id(height, hash));
-        if (consensus_block_itr == consensus_block_idx.end()) {
+        optional<bitcoin::core::block> result = std::nullopt;
+        if (hash.has_value()) {
+            auto consensus_block_idx = _consensus_block.get_index<"byblockid"_n>();
+            auto consensus_block_itr = consensus_block_idx.find(xsat::utils::compute_block_id(height, *hash));
+            if (consensus_block_itr != consensus_block_idx.end()) {
+                return bitcoin::core::block{.height = height,
+                                            .hash = consensus_block_itr->hash,
+                                            .previous_block_hash = consensus_block_itr->previous_block_hash,
+                                            .cumulative_work = consensus_block_itr->cumulative_work,
+                                            .timestamp = consensus_block_itr->timestamp,
+                                            .bits = consensus_block_itr->bits};
+            }
+
             utxo_manage::block_table _block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
             auto block_idx = _block.get_index<"byhash"_n>();
-            auto block_itr = block_idx.find(hash);
-            if (block_itr == block_idx.end()) {
-                return std::nullopt;
-            } else {
-                return block_itr->cumulative_work;
+            auto block_itr = block_idx.find(*hash);
+            if (block_itr != block_idx.end()) {
+                return bitcoin::core::block{.height = height,
+                                            .hash = block_itr->hash,
+                                            .previous_block_hash = block_itr->previous_block_hash,
+                                            .cumulative_work = block_itr->cumulative_work,
+                                            .timestamp = block_itr->timestamp,
+                                            .bits = block_itr->bits};
             }
         } else {
-            return consensus_block_itr->cumulative_work;
+            auto consensus_block_idx = _consensus_block.get_index<"byheight"_n>();
+            auto consensus_block_itr = consensus_block_idx.find(height);
+            if (consensus_block_itr != consensus_block_idx.end()) {
+                return bitcoin::core::block{.height = height,
+                                            .hash = consensus_block_itr->hash,
+                                            .previous_block_hash = consensus_block_itr->previous_block_hash,
+                                            .cumulative_work = consensus_block_itr->cumulative_work,
+                                            .timestamp = consensus_block_itr->timestamp,
+                                            .bits = consensus_block_itr->bits};
+            }
+
+            utxo_manage::block_table _block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+            auto block_itr = _block.find(height);
+            if (block_itr != _block.end()) {
+                return bitcoin::core::block{.height = height,
+                                            .hash = block_itr->hash,
+                                            .previous_block_hash = block_itr->previous_block_hash,
+                                            .cumulative_work = block_itr->cumulative_work,
+                                            .timestamp = block_itr->timestamp,
+                                            .bits = block_itr->bits};
+            }
         }
+        return result;
     }
 
    private:

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bitcoin/core/chain.hpp>
 #include <bitcoin/script/script.hpp>
 #include <bitcoin/utility/base58.hpp>
 #include <bitcoin/utility/bech32.hpp>
@@ -21,8 +22,8 @@ namespace bitcoin {
     namespace CPubKey {
 
         /**
- * secp256k1:
- */
+         * secp256k1:
+         */
         static constexpr unsigned int SIZE = 65;
         static constexpr unsigned int COMPRESSED_SIZE = 33;
         static constexpr unsigned int SIGNATURE_SIZE = 72;
@@ -234,17 +235,8 @@ namespace bitcoin {
         return true;
     }
 
-#if defined(TESTNET)
-    const unsigned char PKHashPrefix = 0x6f;      // 0x00 for mainnet,  0x6f for testnet
-    const unsigned char ScriptHashPrefix = 0xcf;  // 0x05 for mainnet, 0xc4 for testnet
-    const std::string Bech32HRP = "tb";           // "bc" for mainnet, "tb" for testnet
-#elif defined(MAINNET) || !defined(TESTNET)
-    const unsigned char PKHashPrefix = 0x00;      // 0x00 for mainnet,  0x6f for testnet
-    const unsigned char ScriptHashPrefix = 0x05;  // 0x05 for mainnet, 0xc4 for testnet
-    const std::string Bech32HRP = "bc";           // "bc" for mainnet, "tb" for testnet
-#endif
-
-    bool ExtractDestination(const std::vector<unsigned char>& scriptPubKey, std::vector<std::string>& addressRet) {
+    bool ExtractDestination(const std::vector<unsigned char>& scriptPubKey, const bitcoin::core::Params& params,
+                            std::vector<std::string>& addressRet) {
         std::vector<valtype> vSolutions;
         TxoutType whichType = Solver(scriptPubKey, vSolutions);
 
@@ -252,19 +244,19 @@ namespace bitcoin {
             if (vSolutions[0].size() == 0) {
                 return false;
             }
-            std::vector<unsigned char> data = {PKHashPrefix};
+            std::vector<unsigned char> data = params.base58Prefixes[bitcoin::core::base58_type::PUBKEY_ADDRESS];
             data.insert(data.end(), vSolutions[0].begin(), vSolutions[0].end());
             addressRet.push_back(bitcoin::EncodeBase58Check(data));
 
             return true;
         } else if (whichType == TxoutType::PUBKEYHASH) {
-            std::vector<unsigned char> data = {PKHashPrefix};
+            std::vector<unsigned char> data = params.base58Prefixes[bitcoin::core::base58_type::PUBKEY_ADDRESS];
             data.insert(data.end(), vSolutions[0].begin(), vSolutions[0].begin() + 20);
             addressRet.push_back(bitcoin::EncodeBase58Check(data));
 
             return true;
         } else if (whichType == TxoutType::SCRIPTHASH) {
-            std::vector<unsigned char> data = {ScriptHashPrefix};
+            std::vector<unsigned char> data = params.base58Prefixes[bitcoin::core::base58_type::SCRIPT_ADDRESS];
             data.insert(data.end(), vSolutions[0].begin(), vSolutions[0].begin() + 20);
             addressRet.push_back(bitcoin::EncodeBase58Check(data));
             return true;
@@ -276,7 +268,7 @@ namespace bitcoin {
                     data.push_back(c);
                 },
                 vSolutions[0].begin(), vSolutions[0].end());
-            addressRet.push_back(bitcoin::bech32::Encode(bech32::Encoding::BECH32, Bech32HRP, data));
+            addressRet.push_back(bitcoin::bech32::Encode(bech32::Encoding::BECH32, params.bech32_hrp, data));
             return true;
         } else if (whichType == TxoutType::WITNESS_V0_SCRIPTHASH) {
             std::vector<unsigned char> data = {0};
@@ -287,7 +279,7 @@ namespace bitcoin {
                 },
                 vSolutions[0].begin(), vSolutions[0].end());
 
-            addressRet.push_back(bitcoin::bech32::Encode(bech32::Encoding::BECH32, Bech32HRP, data));
+            addressRet.push_back(bitcoin::bech32::Encode(bech32::Encoding::BECH32, params.bech32_hrp, data));
             return true;
         } else if (whichType == TxoutType::WITNESS_V1_TAPROOT) {
             std::vector<unsigned char> data = {1};
@@ -298,7 +290,7 @@ namespace bitcoin {
                 },
                 vSolutions[0].begin(), vSolutions[0].end());
 
-            addressRet.push_back(bitcoin::bech32::Encode(bech32::Encoding::BECH32M, Bech32HRP, data));
+            addressRet.push_back(bitcoin::bech32::Encode(bech32::Encoding::BECH32M, params.bech32_hrp, data));
             return true;
         } else if (whichType == TxoutType::WITNESS_UNKNOWN) {
             unsigned int version = vSolutions[0][0];
@@ -314,14 +306,14 @@ namespace bitcoin {
                     data.push_back(c);
                 },
                 vSolutions[1].begin(), vSolutions[1].begin() + length);
-            addressRet.push_back(bitcoin::bech32::Encode(bech32::Encoding::BECH32M, Bech32HRP, data));
+            addressRet.push_back(bitcoin::bech32::Encode(bech32::Encoding::BECH32M, params.bech32_hrp, data));
             return true;
         } else if (whichType == TxoutType::MULTISIG) {
             for (unsigned int i = 1; i < vSolutions.size() - 1; i++) {
                 if (vSolutions[i].size() == 0) {
                     continue;
                 }
-                std::vector<unsigned char> data = {PKHashPrefix};
+                std::vector<unsigned char> data = params.base58Prefixes[bitcoin::core::base58_type::PUBKEY_ADDRESS];
                 data.insert(data.end(), vSolutions[i].begin(), vSolutions[i].end());
                 addressRet.push_back(bitcoin::EncodeBase58Check(data));
             }
@@ -332,18 +324,20 @@ namespace bitcoin {
         return false;
     }
 
-    bool DecodeDestination(const std::string& str, std::vector<unsigned char>& script, std::string& error_str) {
+    bool DecodeDestination(const std::string& str, std::vector<unsigned char>& script,
+                           const bitcoin::core::Params& params, std::string& error_str) {
         std::vector<unsigned char> data;
         error_str = "";
 
         // Note this will be false if it is a valid Bech32 address for a different network
-        bool is_bech32 = (bitcoin::bech32::ToLower(str.substr(0, Bech32HRP.size())) == Bech32HRP);
+        bool is_bech32 = (bitcoin::bech32::ToLower(str.substr(0, params.bech32_hrp.size())) == params.bech32_hrp);
 
         if (!is_bech32 && bitcoin::DecodeBase58Check(str, data, 21)) {
             // base58-encoded Bitcoin addresses.
             // Public-key-hash-addresses have version 0 (or 111 testnet).
             // The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
-            const std::vector<unsigned char>& pubkey_prefix = {PKHashPrefix};
+            const std::vector<unsigned char>& pubkey_prefix
+                = params.base58Prefixes[bitcoin::core::base58_type::PUBKEY_ADDRESS];
             if (data.size() == 20 + pubkey_prefix.size()
                 && std::equal(pubkey_prefix.begin(), pubkey_prefix.end(), data.begin())) {
                 script.reserve(25);
@@ -357,7 +351,8 @@ namespace bitcoin {
             }
             // Script-hash-addresses have version 5 (or 196 testnet).
             // The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
-            const std::vector<unsigned char>& script_prefix = {ScriptHashPrefix};
+            const std::vector<unsigned char>& script_prefix
+                = params.base58Prefixes[bitcoin::core::base58_type::SCRIPT_ADDRESS];
             if (data.size() == 20 + script_prefix.size()
                 && std::equal(script_prefix.begin(), script_prefix.end(), data.begin())) {
                 script.reserve(23);
@@ -396,8 +391,8 @@ namespace bitcoin {
                 return false;
             }
             // Bech32 decoding
-            if (dec.hrp != Bech32HRP) {
-                error_str = "Invalid or unsupported prefix for Segwit (Bech32) address (expected " + Bech32HRP
+            if (dec.hrp != params.bech32_hrp) {
+                error_str = "Invalid or unsupported prefix for Segwit (Bech32) address (expected " + params.bech32_hrp
                             + ", got " + dec.hrp + ").";
                 return false;
             }
@@ -476,26 +471,28 @@ namespace bitcoin {
         return false;
     }
 
-    bool IsValid(const std::string& str) {
+    bool IsValid(const std::string& str, const bitcoin::core::Params& params) {
         if (str.empty()) return false;
 
         std::vector<unsigned char> data;
 
         // Note this will be false if it is a valid Bech32 address for a different network
-        bool is_bech32 = (bitcoin::bech32::ToLower(str.substr(0, Bech32HRP.size())) == Bech32HRP);
+        bool is_bech32 = (bitcoin::bech32::ToLower(str.substr(0, params.bech32_hrp.size())) == params.bech32_hrp);
 
         if (!is_bech32 && bitcoin::DecodeBase58Check(str, data, 21)) {
             // base58-encoded Bitcoin addresses.
             // Public-key-hash-addresses have version 0 (or 111 testnet).
             // The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
-            const std::vector<unsigned char>& pubkey_prefix = {PKHashPrefix};
+            const std::vector<unsigned char>& pubkey_prefix
+                = params.base58Prefixes[bitcoin::core::base58_type::PUBKEY_ADDRESS];
             if (data.size() == 20 + pubkey_prefix.size()
                 && std::equal(pubkey_prefix.begin(), pubkey_prefix.end(), data.begin())) {
                 return true;
             }
             // Script-hash-addresses have version 5 (or 196 testnet).
             // The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
-            const std::vector<unsigned char>& script_prefix = {ScriptHashPrefix};
+            const std::vector<unsigned char>& script_prefix
+                = params.base58Prefixes[bitcoin::core::base58_type::SCRIPT_ADDRESS];
             if (data.size() == 20 + script_prefix.size()
                 && std::equal(script_prefix.begin(), script_prefix.end(), data.begin())) {
                 return true;
@@ -512,7 +509,7 @@ namespace bitcoin {
                 return false;
             }
             // Bech32 decoding
-            if (dec.hrp != Bech32HRP) {
+            if (dec.hrp != params.bech32_hrp) {
                 return false;
             }
             int version = dec.data[0];  // The first 5 bit symbol is the witness version (0-16)

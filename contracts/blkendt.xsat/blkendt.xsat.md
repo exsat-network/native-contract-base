@@ -82,63 +82,65 @@ $ cleos get table endtmng.xsat <height> endorsements --index 2 --key-type sha256
 
 - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
 - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
+- `{uint16_t} min_validators` - the minimum number of validators, which limits the number of validators that pledge more than 100 BTC at the time of first endorsement.
 
 ### example
 
 ```json
 {
   "limit_endorse_height": 840000,
-  "limit_num_endorsed_blocks": 10
+  "limit_num_endorsed_blocks": 10,
+  "min_validators": 15,
 }
 ```
 
- ## TABLE `endorsements`
- 
- ### scope `height`
- ### params
- 
- - `{uint64_t} id` - primary key
- - `{checksum256} hash` - endorsement block hash
- - `{std::vector<requested_validator_info>} requested_validators` - list of unendorsed validators
- - `{std::vector<provider_validator_info>} provider_validators` - list of endorsed validators
- 
- ### example
- 
- ```json
- {
-   "id": 0,
-   "hash": "00000000000000000000da20f7d8e9e6412d4f1d8b62d88264cddbdd48256ba0",
-   "requested_validators": [{
-       "account": "alice",
-       "staking": "10000000000"
-    }
-   ],
-   "provider_validators": [{
-       "account": "test.xsat",
-       "staking": "10200000000",
-       "created_at": "2024-08-13T00:00:00"
-      }
-   ]
- }
- ```
+## TABLE `endorsements`
 
- ## ACTION `config`
- 
- - **authority**: `get_self()`
- 
- > Configure endorsement status
- 
- ### params
- 
- - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
- - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
- 
- ### example
- 
- ```bash
- $ cleos push action blkendt.xsat config '[840003, 10]' -p blkendt.xsat
- ```
- 
+### scope `height`
+### params
+
+- `{uint64_t} id` - primary key
+- `{checksum256} hash` - endorsement block hash
+- `{std::vector<requested_validator_info>} requested_validators` - list of unendorsed validators
+- `{std::vector<provider_validator_info>} provider_validators` - list of endorsed validators
+
+### example
+
+```json
+{
+  "id": 0,
+  "hash": "00000000000000000000da20f7d8e9e6412d4f1d8b62d88264cddbdd48256ba0",
+  "requested_validators": [{
+      "account": "alice",
+      "staking": "10000000000"
+   }
+  ],
+  "provider_validators": [{
+      "account": "test.xsat",
+      "staking": "10200000000",
+      "created_at": "2024-08-13T00:00:00"
+     }
+  ]
+}
+```
+
+## ACTION `config`
+
+- **authority**: `get_self()`
+
+> Configure endorsement status
+
+### params
+
+- `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
+- `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
+- `{uint16_t} min_validators` - the minimum number of validators, which limits the number of validators that pledge more than 100 BTC at the time of first endorsement.
+
+### example
+
+```bash
+$ cleos push action blkendt.xsat config '[840003, 10, 15]' -p blkendt.xsat
+```
 
 ## ACTION `endorse`
 

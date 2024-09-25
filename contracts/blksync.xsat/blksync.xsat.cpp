@@ -2,8 +2,9 @@
 #include <poolreg.xsat/poolreg.xsat.hpp>
 #include <rescmng.xsat/rescmng.xsat.hpp>
 #include <utxomng.xsat/utxomng.xsat.hpp>
-#include <bitcoin/core/block_header.hpp>
 #include <bitcoin/script/address.hpp>
+#include <bitcoin/core/block_header.hpp>
+#include <bitcoin/core/pow.hpp>
 #include <cmath>
 #include "../internal/defines.hpp"
 
@@ -47,7 +48,7 @@ void block_sync::delchunks(const uint64_t bucket_id) {
     require_auth(UTXO_MANAGE_CONTRACT);
 
     // erase block.chunk
-    auto iter = eosio::internal_use_do_not_use::db_find_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
+    auto iter = eosio::internal_use_do_not_use::db_lowerbound_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
     while (iter >= 0) {
         uint64_t ignored;
         auto next_iter = eosio::internal_use_do_not_use::db_next_i64(iter, &ignored);
@@ -63,8 +64,10 @@ void block_sync::initbucket(const name& synchronizer, const uint64_t height, con
     require_auth(synchronizer);
 
     check(height > START_HEIGHT, "2001:blksync.xsat::initbucket: height must be greater than 840000");
-    check(block_size > BLOCK_HEADER_SIZE, "2002:blksync.xsat::initbucket: block size must be greater than 80");
-    check(num_chunks > 0, "2003:blksync.xsat::initbucket: the number of chunks must be greater than 0");
+    check(block_size > BLOCK_HEADER_SIZE && block_size <= MAX_BLOCK_SIZE,
+          "2002:blksync.xsat::initbucket: block_size must be greater than 80 and less than or equal to 4194304");
+    check(num_chunks > 0 && num_chunks <= MAX_NUM_CHUNKS,
+          "2003:blksync.xsat::initbucket: num_chunks must be greater than 0 and less than or equal to 64");
 
     // check whether it is a synchronizer
     pool::synchronizer_table _synchronizer(POOL_REGISTER_CONTRACT, POOL_REGISTER_CONTRACT.value);
@@ -171,6 +174,11 @@ void block_sync::pushchunk(const name& synchronizer, const uint64_t height, cons
         }
         row.uploaded_size = row.uploaded_size + data_size - pre_size;
 
+        check(row.uploaded_num_chunks <= row.num_chunks,
+              "2023:blksync.xsat::pushchunk: the number of uploaded chunks has exceeded [num_chunks]");
+        check(row.uploaded_size <= row.size,
+              "2024:blksync.xsat::pushchunk: the upload chunk data size has exceeded [size]");
+
         if (row.uploaded_size == row.size && row.uploaded_num_chunks == row.num_chunks) {
             row.status = upload_complete;
         } else {
@@ -249,7 +257,7 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
     auto bucket_id = block_bucket_itr->bucket_id;
 
     // erase block.chunk
-    auto iter = eosio::internal_use_do_not_use::db_find_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
+    auto iter = eosio::internal_use_do_not_use::db_lowerbound_i64(get_self().value, bucket_id, BLOCK_CHUNK.value, 0);
     while (iter >= 0) {
         uint64_t ignored;
         auto next_iter = eosio::internal_use_do_not_use::db_next_i64(iter, &ignored);
@@ -323,13 +331,18 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
 
     if (status == verify_parent_hash) {
         // check parent
-        auto parent_cumulative_work = utxo_manage::get_cumulative_work(height - 1, verify_info.previous_block_hash);
-        check(parent_cumulative_work.has_value(),
-              "2020:blksync.xsat::verify: parent block hash did not reach consensus");
+        auto parent_block = utxo_manage::get_ancestor(height - 1, verify_info.previous_block_hash);
+        check(parent_block.has_value(), "2020:blksync.xsat::verify: parent block hash did not reach consensus");
 
         checksum256 cumulative_work
             = bitcoin::be_checksum256_from_uint(bitcoin::be_uint_from_checksum256(verify_info.work)
-                                                + bitcoin::be_uint_from_checksum256(*parent_cumulative_work));
+                                                + bitcoin::be_uint_from_checksum256(parent_block->cumulative_work));
+
+        auto expected_bits = bitcoin::core::get_next_work_required(*parent_block, verify_info.timestamp,
+                                                                   utxo_manage::get_ancestor, CHAIN_PARAMS);
+        if (verify_info.bits != expected_bits) {
+            return check_fail(block_bucket_idx, block_bucket_itr, "bad-diffbits", hash);
+        }
 
         auto miner = verify_info.miner;
 
@@ -357,23 +370,17 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
             block_id = block_miner_itr->id;
         }
 
-        passed_index_table _passed_index(get_self(), height);
-        auto passed_index_itr = _passed_index.lower_bound(compute_passed_index_id(block_id, 0, 0));
-        auto passed_index_end = _passed_index.upper_bound(compute_passed_index_id(block_id, 1, MAX_UINT_24));
-        auto has_passed_index = passed_index_itr != passed_index_end;
-        auto last_passed_index = has_passed_index ? --passed_index_end : passed_index_end;
-
-        // The first verification passes and the miner’s latest block height is updated.
-        if (miner && !has_passed_index) {
-            pool::updateheight_action _updateheight(POOL_REGISTER_CONTRACT, {get_self(), "active"_n});
-            _updateheight.send(miner, height, verify_info.btc_miners);
-        }
-
         // If it is a miner and has not exceeded expired block_num, it is 0, otherwise it is 1
         uint64_t miner_priority = 1;
         if (miner == synchronizer && expired_block_num > current_block_number()) {
             miner_priority = 0;
         }
+
+        passed_index_table _passed_index(get_self(), height);
+        auto passed_index_itr = _passed_index.lower_bound(compute_passed_index_id(block_id, 0, 0));
+        auto passed_index_end = _passed_index.upper_bound(compute_passed_index_id(block_id, 1, MAX_UINT_24));
+        auto has_passed_index = passed_index_itr != passed_index_end;
+        auto last_passed_index = has_passed_index ? --passed_index_end : passed_index_end;
 
         uint64_t pass_number = 1;
         if (has_passed_index) {
@@ -406,7 +413,6 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
         // update block status
         block_bucket_idx.modify(block_bucket_itr, same_payer, [&](auto& row) {
             row.status = status;
-            row.verify_info = std::nullopt;
             row.updated_at = current_time_point();
         });
         return {.status = get_block_status_name(status), .block_hash = hash};
@@ -435,6 +441,7 @@ template <typename ITR>
 optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_info_data& verify_info) {
     const auto block_size = block_bucket_itr->size;
     const auto bucket_id = block_bucket_itr->bucket_id;
+    const auto height = block_bucket_itr->height;
 
     auto block_data = read_bucket(get_self(), bucket_id, BLOCK_CHUNK, verify_info.processed_position, block_size);
     eosio::datastream<const char*> block_stream(block_data.data(), block_data.size());
@@ -451,19 +458,25 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_in
             return "hash_mismatch";
         }
 
-        if (block_header.target_is_valid() == false) {
+        if (block_header.version_are_invalid(height, CHAIN_PARAMS)) {
+            return "bad-version";
+        }
+
+        if (!block_header.target_is_valid()) {
             return "invalid_target";
         }
 
-        verify_info.previous_block_hash = bitcoin::be_checksum256_from_uint(block_header.previous_block_hash);
-        verify_info.work = bitcoin::be_checksum256_from_uint(block_header.work());
         verify_info.num_transactions = bitcoin::varint::decode(block_stream);
-        verify_info.header_merkle = bitcoin::le_checksum256_from_uint(block_header.merkle);
-
         // check transactions size
         if (verify_info.num_transactions == 0) {
             return "tx_size_limits";
         }
+
+        verify_info.previous_block_hash = bitcoin::be_checksum256_from_uint(block_header.previous_block_hash);
+        verify_info.work = bitcoin::be_checksum256_from_uint(block_header.work());
+        verify_info.header_merkle = bitcoin::le_checksum256_from_uint(block_header.merkle);
+        verify_info.timestamp = block_header.timestamp;
+        verify_info.bits = block_header.bits;
     }
 
     // deserialization transaction
@@ -498,6 +511,10 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_in
         }
         const auto& cbtrx = transactions.front();
         verify_info.witness_reserve_value = cbtrx.get_witness_reserve_value();
+        if (cbtrx.witness.size() > 0 && !verify_info.witness_reserve_value.has_value()) {
+            return "bad-witness-nonce-size";
+        }
+
         verify_info.witness_commitment = cbtrx.get_witness_commitment();
 
         find_miner(cbtrx.outputs, verify_info.miner, verify_info.btc_miners);
@@ -507,10 +524,15 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_in
         = verify_info.witness_reserve_value.has_value() && verify_info.witness_commitment.has_value();
 
     // obtain relay merkle
-    bitcoin::uint256_t header_merkle = bitcoin::core::generate_header_merkle(transactions);
+    bool mutated;
+    bitcoin::uint256_t header_merkle = bitcoin::core::generate_header_merkle(transactions, &mutated);
+    if (mutated) {
+        return "bad_txns_duplicate";
+    }
+
     bitcoin::uint256_t witness_merkle;
     if (need_witness_check) {
-        witness_merkle = bitcoin::core::generate_witness_merkle(transactions);
+        witness_merkle = bitcoin::core::generate_witness_merkle(transactions, /*mutated=*/nullptr);
     }
 
     // calculate to the same layer
@@ -598,7 +620,7 @@ void block_sync::find_miner(std::vector<bitcoin::core::transaction_output> outpu
         }
 
         std::vector<string> to;
-        bitcoin::ExtractDestination(output.script.data, to);
+        bitcoin::ExtractDestination(output.script.data, CHAIN_PARAMS, to);
         if (to.size() == 1) {
             btc_miners.push_back(to[0]);
             if (!miner) {
