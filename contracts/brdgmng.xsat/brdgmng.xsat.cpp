@@ -539,6 +539,7 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
             row.remark_detail = withdraw_itr_pending->remark_detail;
             row.tx_time_stamp = withdraw_itr_pending->tx_time_stamp;
             row.create_time_stamp = withdraw_itr_pending->create_time_stamp;
+            row.withdraw_time_stamp = withdraw_itr_pending->withdraw_time_stamp;
         });
 
         // log
@@ -548,7 +549,7 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
                           withdraw_itr_pending->order_id, withdraw_itr_pending->order_no, withdraw_itr_pending->withdraw_status,
                           withdraw_itr_pending->order_status, withdraw_itr_pending->block_height, withdraw_itr_pending->tx_id, withdraw_itr_pending->amount,
                           withdraw_itr_pending->fee, withdraw_itr_pending->remark_detail, withdraw_itr_pending->tx_time_stamp,
-                          withdraw_itr_pending->create_time_stamp);
+                          withdraw_itr_pending->create_time_stamp, withdraw_itr_pending->withdraw_time_stamp);
 
         _withdraw_pending.erase(withdraw_itr_pending);
     }

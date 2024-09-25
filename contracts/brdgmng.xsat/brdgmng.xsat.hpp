@@ -433,7 +433,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
                      const string& btc_address, const checksum160& evm_address, const string& order_id, const string& order_no,
                      const withdraw_status withdraw_status, const order_status order_status, const uint64_t block_height, const checksum256& tx_id,
                      const uint64_t amount, const uint64_t fee, const optional<string>& remark_detail, const uint64_t tx_time_stamp,
-                     const uint64_t create_time_stamp) {
+                     const uint64_t create_time_stamp, const uint64_t withdraw_time_stamp) {
         require_auth(get_self());
     }
 
@@ -892,7 +892,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
                                eosio::indexed_by<"byorderno"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_no>>,
                                eosio::indexed_by<"bytxid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_tx_id>>,
                                eosio::indexed_by<"bytxtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>,
-                               eosio::indexed_by<"withdrawtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>>
+                               eosio::indexed_by<"withdrawtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_withdraw_time_stamp>>>
         withdrawing_index;
 
     typedef eosio::multi_index<"withdraws"_n, withdraw_row,
@@ -902,7 +902,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
                                eosio::indexed_by<"byorderno"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_order_no>>,
                                eosio::indexed_by<"bytxid"_n, const_mem_fun<withdraw_row, checksum256, &withdraw_row::by_tx_id>>,
                                eosio::indexed_by<"bytxtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>,
-                               eosio::indexed_by<"withdrawtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_tx_time_stamp>>>
+                               eosio::indexed_by<"withdrawtime"_n, const_mem_fun<withdraw_row, uint64_t, &withdraw_row::by_withdraw_time_stamp>>>
         withdraw_index;
 
     // table init
