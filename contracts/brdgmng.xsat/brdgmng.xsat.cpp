@@ -524,7 +524,7 @@ void brdgmng::check_first_actor_permission(const name& actor, const uint64_t per
     require_auth(actor);
     auto permission_itr = _permission.require_find(permission_id, "brdgmng.xsat::get_first_actor: permission id does not exists");
     name first_actor =  permission_itr->actors[0];
-    check(actor == first_actor, "brdgmng.xsat::get_first_actor: actor is not the first actor in the permission list");
+    check(actor == first_actor, "brdgmng.xsat::get_first_actor: only the first actor can perform this operation");
 }
 
 void brdgmng::check_permission(const name& actor, const uint64_t permission_id) {
