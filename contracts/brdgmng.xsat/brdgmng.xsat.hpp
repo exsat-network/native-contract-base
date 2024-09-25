@@ -341,8 +341,31 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      */
     [[eosio::action]]
     void withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
-                      const string& order_id, const order_status order_status, const uint64_t block_height, const checksum256& tx_id,
-                      const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
+                      const string& order_id, const withdraw_status withdraw_status, const order_status order_status, const uint64_t block_height,
+                      const checksum256& tx_id, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
+
+    /**
+     * ## ACTION `updwithdraw`
+     *
+     * - **authority**: `actor`
+     *
+     * > Validate a withdrawal transaction
+     *
+     * ### params
+     *
+     * - `{name} actor` - Actor's name
+     * - `{uint64_t} permission_id` - ID of the corresponding permission
+     * - `{uint64_t} withdraw_id` - ID of the withdrawal to validate
+     * - `{withdraw_status} withdraw_status` - Status of the withdrawal
+     *
+     * ### example
+     * ```bash
+     * $ cleos push action brdgmng.xsat updwithdraw '["actor1.xsat", 0, 1, 1]' -p actor1.xsat
+     * ```
+     */
+    // [[eosio::action]]
+    // void updwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status,
+    //                       const order_status order_status, const optional<string>& remark_detail);
 
     /**
      * ## ACTION `valwithdraw`
@@ -366,8 +389,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      * ```
      */
     [[eosio::action]]
-    void valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status,
-                     const order_status order_status, const optional<string>& remark_detail);
+    void valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const order_status order_status);
 
 #ifdef DEBUG
     [[eosio::action]]
@@ -389,9 +411,10 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
 
     [[eosio::action]]
     void withdrawlog(const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code, const global_status global_status,
-                     const string& btc_address, const checksum160& evm_address, const string& order_id, const string& order_no, const order_status order_status,
-                     const uint64_t block_height, const checksum256& tx_id, const uint64_t amount, const uint64_t fee, const optional<string>& remark_detail,
-                     const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
+                     const string& btc_address, const checksum160& evm_address, const string& order_id, const string& order_no,
+                     const withdraw_status withdraw_status, const order_status order_status, const uint64_t block_height, const checksum256& tx_id,
+                     const uint64_t amount, const uint64_t fee, const optional<string>& remark_detail, const uint64_t tx_time_stamp,
+                     const uint64_t create_time_stamp) {
         require_auth(get_self());
     }
 
