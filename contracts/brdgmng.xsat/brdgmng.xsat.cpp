@@ -247,6 +247,18 @@ void brdgmng::deposit(const name& actor, const uint64_t permission_id, const str
 }
 
 [[eosio::action]]
+void brdgmng::upddeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const tx_status tx_status) {
+    check_first_actor_permission(actor, permission_id);
+    depositing_index _deposit_pending = depositing_index(_self, permission_id);
+    auto deposit_itr_pending = _deposit_pending.require_find(deposit_id, "6005:brdgmng.xsat::upddeposit: deposit id does not exists");
+    _deposit_pending.modify(deposit_itr_pending, same_payer, [&](auto& row) {
+        if (!is_final_tx_status(deposit_itr_pending->tx_status)) {
+            row.tx_status = tx_status;
+        }
+    });
+}
+
+[[eosio::action]]
 void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const tx_status tx_status) {
     check_permission(actor, permission_id);
     depositing_index _deposit_pending = depositing_index(_self, permission_id);
@@ -441,21 +453,20 @@ void brdgmng::withdrawinfo(const name& actor, const uint64_t permission_id, cons
     });
 }
 
-// [[eosio::action]]
-// void brdgmng::updwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status,
-//                           const order_status order_status, const optional<string>& remark_detail) {
-//     check_first_actor_permission(actor, permission_id);
-//     withdrawing_index _withdraw_pending = withdrawing_index(_self, permission_id);
-//     auto withdraw_itr_pending = _withdraw_pending.require_find(withdraw_id, "brdgmng.xsat::updwithdraw: withdraw id does not exists");
-//     check(withdraw_status >= withdraw_itr_pending->withdraw_status, "brdgmng.xsat::updwithdraw: the withdraw_status must increase forward");
+[[eosio::action]]
+void brdgmng::updwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status, const order_status order_status) {
+    check_first_actor_permission(actor, permission_id);
+    withdrawing_index _withdraw_pending = withdrawing_index(_self, permission_id);
+    auto withdraw_itr_pending = _withdraw_pending.require_find(withdraw_id, "6011:brdgmng.xsat::updwithdraw: withdraw id does not exists");
+    check(withdraw_status >= withdraw_itr_pending->withdraw_status, "6012:brdgmng.xsat::updwithdraw: the withdraw_status must increase forward");
 
-//     _withdraw_pending.modify(withdraw_itr_pending, same_payer, [&](auto& row) {
-//         row.withdraw_status = withdraw_status;
-//         if (!is_final_order_status(withdraw_itr_pending->order_status)) {
-//             row.order_status = order_status;
-//         }
-//     });
-// }
+    _withdraw_pending.modify(withdraw_itr_pending, same_payer, [&](auto& row) {
+        row.withdraw_status = withdraw_status;
+        if (!is_final_order_status(withdraw_itr_pending->order_status)) {
+            row.order_status = order_status;
+        }
+    });
+}
 
 [[eosio::action]]
 void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const order_status order_status) {

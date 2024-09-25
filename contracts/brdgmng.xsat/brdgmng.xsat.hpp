@@ -251,6 +251,27 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
                  const tx_status tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp);
 
     /**
+     * ## ACTION `upddeposit`
+     *
+     * - **authority**: `actor`
+     *
+     * ### params
+     *
+     * - `{name} actor` - Actor's name
+     * - `{uint64_t} permission_id` - ID of the corresponding permission
+     * - `{uint64_t} deposit_id` - ID of the deposit to validate
+     * - `{tx_status} tx_status` - Status of the transaction
+     *
+     * ### example
+     * ```bash
+     * $ cleos push action brdgmng.xsat upddeposit '["actor1.xsat", 0, 1, 1]' -p actor1.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void upddeposit(const name& actor, const uint64_t permission_id, const uint64_t deposit_id, const tx_status tx_status);
+
+
+    /**
      * ## ACTION `valdeposit`
      *
      * - **authority**: `actor`
@@ -362,9 +383,8 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      * $ cleos push action brdgmng.xsat updwithdraw '["actor1.xsat", 0, 1, 1]' -p actor1.xsat
      * ```
      */
-    // [[eosio::action]]
-    // void updwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status,
-    //                       const order_status order_status, const optional<string>& remark_detail);
+    [[eosio::action]]
+    void updwithdraw(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const withdraw_status withdraw_status, const order_status order_status);
 
     /**
      * ## ACTION `valwithdraw`
