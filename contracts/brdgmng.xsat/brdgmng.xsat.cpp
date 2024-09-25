@@ -67,7 +67,7 @@ void brdgmng::delperm(const uint64_t id) {
 
 [[eosio::action]]
 void brdgmng::addaddresses(const name& actor, const uint64_t permission_id, string b_id, string wallet_code, const vector<string>& btc_addresses) {
-    check_permission(actor, permission_id);
+    check_first_actor_permission(actor, permission_id);
     if (btc_addresses.empty()) {
         check(false, "brdgmng.xsat::addaddresses: btc_addresses cannot be empty");
     }
@@ -130,7 +130,7 @@ void brdgmng::valaddress(const name& actor, const uint64_t permission_id, const 
 }
 
 [[eosio::action]]
-void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const checksum160 evm_address) {
+void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const checksum160& evm_address) {
     check_permission(actor, permission_id);
 
     address_index _address = address_index(_self, permission_id);
@@ -170,13 +170,17 @@ void brdgmng::mappingaddr(const name& actor, const uint64_t permission_id, const
     statistics_row statistics = _statistics.get_or_default();
     statistics.mapped_address_count++;
     _statistics.set(statistics, get_self());
+
+    // log
+    brdgmng::mapaddrlog_action _mapaddrlog(get_self(), {get_self(), "active"_n});
+    _mapaddrlog.send(actor, permission_id, address_itr->id, evm_address, btc_address);
 }
 
 [[eosio::action]]
 void brdgmng::deposit(const name& actor, const uint64_t permission_id, const string& b_id, const string& wallet_code, const string& btc_address,
                       const string& order_id, const uint64_t block_height, const checksum256& tx_id, const uint32_t index, const uint64_t amount,
                       const tx_status tx_status, const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
-    check_permission(actor, permission_id);
+    check_first_actor_permission(actor, permission_id);
     config_row config = _config.get_or_default();
     check(config.deposit_enable, "brdgmng.xsat::deposit: deposit is disabled");
     check(amount > 0, "brdgmng.xsat::deposit: amount must be positive");
@@ -408,16 +412,10 @@ void brdgmng::genorderno(const uint64_t permission_id) {
 void brdgmng::withdrawinfo(const name& actor, const uint64_t permission_id, const uint64_t withdraw_id, const string& b_id, const string& wallet_code,
                            const string& order_id, const order_status order_status, const uint64_t block_height, const checksum256& tx_id,
                            const optional<string>& remark_detail, const uint64_t tx_time_stamp, const uint64_t create_time_stamp) {
-    check_permission(actor, permission_id);
+    check_first_actor_permission(actor, permission_id);
     withdrawing_index _withdraw_pending = withdrawing_index(_self, permission_id);
     auto withdraw_itr_pending = _withdraw_pending.require_find(withdraw_id, "brdgmng.xsat::withdrawinfo: withdraw id does not exists");
-    check(withdraw_itr_pending->order_id.empty(), "brdgmng.xsat::withdrawinfo: order info already exists in withdraw");
     _withdraw_pending.modify(withdraw_itr_pending, same_payer, [&](auto& row) {
-        if (withdraw_itr_pending->provider_actors.empty()) {
-            row.provider_actors.push_back(actor);
-        } else {
-            check(withdraw_itr_pending->provider_actors[0] == actor, "brdgmng.xsat::withdrawinfo: only creator can add order info");
-        }
         row.b_id = b_id;
         row.wallet_code = wallet_code;
         row.order_id = order_id;
@@ -522,6 +520,13 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
     }
 }
 
+void brdgmng::check_first_actor_permission(const name& actor, const uint64_t permission_id) {
+    require_auth(actor);
+    auto permission_itr = _permission.require_find(permission_id, "brdgmng.xsat::get_first_actor: permission id does not exists");
+    name first_actor =  permission_itr->actors[0];
+    check(actor == first_actor, "brdgmng.xsat::get_first_actor: actor is not the first actor in the permission list");
+}
+
 void brdgmng::check_permission(const name& actor, const uint64_t permission_id) {
     require_auth(actor);
     auto permission_itr = _permission.require_find(permission_id, "brdgmng.xsat::check_permission: permission id does not exists");
@@ -623,7 +628,7 @@ void brdgmng::handle_btc_deposit(const uint64_t permission_id, const uint64_t am
     issue.send(BTC_CONTRACT, quantity, "issue BTC to evm address");
     // transfer BTC to evm address
     btc::transfer_action transfer(BTC_CONTRACT, {BTC_CONTRACT, "active"_n});
-    transfer.send(BTC_CONTRACT, ERC20_CONTRACT, quantity, "0x" + xsat::utils::sha1_to_hex(evm_address));
+    transfer.send(BTC_CONTRACT, EVM_CONTRACT, quantity, "0x" + xsat::utils::sha1_to_hex(evm_address));
 
     statistics_table _statistics = statistics_table(_self, permission_id);
     statistics_row statistics = _statistics.get_or_default();

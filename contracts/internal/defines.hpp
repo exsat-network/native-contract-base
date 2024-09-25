@@ -9,6 +9,7 @@ using namespace eosio;
 // CONTRACTS
 static constexpr name BTC_CONTRACT = "btc.xsat"_n;
 static constexpr name EXSAT_CONTRACT = "exsat.xsat"_n;
+static constexpr name EVM_CONTRACT = "evm.xsat"_n;
 static constexpr name ERC20_CONTRACT = "erc2o.xsat"_n;
 static constexpr name POOL_REGISTER_CONTRACT = "poolreg.xsat"_n;
 static constexpr name EVM_UTIL_CONTRACT = "evmutil.xsat"_n;

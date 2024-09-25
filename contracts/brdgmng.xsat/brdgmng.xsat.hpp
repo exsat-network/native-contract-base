@@ -212,7 +212,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
      * ```
      */
     [[eosio::action]]
-    void mappingaddr(const name& actor, const uint64_t permission_id, const checksum160 evm_address);
+    void mappingaddr(const name& actor, const uint64_t permission_id, const checksum160& evm_address);
 
     /**
      * ## ACTION `deposit`
@@ -375,6 +375,11 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
 #endif
 
     [[eosio::action]]
+    void mapaddrlog(const name& actor, const uint64_t permission_id, const uint64_t address_id, const checksum160& evm_address, const string& btc_address) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
     void depositlog(const uint64_t permission_id, const uint64_t deposit_id, const string& b_id, const string& wallet_code, const global_status global_status,
                     const string& btc_address, const checksum160& evm_address, const string& order_id, const uint64_t block_height, const checksum256& tx_id,
                     const uint32_t index, const uint64_t amount, const uint64_t fee, const optional<string>& remark_detail, const uint64_t tx_time_stamp,
@@ -390,6 +395,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
         require_auth(get_self());
     }
 
+    using mapaddrlog_action = eosio::action_wrapper<"mapaddrlog"_n, &brdgmng::mapaddrlog>;
     using depositlog_action = eosio::action_wrapper<"depositlog"_n, &brdgmng::depositlog>;
     using withdrawlog_action = eosio::action_wrapper<"withdrawlog"_n, &brdgmng::withdrawlog>;
 
@@ -860,6 +866,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     // table init
     permission_index _permission = permission_index(_self, _self.value);
 
+    void check_first_actor_permission(const name& actor, const uint64_t permission_id);
     void check_permission(const name& actor, const uint64_t permission_id);
     uint64_t next_address_id();
     uint64_t next_address_mapping_id();
