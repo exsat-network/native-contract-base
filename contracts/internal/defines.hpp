@@ -50,6 +50,7 @@ static constexpr uint64_t START_HEIGHT = 839999;
 // CONTRACTS
 static constexpr name BTC_CONTRACT = "btc.xsat"_n;
 static constexpr name EXSAT_CONTRACT = "exsat.xsat"_n;
+static constexpr name EVM_CONTRACT = "evm.xsat"_n;
 static constexpr name ERC20_CONTRACT = "erc2o.xsat"_n;
 static constexpr name POOL_REGISTER_CONTRACT = "poolreg.xsat"_n;
 static constexpr name EVM_UTIL_CONTRACT = "evmutil.xsat"_n;
@@ -64,6 +65,7 @@ static constexpr name CUSTODY_CONTRACT = "custody.xsat"_n;
 
 // ACCOUNTS
 static constexpr name VAULT_ACCOUNT = "vault.xsat"_n;
+static constexpr name BOOT_ACCOUNT = "boot.xsat"_n;
 static constexpr name TRIGGER_ACCOUNT = "trigger.xsat"_n;
 
 // TABLE

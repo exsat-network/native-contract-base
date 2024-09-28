@@ -33,16 +33,18 @@ namespace xsat::utils {
         return sha256((char*)result.data(), result.size());
     }
 
-    static checksum256 compute_utxo_id(const checksum256& tx_id, const uint32_t index) {
+    static checksum256 compute_utxo_id(const checksum256 &tx_id, const uint32_t index) {
         std::vector<char> result;
         result.resize(36);
-        eosio::datastream<char*> ds(result.data(), result.size());
+        eosio::datastream<char *> ds(result.data(), result.size());
         ds << tx_id;
         ds << index;
-        return eosio::sha256((char*)result.data(), result.size());
+        return eosio::sha256((char *)result.data(), result.size());
     }
 
     static checksum256 hash(const string& data) { return sha256(data.c_str(), data.size()); }
+
+    static checksum160 hash_ripemd160(const string& data) { return ripemd160(data.c_str(), data.size()); }
 
     static checksum256 hash(const vector<uint8_t>& data) { return sha256((char*)data.data(), data.size()); }
 
@@ -268,6 +270,35 @@ namespace xsat::utils {
         uint64_t second_part = data[1];
 
         return first_part == 0 && (second_part & 0xFFFFFFFF00000000) == 0;
+    }
+
+    string checksum160_to_string(const checksum160& cs) {
+        auto arr = cs.extract_as_byte_array();
+        string result;
+        for (auto byte : arr) {
+            char buf[3];
+            snprintf(buf, sizeof(buf), "%02x", byte);
+            result += buf;
+        }
+        return result;
+    }
+
+    static uint8_t from_hex(char c) {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        eosio::check(false, "Invalid hex character");
+        return 0;
+    }
+
+    checksum160 evm_address_to_checksum160(const string& evm_address) {
+        std::string address = evm_address.substr(0, 2) == "0x" ? evm_address.substr(2) : evm_address;
+        eosio::check(address.length() == 40, "Invalid EVM address length");
+        std::array<uint8_t, 20> bytes;
+        for (int i = 0; i < 20; i++) {
+            bytes[i] = (from_hex(address[i*2]) << 4) | from_hex(address[i*2+1]);
+        }
+        return checksum160(bytes);
     }
 
 }  // namespace xsat::utils
