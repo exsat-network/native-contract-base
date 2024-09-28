@@ -39,10 +39,15 @@ namespace bitcoin {
         return bitcoin::le_uint_from_checksum256(h);
     }
 
-    bitcoin::uint256_t generate_merkle_root(std::vector<bitcoin::uint256_t>& hashes) {
-        if (hashes.size() == 0) return bitcoin::uint256_t(0);
-        // this loop ends
+    bitcoin::uint256_t generate_merkle_root(std::vector<bitcoin::uint256_t>& hashes, bool* mutated = nullptr) {
+        bool mutation = false;
         while (hashes.size() > 1) {
+            if (mutated) {
+                for (size_t pos = 0; pos + 1 < hashes.size(); pos += 2) {
+                    if (hashes[pos] == hashes[pos + 1]) mutation = true;
+                }
+            }
+
             if (hashes.size() % 2 == 1) {
                 // odd number of hashes duplicate the last hash
                 hashes.push_back(hashes.back());
@@ -62,17 +67,19 @@ namespace bitcoin {
 
             hashes = std::move(new_hashes);
         }
+        if (mutated) *mutated = mutation;
+        if (hashes.size() == 0) return bitcoin::uint256_t(0);
         return hashes[0];
     }
 
-    bitcoin::uint256_t generate_merkle_root(std::vector<eosio::checksum256>& hashes) {
+    bitcoin::uint256_t generate_merkle_root(std::vector<eosio::checksum256>& hashes, bool* mutated = nullptr) {
         std::vector<bitcoin::uint256_t> data;
         data.reserve(hashes.size());
         for (const auto& hash : hashes) {
             auto h = bitcoin::le_uint_from_checksum256(hash);
             data.emplace_back(std::move(h));
         }
-        return generate_merkle_root(data);
+        return generate_merkle_root(data, mutated);
     }
 
 }  // namespace bitcoin

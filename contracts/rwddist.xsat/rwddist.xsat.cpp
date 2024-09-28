@@ -115,7 +115,6 @@ void reward_distribution::endtreward(const uint64_t height, uint32_t from_index,
     auto reward_balance = _reward_balance.get_or_default();
     asset total_rewards = {0, reward_log_itr->staking_rewards.symbol};
     for (; from_index < to_index; from_index++) {
-        eosio::print_f("from_index %", from_index);
         auto validator = reward_log_itr->provider_validators[from_index];
         // endorse / consensus staking
         auto endorse_staking = validator.staking;

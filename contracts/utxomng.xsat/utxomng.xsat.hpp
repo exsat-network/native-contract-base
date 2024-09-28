@@ -21,7 +21,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     static const parsing_status distributing_rewards = 4;
     static const parsing_status parsing = 5;
 
-    //@notice parsing_progress.num_transactions == parsing_progress.parsed_transactions => return status `parsing_completed`
+    //@notice parsing_progress.num_transactions == parsing_progress.parsed_transactions => return status parsing_completed`
     static std::string get_parsing_status_name(const parsing_status status) {
         switch (status) {
             // Because wait starts from a new block, the return name is parsing completed.
@@ -236,7 +236,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         uint64_t value;
         uint64_t primary_key() const { return id; }
         checksum256 by_scriptpubkey() const { return xsat::utils::hash(scriptpubkey); }
-        checksum256 by_utxo_id() const { return compute_utxo_id(txid, index); }
+        checksum256 by_utxo_id() const { return xsat::utils::compute_utxo_id(txid, index); }
     };
     typedef eosio::multi_index<
         "utxos"_n, utxo_row,
@@ -285,9 +285,10 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         name type;  // vin/vout
         uint64_t primary_key() const { return id; }
         uint64_t by_height() const { return height; }
+        checksum256 by_utxo_id() const { return xsat::utils::compute_utxo_id(txid, index); }
         checksum256 by_scriptpubkey() const { return compute_scriptpubkey_id_for_block(height, hash, scriptpubkey); }
         checksum256 by_block_id() const { return xsat::utils::compute_block_id(height, hash); }
-        checksum256 by_utxo_id() const { return compute_utxo_id_for_block(height, hash, txid, index); }
+        checksum256 by_block_utxo_id() const { return compute_utxo_id_for_block(height, hash, txid, index); }
         checksum256 by_type() const { return compute_type_id_for_block(height, hash, type); }
     };
     typedef eosio::multi_index<
@@ -296,8 +297,10 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         eosio::indexed_by<"byblockid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_block_id>>,
         eosio::indexed_by<"scriptpubkey"_n,
                           const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_scriptpubkey>>,
-        eosio::indexed_by<"byutxoid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_utxo_id>>,
-        eosio::indexed_by<"bytype"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_type>>>
+        eosio::indexed_by<"byblkutxoid"_n,
+                          const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_block_utxo_id>>,
+        eosio::indexed_by<"bytype"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_type>>,
+        eosio::indexed_by<"byutxoid"_n, const_mem_fun<pending_utxo_row, checksum256, &pending_utxo_row::by_utxo_id>>>
         pending_utxo_table;
 
     /**
@@ -336,7 +339,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         uint64_t primary_key() const { return id; }
         uint64_t by_height() const { return height; }
         checksum256 by_scriptpubkey() const { return xsat::utils::hash(scriptpubkey); }
-        checksum256 by_utxo_id() const { return compute_utxo_id(txid, index); }
+        checksum256 by_utxo_id() const { return xsat::utils::compute_utxo_id(txid, index); }
     };
     typedef eosio::multi_index<
         "spentutxos"_n, spent_utxo_row,
@@ -359,10 +362,8 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
      * - `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
      * - `{uint32_t} timestamp` - the block time is a Unix epoch time
-     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
-     * equal to
-     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
-     * less than or
+     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or equal to
+     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash less than or
      *
      * ### example
      *
@@ -401,23 +402,27 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
     /**
      * ## TABLE `block.extra`
      *
-     * ### scope `height`
+     * ### scope `get_self()`
      * ### params
      *
+     * - `{uint64_t} height` - block height
      * - `{uint64_t} bucket_id` - the associated bucket number is used to obtain block data
      *
      * ### example
      *
      * ```json
      * {
-     *   "bucket_id": 1,
+     *   "height": 840001,
+     *   "bucket_id": 1
      * }
      * ```
      */
     struct [[eosio::table]] block_extra_row {
+        uint64_t height;
         uint64_t bucket_id;
+        uint64_t primary_key() const { return height; }
     };
-    typedef eosio::singleton<"block.extra"_n, block_extra_row> block_extra_table;
+    typedef eosio::multi_index<"block.extra"_n, block_extra_row> block_extra_table;
 
     /**
      * ## TABLE `consensusblk`
@@ -433,10 +438,8 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
      * - `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
      * - `{uint32_t} timestamp` - the block time is a Unix epoch time
-     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
-     * equal to
-     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
-     * less than or
+     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or equal to
+     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash less than or
      * - `{name} miner` - block miner account
      * - `{name} synchronizer` - block synchronizer account
      * - `{name} parser` - the last parser of the parsing block
@@ -564,12 +567,10 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      *
      * - `{uint16_t} parse_timeout_seconds` - parsing timeout duration
      * - `{uint16_t} num_validators_per_distribution` - number of endorsing users each time rewards are distributed
-     * - `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
      * - `{uint16_t} retained_spent_utxo_blocks` - number of blocks to retain utxo
-     * - `{uint16_t} num_txs_per_verification` - the number of tx for each verification (2^n)
+     * - `{uint16_t} num_retain_data_blocks` - number of blocks to retain data
      * - `{uint8_t} num_merkle_layer` - verify the number of merkle levels (log(num_txs_per_verification))
-     * - `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of
-     * blocks
+     * - `{uint16_t} num_miner_priority_blocks` - miners who produce blocks give priority to verifying the number of blocks
      *
      * ### example
      *
@@ -644,20 +645,13 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * - `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
      * - `{checksum256} merkle` - the merkle root is derived from the hashes of all transactions included in this block
      * - `{uint32_t} timestamp` - the block time is a Unix epoch time
-     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or
-     * equal to
-     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash
-     * less than or
+     * - `{uint32_t} bits` - an encoded version of the target threshold this block’s header hash must be less than or equal to
+     * - `{uint32_t} nonce` - an arbitrary number miners change to modify the header hash in order to produce a hash less than or
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action utxomng.xsat addblock '[840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5",
-     * "0000000000000000000172014ba58d66455762add0512355ad651207918494ab", 710926336,
-     * "0000000000000000000172014ba58d66455762add0512355ad651207918494ab",
-     * "031b417c3a1828ddf3d6527fc210daafcc9218e81f98257f88d4d43bd7a5894f", 1713571767, 3932395645, 386089497
-     * ]' -p utxomng.xsat
+     * $ cleos push action utxomng.xsat addblock '[840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "0000000000000000000172014ba58d66455762add0512355ad651207918494ab", 710926336, "0000000000000000000172014ba58d66455762add0512355ad651207918494ab", "031b417c3a1828ddf3d6527fc210daafcc9218e81f98257f88d4d43bd7a5894f", 1713571767, 3932395645, 386089497]' -p utxomng.xsat
      * ```
      */
     [[eosio::action]]
@@ -684,6 +678,46 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      */
     [[eosio::action]]
     void delblock(const uint64_t height);
+
+    /**
+     * ## ACTION `delspentutxo`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Delete spent utxo.
+     *
+     * ### params
+     *
+     * - `{uint64_t} row` - number of rows to delete utxo
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action utxomng.xsat delspentutxo '[1000]' -p utxomng.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void delspentutxo(uint64_t rows);
+
+    /**
+     * ## ACTION `delblockdata`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Delete block data.
+     *
+     * ### params
+     *
+     * - `{uint64_t} row` - number of rows of block data to delete
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action utxomng.xsat delblockdata '[1000]' -p utxomng.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void delblockdata(uint64_t rows);
 
     /**
      * ## ACTION `processblock`
@@ -721,8 +755,7 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action utxomng.xsat consensus '[840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p blksync.xsat
+     * $ cleos push action utxomng.xsat consensus '[840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p blksync.xsat
      * ```
      */
     [[eosio::action]]
@@ -746,6 +779,13 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     [[eosio::action]]
     bool unspendable(const uint64_t height, const vector<uint8_t> &script);
+
+    [[eosio::action]]
+    void addtestblock(const uint64_t height, const checksum256 &hash, const checksum256 &cumulative_work,
+                      const uint32_t version, const checksum256 &previous_block_hash, const checksum256 &merkle,
+                      const uint32_t timestamp, const uint32_t bits, const uint32_t nonce);
+
+    void resetpending(uint64_t row);
 #endif
 
     // logs
@@ -756,15 +796,6 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
 
     using consensus_action = eosio::action_wrapper<"consensus"_n, &utxo_manage::consensus>;
     using lostutxolog_action = eosio::action_wrapper<"lostutxolog"_n, &utxo_manage::lostutxolog>;
-
-    static checksum256 compute_utxo_id(const checksum256 &tx_id, const uint32_t index) {
-        std::vector<char> result;
-        result.resize(36);
-        eosio::datastream<char *> ds(result.data(), result.size());
-        ds << tx_id;
-        ds << index;
-        return eosio::sha256((char *)result.data(), result.size());
-    }
 
     static checksum256 compute_type_id_for_block(const uint64_t height, const checksum256 &hash, const name &type) {
         std::vector<char> result;
@@ -814,29 +845,63 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         return block_itr != _block.end();
     }
 
-    static std::optional<eosio::checksum256> get_cumulative_work(const uint64_t height,
-                                                                 const eosio::checksum256 &hash) {
+    static optional<bitcoin::core::block> get_ancestor(const uint64_t height, const optional<checksum256> hash) {
         utxo_manage::consensus_block_table _consensus_block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
-        auto consensus_block_idx = _consensus_block.get_index<"byblockid"_n>();
-        auto consensus_block_itr = consensus_block_idx.find(xsat::utils::compute_block_id(height, hash));
-        if (consensus_block_itr == consensus_block_idx.end()) {
+        optional<bitcoin::core::block> result = std::nullopt;
+        if (hash.has_value()) {
+            auto consensus_block_idx = _consensus_block.get_index<"byblockid"_n>();
+            auto consensus_block_itr = consensus_block_idx.find(xsat::utils::compute_block_id(height, *hash));
+            if (consensus_block_itr != consensus_block_idx.end()) {
+                return bitcoin::core::block{.height = height,
+                                            .hash = consensus_block_itr->hash,
+                                            .previous_block_hash = consensus_block_itr->previous_block_hash,
+                                            .cumulative_work = consensus_block_itr->cumulative_work,
+                                            .timestamp = consensus_block_itr->timestamp,
+                                            .bits = consensus_block_itr->bits};
+            }
+
             utxo_manage::block_table _block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
             auto block_idx = _block.get_index<"byhash"_n>();
-            auto block_itr = block_idx.find(hash);
-            if (block_itr == block_idx.end()) {
-                return std::nullopt;
-            } else {
-                return block_itr->cumulative_work;
+            auto block_itr = block_idx.find(*hash);
+            if (block_itr != block_idx.end()) {
+                return bitcoin::core::block{.height = height,
+                                            .hash = block_itr->hash,
+                                            .previous_block_hash = block_itr->previous_block_hash,
+                                            .cumulative_work = block_itr->cumulative_work,
+                                            .timestamp = block_itr->timestamp,
+                                            .bits = block_itr->bits};
             }
         } else {
-            return consensus_block_itr->cumulative_work;
+            auto consensus_block_idx = _consensus_block.get_index<"byheight"_n>();
+            auto consensus_block_itr = consensus_block_idx.find(height);
+            if (consensus_block_itr != consensus_block_idx.end()) {
+                return bitcoin::core::block{.height = height,
+                                            .hash = consensus_block_itr->hash,
+                                            .previous_block_hash = consensus_block_itr->previous_block_hash,
+                                            .cumulative_work = consensus_block_itr->cumulative_work,
+                                            .timestamp = consensus_block_itr->timestamp,
+                                            .bits = consensus_block_itr->bits};
+            }
+
+            utxo_manage::block_table _block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+            auto block_itr = _block.find(height);
+            if (block_itr != _block.end()) {
+                return bitcoin::core::block{.height = height,
+                                            .hash = block_itr->hash,
+                                            .previous_block_hash = block_itr->previous_block_hash,
+                                            .cumulative_work = block_itr->cumulative_work,
+                                            .timestamp = block_itr->timestamp,
+                                            .bits = block_itr->bits};
+            }
         }
+        return result;
     }
 
    private:
     // table init
     config_table _config = config_table(_self, _self.value);
     chain_state_table _chain_state = chain_state_table(_self, _self.value);
+    block_extra_table _block_extra = block_extra_table(_self, _self.value);
     utxo_table _utxo = utxo_table(_self, _self.value);
     pending_utxo_table _pending_utxo = pending_utxo_table(_self, _self.value);
     spent_utxo_table _spent_utxo = spent_utxo_table(_self, _self.value);

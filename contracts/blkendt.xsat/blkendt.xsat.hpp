@@ -22,19 +22,22 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      *
      * - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
      * - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
+     * - `{uint16_t} min_validators` - the minimum number of validators, which limits the number of validators that pledge more than 100 BTC at the time of first endorsement.
      *
      * ### example
      *
      * ```json
      * {
      *   "limit_endorse_height": 840000,
-     *   "limit_num_endorsed_blocks": 10
+     *   "limit_num_endorsed_blocks": 10,
+     *   "min_validators": 15,
      * }
      * ```
      */
     struct [[eosio::table]] config_row {
         uint64_t limit_endorse_height;
         uint16_t limit_num_endorsed_blocks;
+        uint16_t min_validators;
     };
     typedef eosio::singleton<"config"_n, config_row> config_table;
 
@@ -145,15 +148,17 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      *
      * - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
      * - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
+     * - `{uint16_t} min_validators` - the minimum number of validators, which limits the number of validators that pledge more than 100 BTC at the time of first endorsement.
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action blkendt.xsat config '[840003, 10]' -p blkendt.xsat
+     * $ cleos push action blkendt.xsat config '[840003, 10, 15]' -p blkendt.xsat
      * ```
      */
     [[eosio::action]]
-    void config(const uint64_t limit_endorse_height, const uint16_t limit_num_endorsed_blocks);
+    void config(const uint64_t limit_endorse_height, const uint16_t limit_num_endorsed_blocks,
+                const uint16_t min_validators);
 
     /**
      * ## ACTION `endorse`
@@ -171,8 +176,7 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action blkendt.xsat endorse '["alice", 840000,
-     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+     * $ cleos push action blkendt.xsat endorse '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
      * ```
      */
     [[eosio::action]]

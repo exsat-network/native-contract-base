@@ -8,11 +8,11 @@
 #include "./src/debug.hpp"
 #endif
 
-//@auth blksync.xsat
+//@auth utxomng.xsat
 [[eosio::action]]
 void pool::updateheight(const name& synchronizer, const uint64_t latest_produced_block_height,
                         const std::vector<string>& miners) {
-    require_auth(BLOCK_SYNC_CONTRACT);
+    require_auth(UTXO_MANAGE_CONTRACT);
 
     check(is_account(synchronizer), "poolreg.xsat::updateheight: synchronizer does not exists");
 
@@ -57,7 +57,7 @@ void pool::initpool(const name& synchronizer, const uint64_t latest_produced_blo
     check(is_account(synchronizer), "poolreg.xsat::initpool: synchronizer does not exists");
 
     for (const auto& miner : miners) {
-        check(bitcoin::IsValid(miner), "poolreg.xsat::initpool: invalid miner [\"" + miner + "\"]");
+        check(bitcoin::IsValid(miner, CHAIN_PARAMS), "poolreg.xsat::initpool: invalid miner [\"" + miner + "\"]");
     }
 
     bool is_eos_address = financial_account.size() <= 12;
@@ -227,6 +227,9 @@ void pool::buyslot(const name& synchronizer, const name& receiver, const uint16_
 
     auto synchronizer_itr
         = _synchronizer.require_find(receiver.value, "recsmng.xsat::buyslot: [synchronizer] does not exists");
+
+    check(synchronizer_itr->num_slots + num_slots <= MAX_NUM_SLOTS,
+          "recsmng.xsat::buyslot: the total number of slots purchased cannot exceed [1000]");
     _synchronizer.modify(synchronizer_itr, same_payer, [&](auto& row) {
         row.num_slots += num_slots;
     });

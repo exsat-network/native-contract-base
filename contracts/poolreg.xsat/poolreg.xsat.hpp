@@ -101,7 +101,7 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     /**
      * ## ACTION `updateheight`
      *
-     * - **authority**: `blksync.xsat`
+     * - **authority**: `utxomng.xsat`
      *
      * > Update synchronizer’s latest block height and add associated btc miners.
      *
@@ -114,8 +114,7 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action poolreg.xsat updateheight '["alice", 839999, ["3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv",
-     * "bc1p8k4v4xuz55dv49svzjg43qjxq2whur7ync9tm0xgl5t4wjl9ca9snxgmlt"]]' -p poolreg.xsat
+     * $ cleos push action poolreg.xsat updateheight '["alice", 839999, ["3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv", "bc1p8k4v4xuz55dv49svzjg43qjxq2whur7ync9tm0xgl5t4wjl9ca9snxgmlt"]]' -p poolreg.xsat
      * ```
      */
     [[eosio::action]]
@@ -139,8 +138,7 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action poolreg.xsat initpool '["alice", 839997, "alice", ["37jKPSmbEGwgfacCr2nayn1wTaqMAbA94Z",
-     * "39C7fxSzEACPjM78Z7xdPxhf7mKxJwvfMJ"]]' -p poolreg.xsat
+     * $ cleos push action poolreg.xsat initpool '["alice", 839997, "alice", ["37jKPSmbEGwgfacCr2nayn1wTaqMAbA94Z", "39C7fxSzEACPjM78Z7xdPxhf7mKxJwvfMJ"]]' -p poolreg.xsat
      * ```
      */
     [[eosio::action]]
@@ -197,8 +195,7 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
      * ### params
      *
      * - `{name} synchronizer` - synchronizer account
-     * - `{uint16_t} produced_block_limit` - upload block limit, for example, if 432 is set, the upload height needs to
-     * be a synchronizer that has produced blocks in 432 blocks before it can be uploaded.
+     * - `{uint16_t} produced_block_limit` - upload block limit, for example, if 432 is set, the upload height needs to be a synchronizer that has produced blocks in 432 blocks before it can be uploaded.
      *
      * ### example
      *
