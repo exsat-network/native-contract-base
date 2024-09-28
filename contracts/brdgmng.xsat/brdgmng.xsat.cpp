@@ -515,7 +515,8 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
     // move pending withdraw to confirmed withdraw
     if (withdraw_itr_pending->global_status == global_status_succeed || withdraw_itr_pending->global_status == global_status_failed) {
         if (withdraw_itr_pending->global_status == global_status_succeed) {
-            handle_btc_withdraw(permission_id, withdraw_itr_pending->amount);
+            const uint64_t retire_amount = safemath::add(withdraw_itr_pending->amount, withdraw_itr_pending->fee);
+            handle_btc_withdraw(permission_id, retire_amount);
         }
         _withdraw_confirmed.emplace(get_self(), [&](auto& row) {
             row.id = withdraw_itr_pending->id;
