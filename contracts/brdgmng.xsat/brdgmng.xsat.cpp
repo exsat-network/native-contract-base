@@ -272,12 +272,6 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
     check(is_final_tx_status(deposit_itr_pending->tx_status) && is_final_tx_status(tx_status), "brdgmng.xsat::valdeposit: only final tx status can be confirmed");
     auto actor_itr = std::find_if(deposit_itr_pending->provider_actors.begin(), deposit_itr_pending->provider_actors.end(), [&](const auto& u) { return u == actor; });
     check(actor_itr == deposit_itr_pending->provider_actors.end(), "6010:brdgmng.xsat::valdeposit: actor already exists in the provider actors list");
-    // // The creator can update the tx_status until the final state, while non-creators can only wait until the final state and then confirm
-    // name creator = deposit_itr_pending->provider_actors[0];
-    // if (actor != creator) {
-    //     check(is_final_tx_status(tx_status), "brdgmng.xsat::valdeposit: only creator can modify the tx_status to confirmed, failed or rollbacked");
-    //     check(is_final_tx_status(deposit_itr_pending->tx_status), "brdgmng.xsat::valdeposit: only final tx_status can be confirmed by non-creator");
-    // }
     _deposit_pending.modify(deposit_itr_pending, same_payer, [&](auto& row) {
         row.tx_status = tx_status;
         row.provider_actors.push_back(actor);
@@ -483,22 +477,6 @@ void brdgmng::valwithdraw(const name& actor, const uint64_t permission_id, const
 
     auto actor_itr = std::find_if(withdraw_itr_pending->provider_actors.begin(), withdraw_itr_pending->provider_actors.end(), [&](const auto& u) { return u == actor; });
     check(actor_itr == withdraw_itr_pending->provider_actors.end(), "6010:brdgmng.xsat::valwithdraw: actor already exists in the provider actors list");
-
-    // if (is_final_order_status(withdraw_itr_pending->order_status)) {
-    //     check(is_final_order_status(order_status), "brdgmng.xsat::valwithdraw: the order_status is final and cannot be modified");
-    //     auto actor_itr = std::find_if(withdraw_itr_pending->provider_actors.begin(), withdraw_itr_pending->provider_actors.end(), [&](const auto& u) { return u == actor; });
-    //     check(actor_itr == withdraw_itr_pending->provider_actors.end(), "brdgmng.xsat::valwithdraw: actor already exists in the provider actors list");
-    // }
-    // name creator;
-    // if (withdraw_itr_pending->provider_actors.size() >= 1) {
-    //     creator = withdraw_itr_pending->provider_actors[0];
-    //     if (actor != creator) {
-    //         check(is_final_order_status(order_status),
-    //               "brdgmng.xsat::valwithdraw: non-creators can only modify order status to partially_failed, failed, finished, canceled");
-    //         check(is_final_order_status(withdraw_itr_pending->order_status),
-    //               "brdgmng.xsat::valwithdraw: non-creators can only confirm the final status of the order");
-    //     }
-    // }
 
     _withdraw_pending.modify(withdraw_itr_pending, same_payer, [&](auto& row) {
         row.order_status = order_status;

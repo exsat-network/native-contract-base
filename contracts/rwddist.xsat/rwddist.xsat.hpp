@@ -48,10 +48,9 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
      * - `{asset} consensus_rewards` - the consensus validator allocates the number of rewards
      * - `{asset} staking_rewards` - the validator assigns the number of rewards
      * - `{uint32_t} num_validators` - the number of validators who pledge more than 100 BTC
-     * - `{std::vector<validator_info> } provider_validators` - list of endorsed validators
+     * - `{std::vector<validator_info>} provider_validators` - list of endorsed validators
      * - `{uint64_t} endorsed_staking` - total endorsed staking amount
-     * - `{uint64_t} reached_consensus_staking` - the total staking amount to reach consensus is
-     * `(number of validators * 2/3+ 1 staking amount)`
+     * - `{uint64_t} reached_consensus_staking` - the total staking amount to reach consensus is `(number of validators * 2/3+ 1 staking amount)`
      * - `{uint32_t} num_validators_assigned` - the number of validators that have been allocated rewards
      * - `{name} synchronizer` -synchronizer account
      * - `{name} miner` - miner account
@@ -107,11 +106,13 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
         uint64_t primary_key() const { return height; }
         uint64_t by_synchronizer() const { return synchronizer.value; }
         uint64_t by_parser() const { return parser.value; }
+        uint64_t by_miner() const { return miner.value; }
     };
     typedef eosio::multi_index<
         "rewardlogs"_n, reward_log_row,
         eosio::indexed_by<"bysyncer"_n, const_mem_fun<reward_log_row, uint64_t, &reward_log_row::by_synchronizer>>,
-        eosio::indexed_by<"byparser"_n, const_mem_fun<reward_log_row, uint64_t, &reward_log_row::by_parser>>>
+        eosio::indexed_by<"byparser"_n, const_mem_fun<reward_log_row, uint64_t, &reward_log_row::by_parser>>,
+        eosio::indexed_by<"byminer"_n, const_mem_fun<reward_log_row, uint64_t, &reward_log_row::by_miner>>>
         reward_log_table;
 
     /**

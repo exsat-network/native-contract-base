@@ -65,8 +65,7 @@ $ cleos push action endrmng.xsat evmclaim '{"caller": "evmutil.xsat", "proxy": "
 $ cleos push action endrmng.xsat vdrclaim '{"validator": "alice"}' -p alice 
 
 # distribute @rwddist.xsat
-$ cleos push action endrmng.xsat distribute '{"height": 840000, [{"validator": "alice", "staking_rewards": "0.00000020
-XSAT", "consensus_rewards": "0.00000020 XSAT"}]}' -p rwddist.xsat
+$ cleos push action endrmng.xsat distribute '{"height": 840000, [{"validator": "alice", "staking_rewards": "0.00000020 XSAT", "consensus_rewards": "0.00000020 XSAT"}]}' -p rwddist.xsat
 ```
 
 ## Table Information
@@ -586,8 +585,7 @@ $ cleos push action endrmng.xsat claim '["alice",  "bob"]' -p alice
 ### example
 
 ```bash
-$ cleos push action endrmng.xsat evmstake '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41",
-"e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", "1.00000000 BTC"]' -p evmutil.xsat
+$ cleos push action endrmng.xsat evmstake '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41", "e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", "1.00000000 BTC"]' -p evmutil.xsat
 ```
 
 ## ACTION `evmunstake`
@@ -607,8 +605,7 @@ $ cleos push action endrmng.xsat evmstake '["evmutil.xsat", "bb776ae86d5996908af
 ### example
 
 ```bash
-$ cleos push action endrmng.xsat evmunstake '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41",
-"e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", "1.00000000 BTC"]' -p evmutil.xsat
+$ cleos push action endrmng.xsat evmunstake '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41", "e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", "1.00000000 BTC"]' -p evmutil.xsat
 ```
 
 ## ACTION `evmnewstake`
@@ -629,8 +626,7 @@ $ cleos push action endrmng.xsat evmunstake '["evmutil.xsat", "bb776ae86d5996908
 ### example
 
 ```bash
-$ cleos push action endrmng.xsat evmnewstake '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41",
-"e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", "bob", "1.00000000 BTC"]' -p evmutil.xsat
+$ cleos push action endrmng.xsat evmnewstake '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41", "e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", "bob", "1.00000000 BTC"]' -p evmutil.xsat
 ```
 
 ## ACTION `evmclaim`
@@ -649,8 +645,7 @@ $ cleos push action endrmng.xsat evmnewstake '["evmutil.xsat", "bb776ae86d599690
 ### example
 
 ```bash
-$ cleos push action endrmng.xsat evmclaim '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41",
-"e4d68a77714d9d388d8233bee18d578559950cf5",  "alice"]' -p evmutil.xsat
+$ cleos push action endrmng.xsat evmclaim '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41", "e4d68a77714d9d388d8233bee18d578559950cf5",  "alice"]' -p evmutil.xsat
 ```
 
 ## ACTION `vdrclaim`
@@ -701,6 +696,5 @@ $ cleos push action endrmng.xsat vdrclaim '["alice"]' -p alice
 ### example
 
 ```bash
-$ cleos push action endrmng.xsat distribute '[840000, [{"validator": "alice", "staking_rewards": "0.00000020
-XSAT", "consensus_rewards": "0.00000020 XSAT"}]]' -p rwddist.xsat
+$ cleos push action endrmng.xsat distribute '[840000, [{"validator": "alice", "staking_rewards": "0.00000020 XSAT", "consensus_rewards": "0.00000020 XSAT"}]]' -p rwddist.xsat
 ```

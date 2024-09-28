@@ -137,6 +137,8 @@ static const block_status verify_pass = 7;
 - `{uint64_t} num_transactions` - the number of transactions in the block
 - `{uint64_t} processed_position` - the location of the block that has been resolved
 - `{uint64_t} processed_transactions` - the number of processed transactions
+- `{uint32_t}` timestamp : the block time in seconds since epoch (Jan 1 1970 GMT)
+- `{uint32_t}` bits : the bits
 
 ### example
 
@@ -166,9 +168,12 @@ static const block_status verify_pass = 7;
   ],
   "num_transactions": 4899,
   "processed_transactions": 4096,
-  "processed_position": 1197889
+  "processed_position": 1197889,
+  "timestamp": 1713608213,
+  "bits": 386089497
 }
 ```
+
 
 ## TABLE `blockbuckets`
 
@@ -229,7 +234,9 @@ static const block_status verify_pass = 7;
       ],
       "num_transactions": 4899,
       "processed_transactions": 4096,
-      "processed_position": 1197889
+      "processed_position": 1197889,
+      "timestamp": 1713608213,
+      "bits": 386089497
   }
 }
 ```
@@ -367,8 +374,7 @@ $ cleos push action blksync.xsat delchunks '[1]' -p utxomng.xsat
 ### example
 
 ```bash
-$ cleos push action blksync.xsat initbucket '["alice", 840000,
-"0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9, 25600]' -p alice
+$ cleos push action blksync.xsat initbucket '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 2325617, 9, 25600]' -p alice
 ```
 
 ## ACTION `pushchunk`
@@ -388,8 +394,7 @@ $ cleos push action blksync.xsat initbucket '["alice", 840000,
 ### example
 
 ```bash
-$ cleos push action blksync.xsat pushchunk '["alice", 840000,
-"0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 0, ""]' -p alice
+$ cleos push action blksync.xsat pushchunk '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 0, ""]' -p alice
 ```
 
 ## ACTION `delchunk`
@@ -408,8 +413,7 @@ $ cleos push action blksync.xsat pushchunk '["alice", 840000,
 ### example
 
 ```bash
-$ cleos push action blksync.xsat delchunk '["alice", 840000,
-"0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 0]' -p alice
+$ cleos push action blksync.xsat delchunk '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 0]' -p alice
 ```
 
 ## ACTION `delbucket`
@@ -427,8 +431,7 @@ $ cleos push action blksync.xsat delchunk '["alice", 840000,
 ### example
 
 ```bash
-$ cleos push action blksync.xsat delbucket '["alice", 840000,
-"0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+$ cleos push action blksync.xsat delbucket '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
 ```
 
 ## ACTION `verify`
@@ -446,6 +449,5 @@ $ cleos push action blksync.xsat delbucket '["alice", 840000,
 ### example
 
 ```bash
-$ cleos push action blksync.xsat verify '["alice", 840000,
-"0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+$ cleos push action blksync.xsat verify '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
 ```

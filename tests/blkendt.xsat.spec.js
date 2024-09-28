@@ -87,16 +87,25 @@ beforeAll(async () => {
 describe('blkendt.xsat', () => {
     it('config: missing required authority', async () => {
         await expectToThrow(
-            contracts.blkendt.actions.config([0, 0]).send('alice@active'),
+            contracts.blkendt.actions.config([0, 0, 15]).send('alice@active'),
             'missing required authority blkendt.xsat'
         )
     })
 
+    it('config: min_validators must be greater than 0', async () => {
+        await expectToThrow(
+            contracts.blkendt.actions.config([0, 0, 0]).send('blkendt.xsat@active'),
+            'eosio_assert: blkendt.xsat::config: min_validators must be greater than 0'
+        )
+    })
+
+
     it('config', async () => {
-        await contracts.blkendt.actions.config([0, 0]).send('blkendt.xsat@active')
+        await contracts.blkendt.actions.config([0, 0, 10]).send('blkendt.xsat@active')
         expect(get_config()).toEqual({
             limit_endorse_height: 0,
             limit_num_endorsed_blocks: 0,
+            min_validators: 10
         })
     })
 
@@ -114,20 +123,24 @@ describe('blkendt.xsat', () => {
             contracts.blkendt.actions
                 .endorse(['bob', 839999, '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'])
                 .send('bob@active'),
-            'eosio_assert: 1002:blkendt.xsat::endorse: the block has been parsed and does not need to be endorsed'
+            'eosio_assert: 1002:blkendt.xsat::endorse: the current block is irreversible and does not need to be endorsed'
         )
     })
 
-    it('endorse: no validator with more than 100 BTC pledged was found', async () => {
+    it('endorse: validators with a stake of more than 100 BTC must be greater than or equal to 10', async () => {
         await expectToThrow(
             contracts.blkendt.actions
                 .endorse(['amy', 840000, '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'])
                 .send('amy@active'),
-            'eosio_assert: 1004:blkendt.xsat::endorse: no validators found with staking amounts exceeding 100 BTC'
+            'eosio_assert_message: 1004:blkendt.xsat::endorse: validators with a stake of more than 100 BTC must be greater than or equal to 10'
         )
     })
 
-    it('endorse: the validator has less than 100 BTC staked.', async () => {
+    it('config', async () => {
+        await contracts.blkendt.actions.config([0, 0, 2]).send('blkendt.xsat@active')
+    })
+
+    it('endorse: the validator has less than 100 BTC staked', async () => {
         // staking
         await contracts.btc.actions
             .transfer(['alice', 'staking.xsat', Asset.from(100, BTC), 'alice'])
@@ -236,10 +249,11 @@ describe('blkendt.xsat', () => {
     })
 
     it('config', async () => {
-        await contracts.blkendt.actions.config([1, 0]).send('blkendt.xsat@active')
+        await contracts.blkendt.actions.config([1, 0, 2]).send('blkendt.xsat@active')
         expect(get_config()).toEqual({
             limit_endorse_height: 1,
             limit_num_endorsed_blocks: 0,
+            min_validators: 2
         })
     })
 
@@ -253,10 +267,11 @@ describe('blkendt.xsat', () => {
     })
 
     it('config', async () => {
-        await contracts.blkendt.actions.config([0, 1]).send('blkendt.xsat@active')
+        await contracts.blkendt.actions.config([0, 1, 2]).send('blkendt.xsat@active')
         expect(get_config()).toEqual({
             limit_endorse_height: 0,
             limit_num_endorsed_blocks: 1,
+            min_validators: 2
         })
     })
 

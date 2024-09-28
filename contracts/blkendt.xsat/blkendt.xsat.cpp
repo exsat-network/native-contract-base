@@ -22,11 +22,15 @@ void block_endorse::erase(const uint64_t height) {
 
 //@auth get_self()
 [[eosio::action]]
-void block_endorse::config(const uint64_t limit_endorse_height, const uint16_t limit_num_endorsed_blocks) {
+void block_endorse::config(const uint64_t limit_endorse_height, const uint16_t limit_num_endorsed_blocks,
+                           const uint16_t min_validators) {
     require_auth(get_self());
+    check(min_validators > 0, "blkendt.xsat::config: min_validators must be greater than 0");
+
     auto config = _config.get_or_default();
     config.limit_endorse_height = limit_endorse_height;
     config.limit_num_endorsed_blocks = limit_num_endorsed_blocks;
+    config.min_validators = min_validators;
     _config.set(config, get_self());
 }
 
@@ -42,7 +46,7 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
     auto chain_state = _chain_state.get();
     check(chain_state.irreversible_height < height && chain_state.migrating_height != height,
-          "1002:blkendt.xsat::endorse: the block has been parsed and does not need to be endorsed");
+          "1002:blkendt.xsat::endorse: the current block is irreversible and does not need to be endorsed");
 
     check(
         config.limit_num_endorsed_blocks == 0 || chain_state.parsed_height + config.limit_num_endorsed_blocks >= height,
@@ -59,8 +63,10 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     bool reached_consensus = false;
     if (endorsement_itr == endorsement_idx.end()) {
         std::vector<requested_validator_info> requested_validators = get_valid_validator();
-        check(!requested_validators.empty(),
-              "1004:blkendt.xsat::endorse: no validators found with staking amounts exceeding 100 BTC");
+        check(requested_validators.size() >= config.min_validators,
+              "1004:blkendt.xsat::endorse: validators with a stake of more than 100 BTC must be greater than or equal "
+              "to "
+                  + std::to_string(config.min_validators));
         auto itr = std::find_if(requested_validators.begin(), requested_validators.end(),
                                 [&](const requested_validator_info& a) {
                                     return a.account == validator;
