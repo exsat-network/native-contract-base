@@ -423,7 +423,7 @@ class [[eosio::contract("brdgmng.xsat")]] brdgmng : public contract {
     [[eosio::action]]
     void depositlog(const uint64_t permission_id, const uint64_t deposit_id, const string& b_id, const string& wallet_code, const global_status global_status,
                     const string& btc_address, const checksum160& evm_address, const string& order_id, const uint64_t block_height, const checksum256& tx_id,
-                    const uint32_t index, const uint64_t amount, const uint64_t fee, const optional<string>& remark_detail, const uint64_t tx_time_stamp,
+                    const uint32_t index, const uint64_t amount, const uint64_t fee, const uint64_t issue_amount, const optional<string>& remark_detail, const uint64_t tx_time_stamp,
                     const uint64_t create_time_stamp) {
         require_auth(get_self());
     }

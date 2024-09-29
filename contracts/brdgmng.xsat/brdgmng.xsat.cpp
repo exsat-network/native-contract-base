@@ -287,12 +287,13 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
     // move pending deposit to confirmed deposit
     config_row config = _config.get_or_default();
     if (deposit_itr_pending->global_status == global_status_succeed || deposit_itr_pending->global_status == global_status_failed) {
+        uint64_t issue_amount = 0;
         if (deposit_itr_pending->global_status == global_status_succeed && deposit_itr_pending->amount >= config.limit_amount) {
             if (config.check_uxto_enable) {
                 bool uxto_exist = check_utxo_exist(deposit_itr_pending->tx_id, deposit_itr_pending->index);
                 check(uxto_exist, "brdgmng.xsat::valdeposit: utxo does not exist");
             }
-            const uint64_t issue_amount = safemath::sub(deposit_itr_pending->amount, deposit_itr_pending->fee);
+            issue_amount = safemath::sub(deposit_itr_pending->amount, deposit_itr_pending->fee);
             handle_btc_deposit(permission_id, issue_amount, deposit_itr_pending->evm_address);
         }
         _deposit_confirmed.emplace(get_self(), [&](auto& row) {
@@ -322,7 +323,7 @@ void brdgmng::valdeposit(const name& actor, const uint64_t permission_id, const 
         _depositlog.send(deposit_itr_pending->permission_id, deposit_itr_pending->id, deposit_itr_pending->b_id, deposit_itr_pending->wallet_code,
                          deposit_itr_pending->global_status, deposit_itr_pending->btc_address, deposit_itr_pending->evm_address, deposit_itr_pending->order_id,
                          deposit_itr_pending->block_height, deposit_itr_pending->tx_id, deposit_itr_pending->index, deposit_itr_pending->amount,
-                         deposit_itr_pending->fee, deposit_itr_pending->remark_detail, deposit_itr_pending->tx_time_stamp,
+                         deposit_itr_pending->fee, issue_amount, deposit_itr_pending->remark_detail, deposit_itr_pending->tx_time_stamp,
                          deposit_itr_pending->create_time_stamp);
 
         _deposit_pending.erase(deposit_itr_pending);
