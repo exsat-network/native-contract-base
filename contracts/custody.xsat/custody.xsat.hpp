@@ -5,7 +5,6 @@
 #include <eosio/singleton.hpp>
 #include <eosio/asset.hpp>
 #include <sstream>
-#include <utxomng.xsat/utxomng.xsat.hpp>
 #include <endrmng.xsat/endrmng.xsat.hpp>
 #include <btc.xsat/btc.xsat.hpp>
 #include <bitcoin/utility/address_converter.hpp>
@@ -95,8 +94,6 @@ public:
     void addr2pubkey(const string& address);
     [[eosio::action]]
     void pubkey2addr(const vector<uint8_t> data);
-    [[eosio::action]]
-    void updateheight(const uint64_t height);
 #endif
 
 private:

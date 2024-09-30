@@ -51,11 +51,11 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
 [[eosio::action]]
 void custody::delcustody(const checksum160 staker) {
     require_auth(get_self());
-    auto staker_idx = _custody.get_index<"bystaker"_n>();
     auto staker_id = xsat::utils::compute_id(staker);
-    auto itr = staker_idx.require_find(staker_id, "custody.xsat::delcustody: staker does not exists");
-    handle_staking(itr, 0);
-    staker_idx.erase(itr);
+    auto staker_idx = _custody.get_index<"bystaker"_n>();
+    auto staker_itr = staker_idx.require_find(staker_id, "custody.xsat::delcustody: staker does not exists");
+    handle_staking(staker_itr, 0);
+    staker_idx.erase(staker_itr);
 }
 
 
@@ -63,9 +63,9 @@ void custody::delcustody(const checksum160 staker) {
 void custody::creditstake(const checksum160& staker, const uint64_t balance) {
     require_auth(get_self());
     auto staker_id = xsat::utils::compute_id(staker);
-    auto custody_staker_idx = _custody.get_index<"bystaker"_n>();
-    auto custody_staker_itr = custody_staker_idx.require_find(staker_id, "custody.xsat::offchainsync: staker does not exists");
-    handle_staking(custody_staker_itr, balance);
+    auto staker_idx = _custody.get_index<"bystaker"_n>();
+    auto staker_itr = staker_idx.require_find(staker_id, "custody.xsat::creditstake: staker does not exists");
+    handle_staking(staker_itr, balance);
 }
 
 template <typename T>
@@ -85,9 +85,9 @@ bool custody::handle_staking(T& itr, uint64_t balance) {
 
     // credit stake
     endorse_manage::creditstake_action creditstake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
-    creditstake.send(get_self(), itr->proxy, itr->staker, itr->validator, asset(new_staking_value, BTC_SYMBOL));
-    auto custody_staker_itr = _custody.require_find(itr->id, "custody.xsat::handle_staking: staker does not exists");
-    _custody.modify(custody_staker_itr, same_payer, [&](auto& row) {
+    creditstake.send(itr->proxy, itr->staker, itr->validator, asset(new_staking_value, BTC_SYMBOL));
+    auto staker_itr = _custody.require_find(itr->id, "custody.xsat::handle_staking: staker does not exists");
+    _custody.modify(staker_itr, same_payer, [&](auto& row) {
         row.value = new_staking_value;
         row.latest_stake_time = eosio::current_time_point();
     });
