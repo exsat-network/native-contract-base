@@ -22,15 +22,23 @@ void block_endorse::erase(const uint64_t height) {
 
 //@auth get_self()
 [[eosio::action]]
-void block_endorse::config(const uint64_t limit_endorse_height, const uint16_t limit_num_endorsed_blocks,
-                           const uint16_t min_validators) {
+void block_endorse::config(const uint64_t max_endorse_height, const uint16_t max_endorsed_blocks,
+                           const uint16_t min_validators, const uint64_t xsat_stake_activation_height,
+                           const uint16_t consensus_interval_seconds, const asset& min_xsat_qualification) {
     require_auth(get_self());
     check(min_validators > 0, "blkendt.xsat::config: min_validators must be greater than 0");
+    check(min_xsat_qualification.symbol == XSAT_SYMBOL,
+          "blkendt.xsat::config: min_xsat_qualification symbol must be XSAT");
+    check(min_xsat_qualification.amount > 0 && min_xsat_qualification.amount < XSAT_SUPPLY,
+          "blkendt.xsat::config: min_xsat_qualification must be greater than 0BTC and less than 21000000XSAT");
 
     auto config = _config.get_or_default();
-    config.limit_endorse_height = limit_endorse_height;
-    config.limit_num_endorsed_blocks = limit_num_endorsed_blocks;
+    config.max_endorse_height = max_endorse_height;
+    config.xsat_stake_activation_height = xsat_stake_activation_height;
+    config.max_endorsed_blocks = max_endorsed_blocks;
     config.min_validators = min_validators;
+    config.consensus_interval_seconds = consensus_interval_seconds;
+    config.min_xsat_qualification = min_xsat_qualification;
     _config.set(config, get_self());
 }
 
@@ -39,19 +47,22 @@ void block_endorse::config(const uint64_t limit_endorse_height, const uint16_t l
 void block_endorse::endorse(const name& validator, const uint64_t height, const checksum256& hash) {
     require_auth(validator);
 
+    // Verify whether the endorsement height exceeds max_endorse_height, 0 means no limit
     auto config = _config.get();
-    check(config.limit_endorse_height == 0 || config.limit_endorse_height >= height,
+    check(config.max_endorse_height == 0 || config.max_endorse_height >= height,
           "1001:blkendt.xsat::endorse: the current endorsement status is disabled");
 
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+
+    // Blocks that are already irreversible do not need to be endorsed
     auto chain_state = _chain_state.get();
     check(chain_state.irreversible_height < height && chain_state.migrating_height != height,
           "1002:blkendt.xsat::endorse: the current block is irreversible and does not need to be endorsed");
 
-    check(
-        config.limit_num_endorsed_blocks == 0 || chain_state.parsed_height + config.limit_num_endorsed_blocks >= height,
-        "1003:blkendt.xsat::endorse: the endorsement height cannot exceed height "
-            + std::to_string(chain_state.parsed_height + config.limit_num_endorsed_blocks));
+    // The endorsement height cannot exceed the interval of the parsed block height.
+    check(config.max_endorsed_blocks == 0 || chain_state.parsed_height + config.max_endorsed_blocks >= height,
+          "1003:blkendt.xsat::endorse: the endorsement height cannot exceed height "
+              + std::to_string(chain_state.parsed_height + config.max_endorsed_blocks));
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
@@ -62,17 +73,37 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     auto endorsement_itr = endorsement_idx.find(hash);
     bool reached_consensus = false;
     if (endorsement_itr == endorsement_idx.end()) {
-        std::vector<requested_validator_info> requested_validators = get_valid_validator();
+        utxo_manage::consensus_block_table _consensus_block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+        auto consensus_block_idx = _consensus_block.get_index<"byheight"_n>();
+        auto consensus_itr = consensus_block_idx.find(height - 1);
+
+        // Verify whether the endorsement time of the next height is reached
+        time_point_sec next_endorse_time = consensus_itr == consensus_block_idx.end()
+                                               ? consensus_itr->created_at
+                                               : consensus_itr->created_at + config.consensus_interval_seconds;
+        check(next_endorse_time < current_time_point(),
+              "1008:blkendt.xsat::endorse: the next endorsement time has not yet been reached "
+                  + next_endorse_time.to_string());
+
+        bool xsat_stake_active
+            = config.xsat_stake_activation_height > 0 && height >= config.xsat_stake_activation_height;
+        // Obtain qualified validators based on the pledge amount.
+        // If the block height of the activated xsat pledge amount is reached, directly switch to xsat pledge, otherwise use the btc pledge amount.
+        std::vector<requested_validator_info> requested_validators
+            = xsat_stake_active ? get_valid_validator_by_xsat_stake(config.min_xsat_qualification.amount)
+                                : get_valid_validator_by_btc_stake();
         check(requested_validators.size() >= config.min_validators,
-              "1004:blkendt.xsat::endorse: validators with a stake of more than 100 BTC must be greater than or equal "
-              "to "
+              "1004:blkendt.xsat::endorse: the number of valid validators must be greater than or equal to "
                   + std::to_string(config.min_validators));
+
         auto itr = std::find_if(requested_validators.begin(), requested_validators.end(),
                                 [&](const requested_validator_info& a) {
                                     return a.account == validator;
                                 });
-        check(itr != requested_validators.end(),
-              "1005:blkendt.xsat::endorse: the validator has less than 100 BTC staked");
+        auto err_msg = xsat_stake_active ? "1005:blkendt.xsat::endorse: the validator has less than "
+                                               + config.min_xsat_qualification.to_string() + " staked"
+                                         : "1005:blkendt.xsat::endorse: the validator has less than 100 BTC staked";
+        check(itr != requested_validators.end(), err_msg);
         provider_validator_info provider_info{
             .account = itr->account, .staking = itr->staking, .created_at = current_time_point()};
         requested_validators.erase(itr);
@@ -111,15 +142,32 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     }
 }
 
-std::vector<block_endorse::requested_validator_info> block_endorse::get_valid_validator() {
+std::vector<block_endorse::requested_validator_info> block_endorse::get_valid_validator_by_btc_stake() {
     endorse_manage::validator_table _validator
         = endorse_manage::validator_table(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);
-    auto idx = _validator.get_index<"bystaked"_n>();
-    auto itr = idx.lower_bound(MIN_STAKE_FOR_ENDORSEMENT);
+    auto idx = _validator.get_index<"byqualifictn"_n>();
+    auto itr = idx.lower_bound(MIN_BTC_STAKE_FOR_VALIDATOR);
     std::vector<requested_validator_info> result;
     while (itr != idx.end()) {
         result.emplace_back(
             requested_validator_info{.account = itr->owner, .staking = static_cast<uint64_t>(itr->quantity.amount)});
+        itr++;
+    }
+    return result;
+}
+
+std::vector<block_endorse::requested_validator_info> block_endorse::get_valid_validator_by_xsat_stake(
+    const uint64_t min_xsat_qualification) {
+    endorse_manage::validator_table _validator
+        = endorse_manage::validator_table(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);
+    auto idx = _validator.get_index<"bystakedxsat"_n>();
+    auto itr = idx.lower_bound(min_xsat_qualification);
+    std::vector<requested_validator_info> result;
+    while (itr != idx.end()) {
+        if (itr->quantity.amount > 0) {
+            result.emplace_back(requested_validator_info{.account = itr->owner,
+                                                         .staking = static_cast<uint64_t>(itr->quantity.amount)});
+        }
         itr++;
     }
     return result;
