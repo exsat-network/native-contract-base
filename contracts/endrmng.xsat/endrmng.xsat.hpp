@@ -90,6 +90,35 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
         evm_proxy_table;
 
     /**
+     * ## TABLE `creditproxy`
+     *
+     * ### scope the account whose scope is evmcaller in the `whitelist` table
+     * ### params
+     *
+     * - `{uint64_t} id` - evm proxy id
+     * - `{checksum160} proxy` - evm proxy account
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "id": 1,
+     *   "proxy": "bb776ae86d5996908af46482f24be8ccde2d4c41"
+     * }
+     * ```
+     */
+    struct [[eosio::table]] credit_proxy_row {
+        uint64_t id;
+        checksum160 proxy;
+        uint64_t primary_key() const { return id; }
+        checksum256 by_proxy() const { return xsat::utils::compute_id(proxy); }
+    };
+    typedef eosio::multi_index<
+        "creditproxy"_n, credit_proxy_row,
+        eosio::indexed_by<"byproxy"_n, const_mem_fun<credit_proxy_row, checksum256, &credit_proxy_row::by_proxy>>>
+        credit_proxy_table;
+
+    /**
      * ## TABLE `evmstakers`
      *
      * ### scope `get_self()`
@@ -100,6 +129,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      * - `{checksum160} staker` - staker account
      * - `{name} validator` - validator account
      * - `{asset} quantity` - total number of staking
+     * - `{asset} xsat_quantity` - the amount of XSAT tokens staked
      * - `{uint64_t} stake_debt` - amount of requested stake debt
      * - `{asset} staking_reward_unclaimed` - amount of stake unclaimed rewards
      * - `{asset} staking_reward_claimed` - amount of stake claimed rewards
@@ -116,6 +146,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      *   "staker": "e4d68a77714d9d388d8233bee18d578559950cf5",
      *   "validator": "alice",
      *   "quantity": "0.10000000 BTC",
+     *   "xsat_quantity": "0.10000000 XSAT",
      *   "stake_debt": 1385452,
      *   "staking_reward_unclaimed": "0.00000000 XSAT",
      *   "staking_reward_claimed": "0.00000000 XSAT",
@@ -131,6 +162,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
         checksum160 staker;
         name validator;
         asset quantity;
+        asset xsat_quantity;
         uint64_t stake_debt;
         asset staking_reward_unclaimed;
         asset staking_reward_claimed;
@@ -161,6 +193,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      * - `{name} staker` - staker account
      * - `{name} validator` - validator account
      * - `{asset} quantity` - total number of staking
+     * - `{asset} xsat_quantity` - the amount of XSAT tokens staked
      * - `{uint64_t} stake_debt` - amount of requested stake debt
      * - `{asset} staking_reward_unclaimed` - amount of stake unclaimed rewards
      * - `{asset} staking_reward_claimed` - amount of stake claimed rewards
@@ -176,6 +209,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      *   "staker": "alice",
      *   "validator": "alice",
      *   "quantity": "0.10000000 BTC",
+     *   "xsat_quantity": "0.10000000 XSAT",
      *   "stake_debt": 1385452,
      *   "staking_reward_unclaimed": "0.00000000 XSAT",
      *   "staking_reward_claimed": "0.00000000 XSAT",
@@ -190,6 +224,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
         name staker;
         name validator;
         asset quantity;
+        asset xsat_quantity;
         uint64_t stake_debt;
         asset staking_reward_unclaimed;
         asset staking_reward_claimed;
@@ -220,8 +255,9 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      * - `{name} reward_recipient` - receiving account for receiving rewards
      * - `{string} memo` - memo when receiving reward transfer
      * - `{uint64_t} commission_rate` - commission ratio, decimal is 10^4
-     * - `{name} staker` - staker account
-     * - `{name} validator` - validator account
+     * - `{asset} quantity` - the amount of BTC staked by the validator
+     * - `{asset} qualification` -  the qualification of the validator
+     * - `{asset} xsat_quantity` - the amount of XSAT tokens staked by the validator
      * - `{uint128_t} stake_acc_per_share` - staking rewards earnings per share
      * - `{uint128_t} consensus_acc_per_share` - consensus reward earnings per share
      * - `{asset} staking_reward_unclaimed` - unclaimed staking rewards
@@ -246,6 +282,8 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      *   "memo": "0x5EB954fB68159e0b7950936C6e1947615b75C895",
      *   "commission_rate": 0,
      *   "quantity": "102.10000000 BTC",
+     *   "qualification": "102.10000000 BTC",
+     *   "xsat_quantity": "1000.10000000 XSAT",
      *   "stake_acc_per_share": "39564978",
      *   "consensus_acc_per_share": "4945621",
      *   "staking_reward_unclaimed": "0.00000000 XSAT",
@@ -269,6 +307,8 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
         string memo;
         uint64_t commission_rate;
         asset quantity;
+        asset qualification;
+        asset xsat_quantity;
         uint128_t stake_acc_per_share;
         uint128_t consensus_acc_per_share;
         asset staking_reward_unclaimed;
@@ -284,13 +324,18 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
         time_point_sec latest_reward_time;
         bool disabled_staking;
         uint64_t primary_key() const { return owner.value; }
-        uint64_t by_total_staking() const { return quantity.amount; }
+        uint64_t by_btc_total_staking() const { return quantity.amount; }
+        uint64_t by_xsat_total_staking() const { return xsat_quantity.amount; }
+        uint64_t by_qualification() const { return qualification.amount; }
         uint64_t by_disabled_staking() const { return disabled_staking; }
     };
     typedef eosio::multi_index<
         "validators"_n, validator_row,
-        eosio::indexed_by<"bystate"_n, const_mem_fun<validator_row, uint64_t, &validator_row::by_disabled_staking>>,
-        eosio::indexed_by<"bystaked"_n, const_mem_fun<validator_row, uint64_t, &validator_row::by_total_staking>>>
+        eosio::indexed_by<"bystakedbtc"_n,
+                          const_mem_fun<validator_row, uint64_t, &validator_row::by_btc_total_staking>>,
+        eosio::indexed_by<"bystakedxsat"_n,
+                          const_mem_fun<validator_row, uint64_t, &validator_row::by_xsat_total_staking>>,
+        eosio::indexed_by<"byqualifictn"_n, const_mem_fun<validator_row, uint64_t, &validator_row::by_qualification>>>
         validator_table;
 
     /**
@@ -299,18 +344,21 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      * ### scope `get_self()`
      * ### params
      *
-     * - `{asset} total_staking` - total staking amount
+     * - `{asset} total_staking` - btc total staking amount
+     * - `{asset} total_staking` - xsat total staking amount
      *
      * ### example
      *
      * ```json
      * {
-     *   "total_staking": "100.40000000 BTC"
+     *   "total_staking": "100.40000000 BTC",
+     *   "xsat_total_staking": "100.40000000 XSAT"
      * }
      * ```
      */
     struct [[eosio::table]] stat_row {
         asset total_staking = {0, BTC_SYMBOL};
+        asset xsat_total_staking = {0, XSAT_SYMBOL};
     };
     typedef eosio::singleton<"stat"_n, stat_row> stat_table;
 
@@ -397,6 +445,46 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      */
     [[eosio::action]]
     void delevmproxy(const name& caller, const checksum160& proxy);
+
+    /**
+     * ## ACTION `addcrdtproxy`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Add credit proxy account
+     *
+     * ### params
+     *
+     * - `{checksum160} proxy` - proxy account
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action endrmng.xsat addcrdtproxy '["bb776ae86d5996908af46482f24be8ccde2d4c41"]' -p endrmng.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void addcrdtproxy(const checksum160& proxy);
+
+    /**
+     * ## ACTION `delcrdtproxy`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Delete credit proxy account
+     *
+     * ### params
+     *
+     * - `{checksum160} proxy` - proxy account
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action endrmng.xsat delcrdtproxy '["bb776ae86d5996908af46482f24be8ccde2d4c41"]' -p endrmng.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void delcrdtproxy(const checksum160& proxy);
 
     /**
      * ## ACTION `setstatus`
@@ -493,7 +581,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      *
      * - **authority**: `staking.xsat`
      *
-     * > Staking to validator
+     * > Staking BTC to validator
      *
      * ### params
      *
@@ -515,7 +603,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      *
      * - **authority**: `staking.xsat`
      *
-     * > Unstaking from a validator
+     * > Unstaking BTC from a validator
      *
      * ### params
      *
@@ -535,9 +623,9 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     /**
      * ## ACTION `newstake`
      *
-     * - **authority**: `staking.xsat`
+     * - **authority**: `staker`
      *
-     * > Staking to a new validator
+     * > Staking BTC to a new validator
      *
      * ### params
      *
@@ -549,7 +637,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action endrmng.xsat newstake '["alice",  "alice", "bob", "1.00000000 BTC"]' -p staking.xsat
+     * $ cleos push action endrmng.xsat newstake '["alice",  "alice", "bob", "1.00000000 BTC"]' -p alice
      * ```
      */
     [[eosio::action]]
@@ -581,7 +669,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      *
      * - **authority**: `caller`
      *
-     * > Staking to validator via evm
+     * > Staking BTC to validator via evm
      *
      * ### params
      *
@@ -606,7 +694,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      *
      * - **authority**: `caller`
      *
-     * > Unstake from validator via evm
+     * > Unstake BTC from validator via evm
      *
      * ### params
      *
@@ -631,7 +719,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      *
      * - **authority**: `caller`
      *
-     * > Staking to a new validator via evm
+     * > Staking BTC to a new validator via evm
      *
      * ### params
      *
@@ -696,6 +784,172 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     void vdrclaim(const name& validator);
 
     /**
+     * ## ACTION `stakexsat`
+     *
+     * - **authority**: `xsatstk.xsat`
+     *
+     * > Staking XSAT to validator
+     *
+     * ### params
+     *
+     * - `{name} staker` - staker account
+     * - `{name} validator` - validator account
+     * - `{asset} quantity` - staking amount
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action endrmng.xsat stakexsat '["alice",  "alice", "1.00000000 XSAT"]' -p xsatstk.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void stakexsat(const name& staker, const name& validator, const asset& quantity);
+
+    /**
+     * ## ACTION `unstakexsat`
+     *
+     * - **authority**: `xsatstk.xsat`
+     *
+     * > Unstaking XSAT from a validator
+     *
+     * ### params
+     *
+     * - `{name} staker` - staker account
+     * - `{name} validator` - validator account
+     * - `{asset} quantity` - cancel staking amount
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action endrmng.xsat unstakexsat '["alice",  "alice", "1.00000000 XSAT"]' -p xsatstk.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void unstakexsat(const name& staker, const name& validator, const asset& quantity);
+
+    /**
+     * ## ACTION `restakexsat`
+     *
+     * - **authority**: `staker`
+     *
+     * > Staking XSAT to a new validator
+     *
+     * ### params
+     *
+     * - `{name} staker` - staker account
+     * - `{name} old_validator` - old validator account
+     * - `{name} new_validator` - new validator account
+     * - `{asset} quantity` - the amount of stake transferred to the new validator
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action endrmng.xsat restakexsat '["alice",  "alice", "bob", "1.00000000 XSAT"]' -p alice
+     * ```
+     */
+    [[eosio::action]]
+    void restakexsat(const name& staker, const name& old_validator, const name& new_validator, const asset& quantity);
+
+    /**
+     * ## ACTION `evmstakexsat`
+     *
+     * - **authority**: `caller`
+     *
+     * > Staking XSAT to validator via evm
+     *
+     * ### params
+     *
+     * - `{name} caller` - caller account
+     * - `{checksum160} proxy` - evm proxy account
+     * - `{checksum160} staker` - evm staker account
+     * - `{name} validator` - validator account
+     * - `{asset} quantity` - staking amount
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action endrmng.xsat evmstakexsat '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41", "e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", "1.00000000 XSAT"]' -p evmutil.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void evmstakexsat(const name& caller, const checksum160& proxy, const checksum160& staker, const name& validator,
+                      const asset& quantity);
+
+    /**
+     * ## ACTION `evmunstkxsat`
+     *
+     * - **authority**: `caller`
+     *
+     * > Unstake XSAT from validator via evm
+     *
+     * ### params
+     *
+     * - `{name} caller` - caller account
+     * - `{checksum160} proxy` - evm proxy account
+     * - `{checksum160} staker` - evm staker account
+     * - `{name} validator` - validator account
+     * - `{asset} quantity` - staking amount
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action endrmng.xsat evmunstkxsat '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41", "e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", "1.00000000 XSAT"]' -p evmutil.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void evmunstkxsat(const name& caller, const checksum160& proxy, const checksum160& staker, const name& validator,
+                      const asset& quantity);
+
+    /**
+     * ## ACTION `evmrestkxsat`
+     *
+     * - **authority**: `caller`
+     *
+     * > Staking XSAT to a new validator via evm
+     *
+     * ### params
+     *
+     * - `{name} caller` - caller account
+     * - `{checksum160} proxy` - evm proxy account
+     * - `{checksum160} staker` - evm staker account
+     * - `{name} old_validator` - old validator account
+     * - `{name} new_validator` - new validator account
+     * - `{asset} quantity` - staking amount
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action endrmng.xsat evmrestkxsat '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41", "e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", "bob", "1.00000000 XSAT"]' -p evmutil.xsat
+     * ```
+     */
+    [[eosio::action]]
+    void evmrestkxsat(const name& caller, const checksum160& proxy, const checksum160& staker,
+                      const name& old_validator, const name& new_validator, const asset& quantity);
+
+    /**
+     * ## ACTION `creditstake`
+     *
+     * - **authority**: `custody.xsat`
+     *
+     * > Unstake BTC from validator via credit
+     *
+     * ### params
+     *
+     * - `{checksum160} proxy` - evm proxy account
+     * - `{checksum160} staker` - evm staker account
+     * - `{name} validator` - validator account
+     * - `{asset} quantity` - staking amount
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action endrmng.xsat creditstake '["bb776ae86d5996908af46482f24be8ccde2d4c41", "e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", "1.00000000 BTC"]' -p custody.xsat
+     * ```
+     */
+    [[eosio::action]] [[eosio::action]]
+    void creditstake(const checksum160& proxy, const checksum160& staker, const name& validator, const asset& quantity);
+
+    /**
      * ## STRUCT `reward_details_row`
      *
      * ### params
@@ -757,18 +1011,21 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     }
 
     [[eosio::action]]
-    void stakelog(const name& staker, const name& validator, const asset& quantity, const asset& validator_staking) {
+    void stakelog(const name& staker, const name& validator, const asset& quantity, const asset& validator_staking,
+                  const asset& validator_qualification) {
         require_auth(get_self());
     }
 
     [[eosio::action]]
-    void unstakelog(const name& staker, const name& validator, const asset& quantity, const asset& validator_staking) {
+    void unstakelog(const name& staker, const name& validator, const asset& quantity, const asset& validator_staking,
+                    const asset& validator_qualification) {
         require_auth(get_self());
     }
 
     [[eosio::action]]
     void newstakelog(const name& staker, const name& old_validator, const name& new_validator, const asset& quantity,
-                     const asset& old_validator_staking, const asset& new_validator_staking) {
+                     const asset& old_validator_staking, const asset& old_validator_qualification,
+                     const asset& new_validator_staking, const asset& new_validator_qualification) {
         require_auth(get_self());
     }
 
@@ -778,21 +1035,27 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     }
 
     [[eosio::action]]
+    void configlog(const name& validator, const uint64_t commission_rate, const string& financial_account) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
     void evmstakelog(const checksum160& proxy, const checksum160& staker, const name& validator, const asset& quantity,
-                     const asset& validator_staking) {
+                     const asset& validator_staking, const asset& validator_qualification) {
         require_auth(get_self());
     }
 
     [[eosio::action]]
     void evmunstlog(const checksum160& proxy, const checksum160& staker, const name& validator, const asset& quantity,
-                    const asset& validator_staking) {
+                    const asset& validator_staking, const asset& validator_qualification) {
         require_auth(get_self());
     }
 
     [[eosio::action]]
     void evmnewstlog(const checksum160& proxy, const checksum160& staker, const name& old_validator,
                      const name& new_validator, const asset& quantity, const asset& old_validator_staking,
-                     const asset& new_validator_staking) {
+                     const asset& old_validator_qualification, const asset& new_validator_staking,
+                     const asset& new_validator_qualification) {
         require_auth(get_self());
     }
 
@@ -807,11 +1070,57 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
         require_auth(get_self());
     }
 
+    [[eosio::action]]
+    void stakexsatlog(const name& staker, const name& validator, const asset& quantity,
+                      const asset& validator_staking) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void unstkxsatlog(const name& staker, const name& validator, const asset& quantity,
+                      const asset& validator_staking) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void restkxsatlog(const name& staker, const name& old_validator, const name& new_validator, const asset& quantity,
+                      const asset& old_validator_staking, const asset& new_validator_staking) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void estkxsatlog(const checksum160& proxy, const checksum160& staker, const name& validator, const asset& quantity,
+                     const asset& validator_staking) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void eustkxsatlog(const checksum160& proxy, const checksum160& staker, const name& validator, const asset& quantity,
+                      const asset& validator_staking) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void erstkxsatlog(const checksum160& proxy, const checksum160& staker, const name& old_validator,
+                      const name& new_validator, const asset& quantity, const asset& old_validator_staking,
+                      const asset& new_validator_staking) {
+        require_auth(get_self());
+    }
+
     using stake_action = eosio::action_wrapper<"stake"_n, &endorse_manage::stake>;
     using unstake_action = eosio::action_wrapper<"unstake"_n, &endorse_manage::unstake>;
     using evm_stake_action = eosio::action_wrapper<"evmstake"_n, &endorse_manage::evmstake>;
     using evm_unstake_action = eosio::action_wrapper<"evmunstake"_n, &endorse_manage::evmunstake>;
     using evm_newstake_action = eosio::action_wrapper<"evmnewstake"_n, &endorse_manage::evmnewstake>;
+
+    using stakexsat_action = eosio::action_wrapper<"stakexsat"_n, &endorse_manage::stakexsat>;
+    using unstakexsat_action = eosio::action_wrapper<"unstakexsat"_n, &endorse_manage::unstakexsat>;
+    using restakexsat_action = eosio::action_wrapper<"restakexsat"_n, &endorse_manage::restakexsat>;
+    using evm_xsat_stake_action = eosio::action_wrapper<"evmstakexsat"_n, &endorse_manage::evmstakexsat>;
+    using evm_xsat_unstake_action = eosio::action_wrapper<"evmunstkxsat"_n, &endorse_manage::evmunstkxsat>;
+    using evm_xsat_restake_action = eosio::action_wrapper<"evmrestkxsat"_n, &endorse_manage::evmrestkxsat>;
+
+    using configlog_action = eosio::action_wrapper<"configlog"_n, &endorse_manage::configlog>;
     using distribute_action = eosio::action_wrapper<"distribute"_n, &endorse_manage::distribute>;
     using validatorlog_action = eosio::action_wrapper<"validatorlog"_n, &endorse_manage::validatorlog>;
     using stakelog_action = eosio::action_wrapper<"stakelog"_n, &endorse_manage::stakelog>;
@@ -823,6 +1132,13 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     using evmnewstlog_action = eosio::action_wrapper<"evmnewstlog"_n, &endorse_manage::evmnewstlog>;
     using evmclaimlog_action = eosio::action_wrapper<"evmclaimlog"_n, &endorse_manage::evmclaimlog>;
     using vdrclaimlog_action = eosio::action_wrapper<"vdrclaimlog"_n, &endorse_manage::vdrclaimlog>;
+
+    using stakexsatlog_action = eosio::action_wrapper<"stakexsatlog"_n, &endorse_manage::stakexsatlog>;
+    using unstkxsatlog_action = eosio::action_wrapper<"unstkxsatlog"_n, &endorse_manage::unstkxsatlog>;
+    using restkxsatlog_action = eosio::action_wrapper<"restkxsatlog"_n, &endorse_manage::restkxsatlog>;
+    using estkxsatlog_action = eosio::action_wrapper<"estkxsatlog"_n, &endorse_manage::estkxsatlog>;
+    using eustkxsatlog_action = eosio::action_wrapper<"eustkxsatlog"_n, &endorse_manage::eustkxsatlog>;
+    using erstkxsatlog_action = eosio::action_wrapper<"erstkxsatlog"_n, &endorse_manage::erstkxsatlog>;
 
     static checksum256 compute_staking_id(const checksum160& proxy, const checksum160& staker, const name& validator) {
         vector<char> result;
@@ -843,20 +1159,33 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     validator_table _validator = validator_table(_self, _self.value);
     evm_staker_table _evm_stake = evm_staker_table(_self, _self.value);
     native_staker_table _native_stake = native_staker_table(_self, _self.value);
+    credit_proxy_table _credit_proxy = credit_proxy_table(_self, _self.value);
     stat_table _stat = stat_table(_self, _self.value);
 
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
     uint64_t next_staking_id();
 
-    asset evm_stake_without_auth(const checksum160& proxy, const checksum160& staker, const name& validator,
-                                 const asset& quantity);
-    asset evm_unstake_without_auth(const checksum160& proxy, const checksum160& staker, const name& validator,
-                                   const asset& quantity);
-    asset stake_without_auth(const name& staker, const name& validator, const asset& quantity);
-    asset unstake_without_auth(const name& staker, const name& validator, const asset& quantity);
+    asset evm_stake_xsat_without_auth(const checksum160& proxy, const checksum160& staker, const name& validator,
+                                      const asset& quantity);
+    asset evm_unstake_xsat_without_auth(const checksum160& proxy, const checksum160& staker, const name& validator,
+                                        const asset& quantity);
+    asset stake_xsat_without_auth(const name& staker, const name& validator, const asset& quantity);
+    asset unstake_xsat_without_auth(const name& staker, const name& validator, const asset& quantity);
+
+    std::pair<asset, asset> evm_stake_without_auth(const checksum160& proxy, const checksum160& staker,
+                                                   const name& validator, const asset& quantity,
+                                                   const asset& qualification);
+    std::pair<asset, asset> evm_unstake_without_auth(const checksum160& proxy, const checksum160& staker,
+                                                     const name& validator, const asset& quantity,
+                                                     const asset& qualification);
+    std::pair<asset, asset> stake_without_auth(const name& staker, const name& validator, const asset& quantity,
+                                               const asset& qualification);
+    std::pair<asset, asset> unstake_without_auth(const name& staker, const name& validator, const asset& quantity,
+                                                 const asset& qualification);
 
     template <typename T, typename C>
-    void staking_change(validator_table::const_iterator& validator_itr, T& _stake, C& stake_itr, const asset& quantity);
+    void staking_change(validator_table::const_iterator& validator_itr, T& _stake, C& stake_itr, const asset& quantity,
+                        const asset& qualification);
 
     template <typename T, typename C>
     void update_staking_reward(const uint128_t stake_acc_per_share, const uint128_t consensus_acc_per_share,
