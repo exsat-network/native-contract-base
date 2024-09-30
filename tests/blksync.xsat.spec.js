@@ -135,7 +135,7 @@ beforeAll(async () => {
     await contracts.endrmng.actions.regvalidator(['brian', 'brian', 2000]).send('brian@active')
 
     // init
-    await contracts.blkendt.actions.config([0, 0, 2]).send('blkendt.xsat@active')
+    await contracts.blkendt.actions.config([0, 0, 2, 860000, 0, "21000.00000000 XSAT"]).send('blkendt.xsat@active')
 
     // staking
     await contracts.btc.actions.transfer(['alice', 'staking.xsat', '100.00000000 BTC', 'alice']).send('alice@active')

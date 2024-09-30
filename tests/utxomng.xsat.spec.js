@@ -126,7 +126,7 @@ beforeAll(async () => {
     await contracts.endrmng.actions.regvalidator(['brian', 'brian', 2000]).send('brian@active')
 
     // init
-    await contracts.blkendt.actions.config([0, 0, 2]).send('blkendt.xsat@active')
+    await contracts.blkendt.actions.config([0, 0, 2, 860000, 0, "21000.00000000 XSAT"]).send('blkendt.xsat@active')
 
     // staking
     await contracts.btc.actions.transfer(['alice', 'staking.xsat', '100.00000000 BTC', 'alice']).send('alice@active')
@@ -456,9 +456,11 @@ describe('utxomng.xsat', () => {
         while (max_times--) {
             await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
             const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
+            //if(retval.status == 'verify_fail') console.log(get_block_bucket('bob'))
             if (retval.status == 'verify_pass') break
         }
 
+        blockchain.addTime(TimePointSec.from(1000))
         await contracts.blkendt.actions.endorse(['amy', height, hash]).send('amy@active')
         await contracts.blkendt.actions.endorse(['anna', height, hash]).send('anna@active')
         await contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active')
@@ -618,7 +620,8 @@ describe('utxomng.xsat', () => {
             const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
-
+        
+        blockchain.addTime(TimePointSec.from(1000))
         await contracts.blkendt.actions.endorse(['amy', height, hash]).send('amy@active')
         await contracts.blkendt.actions.endorse(['anna', height, hash]).send('anna@active')
         await contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active')
@@ -718,6 +721,7 @@ describe('utxomng.xsat', () => {
             if (retval.status == 'verify_pass') break
         }
 
+        blockchain.addTime(TimePointSec.from(1000))
         await contracts.blkendt.actions.endorse(['amy', height, hash]).send('amy@active')
         await contracts.blkendt.actions.endorse(['anna', height, hash]).send('anna@active')
         await contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active')
@@ -741,6 +745,7 @@ describe('utxomng.xsat', () => {
             if (retval.status == 'verify_pass') break
         }
 
+        blockchain.addTime(TimePointSec.from(1000))
         await contracts.blkendt.actions.endorse(['amy', height, hash]).send('amy@active')
         await contracts.blkendt.actions.endorse(['anna', height, hash]).send('anna@active')
         await contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active')
@@ -764,6 +769,7 @@ describe('utxomng.xsat', () => {
             if (retval.status == 'verify_pass') break
         }
 
+        blockchain.addTime(TimePointSec.from(1000))
         await contracts.blkendt.actions.endorse(['amy', height, hash]).send('amy@active')
         await contracts.blkendt.actions.endorse(['anna', height, hash]).send('anna@active')
         await contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active')
@@ -787,6 +793,7 @@ describe('utxomng.xsat', () => {
             if (retval.status == 'verify_pass') break
         }
 
+        blockchain.addTime(TimePointSec.from(1000))
         await contracts.blkendt.actions.endorse(['amy', height, hash]).send('amy@active')
         await contracts.blkendt.actions.endorse(['anna', height, hash]).send('anna@active')
         await contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active')
@@ -810,6 +817,7 @@ describe('utxomng.xsat', () => {
             if (retval.status == 'verify_pass') break
         }
 
+        blockchain.addTime(TimePointSec.from(1000))
         await contracts.blkendt.actions.endorse(['amy', height, hash]).send('amy@active')
         await contracts.blkendt.actions.endorse(['anna', height, hash]).send('anna@active')
         await contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active')
@@ -833,6 +841,7 @@ describe('utxomng.xsat', () => {
             if (retval.status == 'verify_pass') break
         }
 
+        blockchain.addTime(TimePointSec.from(1000))
         await contracts.blkendt.actions.endorse(['amy', height, hash]).send('amy@active')
         await contracts.blkendt.actions.endorse(['anna', height, hash]).send('anna@active')
         await contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active')
