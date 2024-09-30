@@ -55,6 +55,7 @@ static constexpr name ERC20_CONTRACT = "erc2o.xsat"_n;
 static constexpr name POOL_REGISTER_CONTRACT = "poolreg.xsat"_n;
 static constexpr name EVM_UTIL_CONTRACT = "evmutil.xsat"_n;
 static constexpr name STAKING_CONTRACT = "staking.xsat"_n;
+static constexpr name XSAT_STAKING_CONTRACT = "xsatstk.xsat"_n;
 static constexpr name BLOCK_SYNC_CONTRACT = "blksync.xsat"_n;
 static constexpr name BLOCK_ENDORSE_CONTRACT = "blkendt.xsat"_n;
 static constexpr name ENDORSER_MANAGE_CONTRACT = "endrmng.xsat"_n;
@@ -82,6 +83,9 @@ static constexpr uint32_t DECIMAL = 100000000LL;
 static constexpr uint64_t MIN_STAKE_FOR_ENDORSEMENT = 100LL * DECIMAL;
 static constexpr uint64_t BTC_SUPPLY = 21000000LL * DECIMAL;
 static constexpr uint64_t XSAT_REWARD_PER_BLOCK = 50LL * DECIMAL;
+static constexpr uint64_t MIN_BTC_STAKE_FOR_VALIDATOR = 100LL * DECIMAL;
+static constexpr uint64_t MIN_XSAT_STAKE_FOR_VALIDATOR = 21000LL * DECIMAL;
+static constexpr uint64_t XSAT_SUPPLY = 21000000LL * DECIMAL;
 
 static constexpr uint64_t IRREVERSIBLE_BLOCKS = 6;
 static constexpr uint64_t SUBSIDY_HALVING_INTERVAL = 210000;
