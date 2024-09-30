@@ -3,40 +3,27 @@
 ## Actions
 
 - addcustody
-- updcustody
 - delcustody
-- updblkstatus
-- onchainsync
-- offchainsync
+- creditstake
 
 
 ## Quickstart
 
 ```bash
 # addcustody @custody.xsat
-$ cleos push action custody.xsat addcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "0000000000000000000000000000000000000001", "chen.sat", true, "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", null ]' -p custody.xsat
-
-# updcustody @custody.xsat
-$ cleos push action custody.xsat updcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "chen2.sat"]' -p custody.xsat
+$ cleos push action custody.xsat addcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "0000000000000000000000000000000000000001", "chen.sat", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", null ]' -p custody.xsat
 
 # delcustody @custody.xsat
 $ cleos push action custody.xsat delcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3"]' -p custody.xsat
 
-# delcustody @custody.xsat
-$ cleos push action custody.xsat updblkstatus '[true]' -p custody.xsat
-
-# onchainsync @custody.xsat
-$ cleos push action custody.xsat onchainsync '[100]' -p custody.xsat
-
 # offchainsync @custody.xsat
-$ cleos push action custody.xsat offchainsync '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "1.00000000 BTC"]' -p custody.xsat
+$ cleos push action custody.xsat creditstake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", 10000000000]' -p custody.xsat
 
 ## Table Information
 
 ```bash
 $ cleos get table custody.xsat custody.xsat globals
 $ cleos get table custody.xsat custody.xsat custodies
-$ cleos get table custody.xsat custody.xsat vaults
 ```
 
 ## Table of Content
@@ -55,21 +42,13 @@ $ cleos get table custody.xsat custody.xsat vaults
 ### scope `get_self()`
 ### params
 
-- `{bool} is_synchronized` - the block sync status
 - `{uint64_t} custody_id` - the custody id is automatically incremented
-- `{uint64_t} last_custody_id` - last processed custody id
-- `{uint64_t} last_height` - last processed height
-- `{uint64_t} vault_id` - the vault id is automatically incremented
 
 ### example
 
 ```json
 {
-  "is_synchronized": true,
-  "custody_id": 4,
-  "last_custody_id": 3,
-  "last_height": 0,
-  "vault_id": 1
+  "custody_id": 4
 }
 ```
 
@@ -99,34 +78,5 @@ $ cleos get table custody.xsat custody.xsat vaults
   "scriptpubkey": "a914cac3a79a829c31b07e6a8450c4e05c4289ab95b887",
   "value": 100000000,
   "latest_stake_time": "2021-09-01T00:00:00"
-}
-```
-
-## TABLE `vaults`
-
-### scope `get_self()`
-### params
-
-- `{uint64_t} id` - the vault id
-- `{checksum160} staker` - the staker evm address
-- `{name} validator` - the validator account
-- `{string} btc_address` - the bitcoin address
-- `{asset} quantity` - the staking amount{
-  "id": 1,
-  "staker": "ee37064f01ec9314278f4984ff4b9b695eb91912",
-  "validator": "vali.xsat",
-  "btc_address": "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN",
-  "quantity": "1.00000000 BTC"
-}
-
-### example
-
-```json
-{
-  "id": 1,
-  "staker": "ee37064f01ec9314278f4984ff4b9b695eb91912",
-  "validator": "vali.xsat",
-  "btc_address": "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN",
-  "quantity": "1.00000000 BTC"
 }
 ```
