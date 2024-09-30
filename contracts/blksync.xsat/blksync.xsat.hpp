@@ -45,6 +45,19 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
         }
     }
 
+    struct out_point {
+        bitcoin::uint256_t tx_id;
+        uint32_t index;
+
+        friend bool operator<(const out_point &a, const out_point &b) {
+            return std::tie(a.tx_id, a.index) < std::tie(b.tx_id, b.index);
+        }
+
+        friend bool operator==(const out_point &a, const out_point &b) {
+            return (a.tx_id == b.tx_id && a.index == b.index);
+        }
+    };
+
     /**
      * ## TABLE `globalid`
      *
@@ -634,6 +647,8 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     uint64_t next_bucket_id();
 
     void find_miner(std::vector<bitcoin::core::transaction_output> outputs, name &miner, vector<string> &btc_miners);
+
+    optional<string> check_transaction(const bitcoin::core::transaction tx);
 
     template <typename ITR>
     optional<string> check_merkle(const ITR &block_bucket_itr, verify_info_data &verify_info);
