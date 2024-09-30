@@ -1112,6 +1112,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     using evm_stake_action = eosio::action_wrapper<"evmstake"_n, &endorse_manage::evmstake>;
     using evm_unstake_action = eosio::action_wrapper<"evmunstake"_n, &endorse_manage::evmunstake>;
     using evm_newstake_action = eosio::action_wrapper<"evmnewstake"_n, &endorse_manage::evmnewstake>;
+    using creditstake_action = eosio::action_wrapper<"creditstake"_n, &endorse_manage::creditstake>;
 
     using stakexsat_action = eosio::action_wrapper<"stakexsat"_n, &endorse_manage::stakexsat>;
     using unstakexsat_action = eosio::action_wrapper<"unstakexsat"_n, &endorse_manage::unstakexsat>;
