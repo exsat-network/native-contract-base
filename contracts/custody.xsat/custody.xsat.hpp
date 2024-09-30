@@ -175,7 +175,7 @@ private:
     uint64_t get_current_staking_value(T& itr);
 
     template <typename T>
-    bool handle_staking(T& itr, uint64_t balance);
+    void handle_staking(T& itr, uint64_t balance);
 
     uint64_t next_custody_id();
 

@@ -54,7 +54,11 @@ void custody::delcustody(const checksum160 staker) {
     auto staker_id = xsat::utils::compute_id(staker);
     auto staker_idx = _custody.get_index<"bystaker"_n>();
     auto staker_itr = staker_idx.require_find(staker_id, "custody.xsat::delcustody: staker does not exists");
-    handle_staking(staker_itr, 0);
+    uint64_t current_staking_value = get_current_staking_value(staker_itr);
+    if (current_staking_value > 0) {
+        endorse_manage::creditstake_action creditstake(ENDORSER_MANAGE_CONTRACT, { get_self(), "active"_n });
+        creditstake.send(staker_itr->proxy, staker_itr->staker, staker_itr->validator, asset(0, BTC_SYMBOL));
+    }
     staker_idx.erase(staker_itr);
 }
 
@@ -78,7 +82,7 @@ uint64_t custody::get_current_staking_value(T& itr) {
 }
 
 template <typename T>
-bool custody::handle_staking(T& itr, uint64_t balance) {
+void custody::handle_staking(T& itr, uint64_t balance) {
     uint64_t current_staking_value = get_current_staking_value(itr);
     uint64_t new_staking_value = balance >= MAX_STAKING ? MAX_STAKING : 0;
     check(new_staking_value != current_staking_value, "custody.xsat::handle_staking: no change in staking value");
