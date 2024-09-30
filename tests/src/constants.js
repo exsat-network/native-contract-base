@@ -35,7 +35,7 @@ module.exports = {
     DECIMAL,
     EOS,
     BTC,
-    XSAT: XSAT,
+    XSAT,
     ZERO_BTC,
     ZERO_XSAT: ZERO_XSAT
 }
