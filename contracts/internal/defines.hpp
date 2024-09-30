@@ -77,6 +77,7 @@ static constexpr symbol XSAT_SYMBOL = {"XSAT", 8};
 static constexpr symbol BTC_SYMBOL = {"BTC", 8};
 
 // CONSTANTS
+static constexpr uint64_t MAX_FUTURE_BLOCK_TIME = 2 * 60 * 60;
 static constexpr checksum256 ZERO_HASH = checksum256();
 static constexpr uint64_t GENESIS_ACTIVATION = 100000000LL;
 static constexpr uint32_t DECIMAL = 100000000LL;

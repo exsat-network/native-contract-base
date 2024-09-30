@@ -436,6 +436,45 @@ block_sync::verify_block_result block_sync::verify(const name& synchronizer, con
     return {.status = get_block_status_name(verify_pass), .block_hash = hash};
 }
 
+optional<string> block_sync::check_transaction(const bitcoin::core::transaction tx) {
+    if (tx.inputs.empty()) {
+        return "bad-txns-vin-empty";
+    }
+
+    if (tx.outputs.empty()) {
+        return "bad-txns-vout-empty";
+    }
+
+    uint64_t value_out = 0;
+    for (const auto& output : tx.outputs) {
+        if (output.value > BTC_SUPPLY) {
+            return "bad-txns-vout-toolarge";
+        }
+        value_out += output.value;
+        if (value_out > BTC_SUPPLY) {
+            return "bad-txns-txouttotal-toolarge";
+        }
+    }
+    auto is_coinbase = tx.is_coinbase();
+    std::set<out_point> vin_out_points;
+    for (const auto& input : tx.inputs) {
+        if (!vin_out_points.insert(out_point{.tx_id = input.previous_output_hash, .index = input.previous_output_index})
+                 .second) {
+            return "bad-txns-inputs-duplicate";
+        }
+        if (is_coinbase) {
+            auto script_size = tx.inputs[0].script_sig.data.size();
+            if (script_size < 2 || script_size > 100) {
+                return "bad-cb-length";
+            }
+        } else {
+            if (input.previous_output_hash == bitcoin::uint256_t(0)) {
+                return "bad-txns-prevout-null";
+            }
+        }
+    }
+}
+
 //@private
 template <typename ITR>
 optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_info_data& verify_info) {
@@ -495,6 +534,12 @@ optional<string> block_sync::check_merkle(const ITR& block_bucket_itr, verify_in
         bool allow_witness = verify_info.processed_position == 0 && i == 0;
         bitcoin::core::transaction transaction(&block_data, allow_witness);
         block_stream >> transaction;
+
+        auto err_msg = check_transaction(transaction);
+        if (err_msg.has_value()) {
+            return err_msg;
+        }
+
         transactions.emplace_back(std::move(transaction));
     }
 
