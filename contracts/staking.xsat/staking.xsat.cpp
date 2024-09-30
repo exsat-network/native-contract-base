@@ -63,7 +63,7 @@ void stake::withdraw(const name& staker) {
 
     check(release_itr != end_release_itr, "staking.xsat::withdraw: there is no expired token that can be withdrawn");
 
-    auto max_row = 30;
+    auto max_row = 100;
     while (release_itr != end_release_itr && max_row--) {
         token_transfer(get_self(), staker, release_itr->quantity, "release");
         release_itr = release_idx.erase(release_itr);
