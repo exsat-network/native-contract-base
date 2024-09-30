@@ -16,7 +16,7 @@ $ cleos push action custody.xsat addcustody '["1995587ef4e2dd5e6c61a8909110b0ca9
 # delcustody @custody.xsat
 $ cleos push action custody.xsat delcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3"]' -p custody.xsat
 
-# offchainsync @custody.xsat
+# creditstake @custody.xsat
 $ cleos push action custody.xsat creditstake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", 10000000000]' -p custody.xsat
 
 ## Table Information

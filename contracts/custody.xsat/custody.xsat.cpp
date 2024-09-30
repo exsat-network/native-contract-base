@@ -13,7 +13,7 @@ void custody::addcustody(const checksum160 staker, const checksum160 proxy, cons
     check(xsat::utils::is_proxy_valid(proxy), "custody.xsat::addcustody: proxy is not valid");
     check(btc_address.has_value() || scriptpubkey.has_value(), "custody.xsat::addcustody: btc_address and scriptpubkey cannot be empty at the same time");
 
-    endorse_manage::evm_proxy_table _proxy(ENDORSER_MANAGE_CONTRACT, CUSTODY_CONTRACT.value);
+    endorse_manage::credit_proxy_table _proxy(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);
     auto proxy_hash = xsat::utils::compute_id(proxy);
     auto proxy_idx = _proxy.get_index<"byproxy"_n>();
     proxy_idx.require_find(proxy_hash, "custody.xsat::addcustody: proxy does not exists");
