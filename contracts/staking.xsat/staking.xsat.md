@@ -20,6 +20,9 @@ $ cleos push action staking.xsat deltoken '[1]' -p staking.xsat
 # setstatus @staking.xsat
 $ cleos push action staking.xsat setstatus '{"id": 1, "disabled_staking": true}' -p staking.xsat
 
+# staking @staker
+$ cleos push action btc.xsat transfer '{"from":"alice","to":"staking.xsat","quantity":"1.00000000 BTC", "memo":"alice"}' -p alice
+
 # release @staker
 $ cleos push action staking.xsat release '{"staking_id": 1, "staker": "alice", "validator": "alice", "quantity": "1.00000000 BTC"}' -p alice
 
