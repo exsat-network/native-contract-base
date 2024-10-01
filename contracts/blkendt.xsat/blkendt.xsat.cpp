@@ -22,7 +22,7 @@ void block_endorse::erase(const uint64_t height) {
 
 //@auth get_self()
 [[eosio::action]]
-void block_endorse::config(const uint64_t max_endorse_height, const uint16_t max_endorsed_blocks,
+void block_endorse::config(const uint64_t limit_endorse_height, const uint16_t limit_num_endorsed_blocks,
                            const uint16_t min_validators, const uint64_t xsat_stake_activation_height,
                            const uint16_t consensus_interval_seconds, const asset& min_xsat_qualification) {
     require_auth(get_self());
@@ -33,9 +33,9 @@ void block_endorse::config(const uint64_t max_endorse_height, const uint16_t max
           "blkendt.xsat::config: min_xsat_qualification must be greater than 0BTC and less than 21000000XSAT");
 
     auto config = _config.get_or_default();
-    config.max_endorse_height = max_endorse_height;
+    config.limit_endorse_height = limit_endorse_height;
     config.xsat_stake_activation_height = xsat_stake_activation_height;
-    config.max_endorsed_blocks = max_endorsed_blocks;
+    config.limit_num_endorsed_blocks = limit_num_endorsed_blocks;
     config.min_validators = min_validators;
     config.consensus_interval_seconds = consensus_interval_seconds;
     config.min_xsat_qualification = min_xsat_qualification;
@@ -47,9 +47,9 @@ void block_endorse::config(const uint64_t max_endorse_height, const uint16_t max
 void block_endorse::endorse(const name& validator, const uint64_t height, const checksum256& hash) {
     require_auth(validator);
 
-    // Verify whether the endorsement height exceeds max_endorse_height, 0 means no limit
+    // Verify whether the endorsement height exceeds limit_endorse_height, 0 means no limit
     auto config = _config.get();
-    check(config.max_endorse_height == 0 || config.max_endorse_height >= height,
+    check(config.limit_endorse_height == 0 || config.limit_endorse_height >= height,
           "1001:blkendt.xsat::endorse: the current endorsement status is disabled");
 
     utxo_manage::chain_state_table _chain_state(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
@@ -60,9 +60,10 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
           "1002:blkendt.xsat::endorse: the current block is irreversible and does not need to be endorsed");
 
     // The endorsement height cannot exceed the interval of the parsed block height.
-    check(config.max_endorsed_blocks == 0 || chain_state.parsed_height + config.max_endorsed_blocks >= height,
-          "1003:blkendt.xsat::endorse: the endorsement height cannot exceed height "
-              + std::to_string(chain_state.parsed_height + config.max_endorsed_blocks));
+    check(
+        config.limit_num_endorsed_blocks == 0 || chain_state.parsed_height + config.limit_num_endorsed_blocks >= height,
+        "1003:blkendt.xsat::endorse: the endorsement height cannot exceed height "
+            + std::to_string(chain_state.parsed_height + config.limit_num_endorsed_blocks));
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});

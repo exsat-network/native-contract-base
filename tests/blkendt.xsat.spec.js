@@ -141,8 +141,8 @@ describe('blkendt.xsat', () => {
     it('config', async () => {
         await contracts.blkendt.actions.config([1, 1, 5, 850000, 1, '2.00000000 XSAT']).send('blkendt.xsat@active')
         expect(get_config()).toEqual({
-            max_endorse_height: 1,
-            max_endorsed_blocks: 1,
+            limit_endorse_height: 1,
+            limit_num_endorsed_blocks: 1,
             min_validators: 5,
             xsat_stake_activation_height: 850000,
             consensus_interval_seconds: 1,
@@ -150,8 +150,8 @@ describe('blkendt.xsat', () => {
         })
         await contracts.blkendt.actions.config([0, 0, 10, 860000, 0, '21000.00000000 XSAT']).send('blkendt.xsat@active')
         expect(get_config()).toEqual({
-            max_endorse_height: 0,
-            max_endorsed_blocks: 0,
+            limit_endorse_height: 0,
+            limit_num_endorsed_blocks: 0,
             min_validators: 10,
             xsat_stake_activation_height: 860000,
             consensus_interval_seconds: 0,
@@ -301,8 +301,8 @@ describe('blkendt.xsat', () => {
     it('config', async () => {
         await contracts.blkendt.actions.config([1, 0, 2, 860000, 0, '21000.00000000 XSAT']).send('blkendt.xsat@active')
         expect(get_config()).toEqual({
-            max_endorse_height: 1,
-            max_endorsed_blocks: 0,
+            limit_endorse_height: 1,
+            limit_num_endorsed_blocks: 0,
             min_validators: 2,
             xsat_stake_activation_height: 860000,
             consensus_interval_seconds: 0,
@@ -322,8 +322,8 @@ describe('blkendt.xsat', () => {
     it('config', async () => {
         await contracts.blkendt.actions.config([0, 1, 2, 860000, 0, '21000.00000000 XSAT']).send('blkendt.xsat@active')
         expect(get_config()).toEqual({
-            max_endorse_height: 0,
-            max_endorsed_blocks: 1,
+            limit_endorse_height: 0,
+            limit_num_endorsed_blocks: 1,
             min_validators: 2,
             xsat_stake_activation_height: 860000,
             consensus_interval_seconds: 0,

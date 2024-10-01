@@ -8,7 +8,7 @@
 
 ```bash
 # config @blkendt.xsat
-$ cleos push action blkendt.xsat config '{"max_endorse_height": 840000, "max_endorsed_blocks": 4, "min_validators": 15, "consensus_interval_seconds": 480, "xsat_stake_activation_height": 860000}' -p blkendt.xsat
+$ cleos push action blkendt.xsat config '{"limit_endorse_height": 840000, "limit_num_endorsed_blocks": 4, "min_validators": 15, "consensus_interval_seconds": 480, "xsat_stake_activation_height": 860000}' -p blkendt.xsat
 
 # erase @utxomng.xsat
 $ cleos push action blkendt.xsat erase '{"height": 840000}' -p utxomng.xsat
@@ -85,8 +85,8 @@ $ cleos get table blkendt.xsat <height> endorsements --index 2 --key-type sha256
 ### scope `get_self()`
 ### params
 
-- `{uint64_t} max_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
-- `{uint16_t} max_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
+- `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
+- `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
 - `{uint16_t} min_validators` - the minimum number of validators, which limits the number of validators that pledge more than 100 BTC at the time of first endorsement.
 - `{uint16_t} consensus_interval_seconds` - the interval in seconds between consensus rounds.
 - `{uint64_t} xsat_stake_activation_height` - block height at which XSAT staking feature is activated
@@ -95,8 +95,8 @@ $ cleos get table blkendt.xsat <height> endorsements --index 2 --key-type sha256
 
 ```json
 {
-  "max_endorse_height": 840000,
-  "max_endorsed_blocks": 10,
+  "limit_endorse_height": 840000,
+  "limit_num_endorsed_blocks": 10,
   "min_validators": 15,
   "consensus_interval_seconds": 480,
   "xsat_stake_activation_height": 860000
@@ -142,8 +142,8 @@ $ cleos get table blkendt.xsat <height> endorsements --index 2 --key-type sha256
 
 ### params
 
-- `{uint64_t} max_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
-- `{uint16_t} max_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
+- `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
+- `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
 - `{uint16_t} min_validators` - the minimum number of validators, which limits the number of validators that pledge more than 100 BTC at the time of first endorsement.
 - `{uint64_t} xsat_stake_activation_height` - block height at which XSAT staking feature is activated
 - `{uint16_t} consensus_interval_seconds` - the interval in seconds between consensus rounds.
