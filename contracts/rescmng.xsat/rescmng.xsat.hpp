@@ -108,6 +108,7 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
      * ### params
      * - `{name} client` - client account
      * - `{uint8_t} type` - client type 1: synchronizer 2: validator
+     * - `{string} version` - client version
      * - `{time_point_sec} last_heartbeat` - last heartbeat time
      *
      * ### example
@@ -115,6 +116,7 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
      * {
      *  "client": "alice",
      *  "type": 1,
+     *  "version": "v1.0.0",
      *  "last_heartbeat": "2024-08-13T00:00:00",
      * }
      * ```
@@ -122,6 +124,7 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
     struct [[eosio::table]] heartbeat_row {
         name client;
         uint8_t type;
+        string version;
         time_point_sec last_heartbeat;
         uint64_t primary_key() const { return client.value; }
     };
@@ -138,15 +141,16 @@ class [[eosio::contract("rescmng.xsat")]] resource_management : public contract 
      *
      * - `{name} client` - client account
      * - `{uint8_t} type` - client type 1: synchronizer 2: validator
+     * - `{optional<string>} version` - client version
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action rescmng.xsat checkclient '["alice", 1]' -p alice
+     * $ cleos push action rescmng.xsat checkclient '["alice", 1, "v1.0.0"]' -p alice
      * ```
      */
     [[eosio::action]]
-    CheckResult checkclient(const name& client, const uint8_t type);
+    CheckResult checkclient(const name& client, const uint8_t type, const optional<string>& version);
 
     /**
      * ## ACTION `init`

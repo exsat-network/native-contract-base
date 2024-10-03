@@ -12,7 +12,7 @@
 
 ```bash
 # checkclient  type 1: synchronizer 2: validator
-$ cleos push action rescmng.xsat checkclient '{"client": "test.sat", "type": 1}' -p test.sat
+$ cleos push action rescmng.xsat checkclient '{"client": "test.sat", "type": 1, "version": "v1.0.0"}' -p test.sat
 
 # init @rescmng.xsat
 $ cleos push action rescmng.xsat init '{"fee_account": "fees.xsat", "cost_per_slot": "0.00000020 BTC", "cost_per_upload": "0.00000020 BTC", "cost_per_verification": "0.00000020 BTC", "cost_per_endorsement": "0.00000020 BTC", "cost_per_parse": "0.00000020 BTC"}' -p rescmng.xsat
@@ -140,6 +140,25 @@ static constexpr fee_type PARSE = 5;
 }
 ```
 
+## TABLE `heartbeats`
+
+### scope `get_self()`
+### params
+- `{name} client` - client account
+- `{uint8_t} type` - client type 1: synchronizer 2: validator
+- `{string} version` - client version
+- `{time_point_sec} last_heartbeat` - last heartbeat time
+
+### example
+```json
+{
+ "client": "alice",
+ "type": 1,
+ "version": "v1.0.0",
+ "last_heartbeat": "2024-08-13T00:00:00",
+}
+```
+
 ## ACTION `checkclient`
 
 - **authority**: `anyone`
@@ -150,6 +169,7 @@ static constexpr fee_type PARSE = 5;
 
 - `{name} client` - client account
 - `{uint8_t} type` - client type 1: synchronizer 2: validator
+- `{optional<string>} version` - client version
 
 ### result 
 @see [CheckResult](#struct-checkresult)
@@ -157,7 +177,7 @@ static constexpr fee_type PARSE = 5;
 ### example
 
 ```bash
-$ cleos push action rescmng.xsat checkclient '["alice", 1]' -p alice 
+$ cleos push action rescmng.xsat checkclient '["alice", 1, "v1.0.0"]' -p alice 
 ```
 
 ## ACTION `init`

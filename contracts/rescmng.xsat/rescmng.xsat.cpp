@@ -11,7 +11,8 @@
 
 //@auth client
 [[eosio::action]]
-resource_management::CheckResult resource_management::checkclient(const name& client, const uint8_t type) {
+resource_management::CheckResult resource_management::checkclient(const name& client, const uint8_t type,
+                                                                  const optional<string>& version) {
     check(type == 1 || type == 2, "rescmng.xsat::check: invalid type [1: synchronizer 2: validator]");
     check(client.suffix() == "sat"_n, "rescmng.xsat::check: client must be suffixed with sat");
 
@@ -36,6 +37,7 @@ resource_management::CheckResult resource_management::checkclient(const name& cl
     }
 
     bool success = result.has_auth && result.is_exists && result.balance.amount > 0;
+    string version_value = version ? *version : "";
 
     // heartbeats
     auto heartbeat_itr = _heartbeat.find(client.value);
@@ -43,10 +45,14 @@ resource_management::CheckResult resource_management::checkclient(const name& cl
         _heartbeat.emplace(get_self(), [&](auto& row) {
             row.client = client;
             row.type = type;
+            row.version = version_value;
             row.last_heartbeat = current_time_point();
         });
     } else {
-        _heartbeat.modify(heartbeat_itr, same_payer, [&](auto& row) { row.last_heartbeat = current_time_point(); });
+        _heartbeat.modify(heartbeat_itr, same_payer, [&](auto& row) {
+            row.version = version_value;
+            row.last_heartbeat = current_time_point();
+        });
     }
 
     // log
