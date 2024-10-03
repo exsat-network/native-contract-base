@@ -74,17 +74,20 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     auto endorsement_itr = endorsement_idx.find(hash);
     bool reached_consensus = false;
     if (endorsement_itr == endorsement_idx.end()) {
-        utxo_manage::consensus_block_table _consensus_block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
-        auto consensus_block_idx = _consensus_block.get_index<"byheight"_n>();
-        auto consensus_itr = consensus_block_idx.find(height - 1);
-
         // Verify whether the endorsement time of the next height is reached
-        time_point_sec next_endorse_time = consensus_itr == consensus_block_idx.end()
-                                               ? consensus_itr->created_at
-                                               : consensus_itr->created_at + config.consensus_interval_seconds;
-        check(next_endorse_time < current_time_point(),
-              "1008:blkendt.xsat::endorse: the next endorsement time has not yet been reached "
-                  + next_endorse_time.to_string());
+        if (height - 1 > START_HEIGHT) {
+            utxo_manage::consensus_block_table _consensus_block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
+            auto consensus_block_idx = _consensus_block.get_index<"byheight"_n>();
+            auto consensus_itr = consensus_block_idx.find(height - 1);
+            if (consensus_itr == consensus_block_idx.end()) {
+                check(false, "1008:blkendt.xsat::endorse: the next endorsement time has not yet been reached");
+            } else {
+                auto next_endorse_time = consensus_itr->created_at + config.consensus_interval_seconds;
+                check(next_endorse_time <= current_time_point(),
+                      "1008:blkendt.xsat::endorse: the next endorsement time has not yet been reached "
+                          + next_endorse_time.to_string());
+            }
+        }
 
         bool xsat_stake_active
             = config.xsat_stake_activation_height > 0 && height >= config.xsat_stake_activation_height;
