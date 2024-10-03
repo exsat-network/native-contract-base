@@ -785,6 +785,13 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
                       const uint32_t version, const checksum256 &previous_block_hash, const checksum256 &merkle,
                       const uint32_t timestamp, const uint32_t bits, const uint32_t nonce);
 
+    [[eosio::action]]
+    void addconsesblk(const uint64_t bucket_id, const uint64_t height, const checksum256 &hash,
+                      const checksum256 &cumulative_work, const uint32_t version,
+                      const checksum256 &previous_block_hash, const checksum256 &merkle, const uint32_t timestamp,
+                      const uint32_t bits, const uint32_t nonce, const name &synchronizer, const name &miner,
+                      const time_point_sec &created_at);
+
     void resetpending(uint64_t row);
 #endif
 
