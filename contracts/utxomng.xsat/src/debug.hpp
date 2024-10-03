@@ -136,3 +136,47 @@ void utxo_manage::addtestblock(const uint64_t height, const checksum256& hash, c
         });
     }
 }
+
+[[eosio::action]]
+void utxo_manage::addconsesblk(const uint64_t bucket_id, const uint64_t height, const checksum256& hash,
+                               const checksum256& cumulative_work, const uint32_t version,
+                               const checksum256& previous_block_hash, const checksum256& merkle,
+                               const uint32_t timestamp, const uint32_t bits, const uint32_t nonce,
+                               const name& synchronizer, const name& miner, const time_point_sec& created_at) {
+    require_auth(get_self());
+
+    auto consensus_block_itr = _consensus_block.find(height);
+    if (consensus_block_itr == _consensus_block.end()) {
+        _consensus_block.emplace(get_self(), [&](auto& row) {
+            row.height = height;
+            row.hash = hash;
+            row.version = version;
+            row.previous_block_hash = previous_block_hash;
+            row.merkle = merkle;
+            row.timestamp = timestamp;
+            row.bits = bits;
+            row.nonce = nonce;
+            row.cumulative_work = cumulative_work;
+            row.bucket_id = bucket_id;
+            row.miner = miner;
+            row.synchronizer = synchronizer;
+            row.created_at = created_at;
+        });
+    } else {
+        _consensus_block.modify(consensus_block_itr, same_payer, [&](auto& row) {
+            row.height = height;
+            row.hash = hash;
+            row.version = version;
+            row.previous_block_hash = previous_block_hash;
+            row.merkle = merkle;
+            row.timestamp = timestamp;
+            row.bits = bits;
+            row.nonce = nonce;
+            row.cumulative_work = cumulative_work;
+            row.bucket_id = bucket_id;
+            row.miner = miner;
+            row.synchronizer = synchronizer;
+            row.created_at = created_at;
+        });
+    }
+}

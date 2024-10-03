@@ -340,11 +340,39 @@ describe('blkendt.xsat', () => {
         )
     })
 
-    it('endorse: the number of valid validators must be greater than or equal to 2', async () => {
+    it('endorse: the next endorsement time has not yet been reached', async () => {
         await contracts.blkendt.actions
             .config([0, 50000, 2, 860000, 0, '21000.00000000 XSAT'])
             .send('blkendt.xsat@active')
-        const height = 860001
+        const height = 860000
+        const hash = '00000000000000000001b48a75d5a3077913f3f441eb7e08c13c43f768db2463'
+        await expectToThrow(
+            contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active'),
+            'eosio_assert: 1008:blkendt.xsat::endorse: the next endorsement time has not yet been reached'
+        )
+    })
+    it('add consensus block 859999', async () => {
+        await contracts.utxomng.actions
+            .addconsesblk({
+                bucket_id: 859999,
+                height: 859999,
+                hash: '0000000000000000000196a7111c7aa3368af5a803a81c7bfb32860100dfd9c7',
+                cumulative_work: '00000000000000000000000000000000000000008cd4a7e44d9bf664c7f73f60',
+                version: 539074560,
+                timestamp: 1725538632,
+                merkle: '5badee0f7f69d8ff278574e82c8bdc651f3524e1dd753c92997a009f1bbaeaf0',
+                previous_block_hash: '00000000000000000000de531aab72aa763d8f1dea92efdb47c96ea5d209b8ef',
+                nonce: 1941400253,
+                bits: 386082139,
+                synchronizer: "",
+                miner: "",
+                created_at: blockchain.timestamp.toString(),
+            })
+            .send('utxomng.xsat@active')
+    })
+
+    it('endorse: the number of valid validators must be greater than or equal to 2', async () => {
+        const height = 860000
         const hash = '00000000000000000001b48a75d5a3077913f3f441eb7e08c13c43f768db2463'
         await expectToThrow(
             contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active'),
@@ -386,6 +414,27 @@ describe('blkendt.xsat', () => {
             },
         ])
     })
+
+    it('add consensus block 860000', async () => {
+        await contracts.utxomng.actions
+            .addconsesblk({
+                bucket_id: 860000,
+                height: 860000,
+                hash: '0000000000000000000095dd5c0c8e176a6498eb335c491b96df1a1ae178bfbd',
+                cumulative_work: '00000000000000000000000000000000000000008cd4f9445dc7ed9b84b84022',
+                version: 618168320,
+                timestamp: 1725539528,
+                merkle: '97f0f4c20752b9dc338dd671137041513a3053b0116db66385d8bee8e597571a',
+                previous_block_hash: '0000000000000000000196a7111c7aa3368af5a803a81c7bfb32860100dfd9c7',
+                nonce: 3812343282,
+                bits: 386082139,
+                synchronizer: "",
+                miner: "",
+                created_at: blockchain.timestamp.toString(),
+            })
+            .send('utxomng.xsat@active')
+    })
+
 
     it('endorse: the number of valid validators must be greater than or equal to 2', async () => {
         await contracts.blkendt.actions
