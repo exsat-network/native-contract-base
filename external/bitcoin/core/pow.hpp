@@ -53,15 +53,12 @@ namespace bitcoin::core {
                 else {
                     // Return the last non-special-min-difficulty-rules-block
                     block pindex = prev_block;
-                    std::optional<block> pprev;
-                    bool condition;
-                    do {
-                        pprev = get_ancestor(pindex.height - 1, pindex.previous_block_hash);
-                        condition = pprev.has_value() && pindex.height % params.difficulty_adjustment_interval() != 0
-                                    && pindex.bits == pow_limit;
+                    std::optional<block> pprev = get_ancestor(pindex.height - 1, pindex.previous_block_hash);
+                    while (pprev.has_value() && pindex.height % params.difficulty_adjustment_interval() != 0
+                           && pindex.bits == pow_limit) {
                         pindex = *pprev;
-                    } while (condition);
-
+                        pprev = get_ancestor(pindex.height - 1, pindex.previous_block_hash);
+                    }
                     return pindex.bits;
                 }
             }
