@@ -32,7 +32,7 @@ namespace bitcoin::core {
         int BIP66_height;
         int CSV_height;
         int Segwit_height;
-        uint32_t pow_limit;
+        std::string pow_limit;
         bool pow_allow_min_difficulty_blocks;
         bool enforce_BIP94;
         bool pow_no_retargeting;
