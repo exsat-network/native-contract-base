@@ -15,14 +15,6 @@ namespace bitcoin {
         return intx::le::unsafe::load<uint256_t>((uint8_t*)buffer.data());
     }
 
-    uint256_t be_uint_from_string(const std::string& value) {
-        return intx::be::unsafe::load<uint256_t>((uint8_t*)value.data());
-    }
-
-    uint256_t le_uint_from_string(const std::string& value) {
-        return intx::le::unsafe::load<uint256_t>((uint8_t*)value.data());
-    }
-
     eosio::checksum256 be_checksum256_from_uint(const uint256_t& value) {
         auto buffer = std::array<uint8_t, 32>();
         intx::be::unsafe::store<uint256_t>(buffer.data(), value);

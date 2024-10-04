@@ -8,7 +8,7 @@ namespace bitcoin::core {
     typedef std::optional<block>(GetAncestor)(const uint64_t, const optional<checksum256>);
 
     bitcoin::uint256_t get_pow_limit(const bitcoin::core::Params& params) {
-        return bitcoin::be_uint_from_string(params.pow_limit);
+        return intx::from_string<bitcoin::uint256_t>(params.pow_limit);
     }
 
     uint32_t calculate_next_work_required(const block& prev_block, const uint32_t first_block_time,
@@ -16,8 +16,10 @@ namespace bitcoin::core {
         // Limit adjustment step
         int64_t actual_timespan = prev_block.timestamp - first_block_time;
 
-        if (actual_timespan < params.pow_target_timespan / 4) actual_timespan = params.pow_target_timespan / 4;
-        if (actual_timespan > params.pow_target_timespan * 4) actual_timespan = params.pow_target_timespan * 4;
+        if (actual_timespan < params.pow_target_timespan / 4)
+            actual_timespan = params.pow_target_timespan / 4;
+        if (actual_timespan > params.pow_target_timespan * 4)
+            actual_timespan = params.pow_target_timespan * 4;
 
         // Retarget
         bitcoin::uint256_t bn_new;
@@ -37,7 +39,8 @@ namespace bitcoin::core {
         bn_new *= actual_timespan;
         bn_new /= params.pow_target_timespan;
         auto pow_limit = get_pow_limit(params);
-        if (bn_new > pow_limit) bn_new = pow_limit;
+        if (bn_new > pow_limit)
+            bn_new = pow_limit;
 
         return bitcoin::compact::encode(bn_new);
     }
@@ -57,15 +60,12 @@ namespace bitcoin::core {
                 else {
                     // Return the last non-special-min-difficulty-rules-block
                     block pindex = prev_block;
-                    std::optional<block> pprev;
-                    bool condition;
-                    do {
-                        pprev = get_ancestor(pindex.height - 1, pindex.previous_block_hash);
-                        condition = pprev.has_value() && pindex.height % params.difficulty_adjustment_interval() != 0
-                                    && pindex.bits == pow_limit;
+                    std::optional<block> pprev = get_ancestor(pindex.height - 1, pindex.previous_block_hash);
+                    while (pprev.has_value() && pindex.height % params.difficulty_adjustment_interval() != 0
+                           && pindex.bits == pow_limit) {
                         pindex = *pprev;
-                    } while (condition);
-
+                        pprev = get_ancestor(pindex.height - 1, pindex.previous_block_hash);
+                    }
                     return pindex.bits;
                 }
             }
