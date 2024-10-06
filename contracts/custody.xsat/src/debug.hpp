@@ -17,9 +17,6 @@ void custody::cleartable(const name table_name, const optional<name> scope, cons
     } else if (table_name == "custodies"_n) {
         custody_index _custody(get_self(), get_self().value);
         clear_table(_custody, rows_to_clear);
-    } else if (table_name == "vaults"_n) {
-        vault_index _vault(get_self(), get_self().value);
-        clear_table(_vault, rows_to_clear);
     } else {
         check(false, "custody::cleartable: [table_name] unknown table to clear");
     }
@@ -35,20 +32,12 @@ void custody::addr2pubkey(const string& address) {
 [[eosio::action]]
 void custody::pubkey2addr(const vector<uint8_t> data) {
     std::vector<string> res;
-    bool success = bitcoin::ExtractDestination(data, res);
+    bool success = bitcoin::ExtractDestination(data, CHAIN_PARAMS, res);
     if (success) {
         print_f("address: %", res[0]);
     } else {
         print_f("failed to extract address");
     }
-}
-
-[[eosio::action]]
-void custody::updateheight(const uint64_t height) {
-    require_auth(get_self());
-    global_row global = _global.get_or_default();
-    global.last_height = height;
-    _global.set(global, get_self());
 }
 
 
