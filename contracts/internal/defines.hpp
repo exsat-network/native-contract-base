@@ -101,7 +101,7 @@ static constexpr uint16_t MAX_NUM_SLOTS = 1000;
 
 static constexpr uint8_t STAKE_RELEASE_CYCLE = 28;  // days
 
-static constexpr uint16_t COMMISSION_RATE_BASE = 10000;
+static constexpr uint16_t RATE_BASE_10000 = 10000;
 
 static constexpr uint64_t RATE_BASE = 100000000LL;
 static constexpr uint64_t SYNCHRONIZER_REWARD_RATE = RATE_BASE / 10;

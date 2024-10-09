@@ -32,6 +32,8 @@ cleos push action utxomng.xsat config '[600, 100, 1008, 100, 10, 10]' -p utxomng
 cleos push action utxomng.xsat init '[839999, '0000000000000000000172014ba58d66455762add0512355ad651207918494ab', '0000000000000000000000000000000000000000753b8c1eaae701e1f0146360']' -p utxomng.xsat
 cleos push action rescmng.xsat init '{"fee_account": "fees.xsat", "cost_per_slot": "0.00000001 BTC", "cost_per_upload": "0.00000001 BTC", "cost_per_verification": "0.00000001 BTC", "cost_per_endorsement": "0.00000001 BTC", "cost_per_parse": "0.00000001 BTC"}' -p rescmng.xsat
 cleos push action xsatstk.xsat setstatus '[false]' -p xsatstk.xsat
+cleos push action poolreg.xsat setdonateacc '["donate.xsat"]' -p poolreg.xsat@owner
+cleos push action endrmng.xsat setdonateacc '["donate.xsat"]' -p endrmng.xsat@owner
 
 cleos set account permission btc.xsat active '{
     "threshold": 1,

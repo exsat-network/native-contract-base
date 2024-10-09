@@ -14,8 +14,14 @@
 ## Quickstart 
 
 ```bash
+# setdonateacc @poolreg.xsat
+$ cleos push action poolreg.xsat setdonateacc '{"donation_account": "alice"}' -p poolreg.xsat
+
+# setdonate @synchronizer
+$ cleos push action poolreg.xsat setdonate '{"synchronizer": "alice", "donate_rate": 100}' -p alice
+
 # updateheight @utxomng.xsat
-$ cleos push action poolreg.xsat updateheight '{"validator": "alice", "height": 839999, "miners": ["3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv", "bc1p8k4v4xuz55dv49svzjg43qjxq2whur7ync9tm0xgl5t4wjl9ca9snxgmlt"]}' -p utxomng.xsat
+$ cleos push action poolreg.xsat updateheight '{"synchronizer": "alice", "height": 839999, "miners": ["3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv", "bc1p8k4v4xuz55dv49svzjg43qjxq2whur7ync9tm0xgl5t4wjl9ca9snxgmlt"]}' -p utxomng.xsat
 
 # initpool @poolreg.xsat
 $ cleos push action poolreg.xsat initpool '{"synchronizer": "alice", "latest_produced_block_height": 839999, "financial_account": "alice", "miners": [""]}' -p poolreg.xsat
@@ -44,42 +50,72 @@ $ cleos push action poolreg.xsat claim '{"synchronizer": "alice"}' -p alice
 ```bash
 $ cleos get table poolreg.xsat poolreg.xsat synchronizer
 $ cleos get table poolreg.xsat poolreg.xsat miners
+$ cleos get table poolreg.xsat poolreg.xsat config
+$ cleos get table poolreg.xsat poolreg.xsat stat
 ```
 
 ## Table of Content
-
-- [TABLE `synchronizer`](#table-synchronizer)
+- [TABLE `config`](#table-config)
   - [scope `get_self()`](#scope-get_self)
   - [params](#params)
   - [example](#example)
-- [TABLE `miners`](#table-miners)
+- [TABLE `synchronizer`](#table-synchronizer)
   - [scope `get_self()`](#scope-get_self-1)
   - [params](#params-1)
   - [example](#example-1)
-- [ACTION `updateheight`](#action-updateheight)
+- [TABLE `miners`](#table-miners)
+  - [scope `get_self()`](#scope-get_self-2)
   - [params](#params-2)
   - [example](#example-2)
-- [ACTION `initpool`](#action-initpool)
+- [TABLE `stat`](#table-stat)
+  - [scope `get_self()`](#scope-get_self-3)
   - [params](#params-3)
   - [example](#example-3)
-- [ACTION `delpool`](#action-delpool)
+- [ACTION `setdonateacc`](#action-setdonateacc)
   - [params](#params-4)
   - [example](#example-4)
-- [ACTION `unbundle`](#action-unbundle)
+- [ACTION `updateheight`](#action-updateheight)
   - [params](#params-5)
   - [example](#example-5)
-- [ACTION `config`](#action-config)
+- [ACTION `initpool`](#action-initpool)
   - [params](#params-6)
   - [example](#example-6)
-- [ACTION `buyslot`](#action-buyslot)
+- [ACTION `delpool`](#action-delpool)
   - [params](#params-7)
   - [example](#example-7)
-- [ACTION `setfinacct`](#action-setfinacct)
+- [ACTION `unbundle`](#action-unbundle)
   - [params](#params-8)
   - [example](#example-8)
-- [ACTION `claim`](#action-claim)
+- [ACTION `config`](#action-config)
   - [params](#params-9)
   - [example](#example-9)
+- [ACTION `buyslot`](#action-buyslot)
+  - [params](#params-10)
+  - [example](#example-10)
+- [ACTION `setdonate`](#action-setdonate)
+  - [params](#params-11)
+  - [example](#example-11)
+- [ACTION `setfinacct`](#action-setfinacct)
+  - [params](#params-12)
+  - [example](#example-12)
+- [ACTION `claim`](#action-claim)
+  - [params](#params-13)
+  - [example](#example-13)
+
+## TABLE `config`
+
+### scope `get_self()`
+### params
+
+- `{string} donation_account` - the account designated for receiving donations
+
+### example
+
+```json
+{
+  "donation_account": "donate.xsat"
+}
+```
 
 ## TABLE `synchronizer`
 
@@ -92,6 +128,8 @@ $ cleos get table poolreg.xsat poolreg.xsat miners
 - `{uint16_t} num_slots` - number of slots owned
 - `{uint64_t} latest_produced_block_height` - the latest block number
 - `{uint16_t} produced_block_limit` - upload block limit, for example, if 432 is set, the upload height needs to be a synchronizer that has produced blocks in 432 blocks before it can be uploaded.
+- `{uint16_t} donate_rate` - the donation rate, represented as a percentage, ex: 500 means 5.00%
+- `{asset} total_donated` - the total amount of XSAT that has been donated
 - `{asset} unclaimed` - unclaimed rewards
 - `{asset} claimed` - rewards claimed
 - `{uint64_t} latest_reward_block` - the latest block number to receive rewards
@@ -107,6 +145,8 @@ $ cleos get table poolreg.xsat poolreg.xsat miners
    "num_slots": 2,
    "latest_produced_block_height": 840000,
    "produced_block_limit": 432,
+   "donate_rate": 100,
+   "total_donated": "100.00000000 XSAT",
    "unclaimed": "5.00000000 XSAT",
    "claimed": "0.00000000 XSAT",
    "latest_reward_block": 840001,
@@ -131,6 +171,37 @@ $ cleos get table poolreg.xsat poolreg.xsat miners
    "synchronizer": "alice",
    "miner": "3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv"
 }
+```
+
+## TABLE `stat`
+
+### scope `get_self()`
+### params
+
+- `{asset} xsat_total_donated` - the cumulative amount of XSAT donated
+
+### example
+
+```json
+{
+  "xsat_total_donated": "100.40000000 XSAT"
+}
+```
+
+## ACTION `setdonateacc`
+
+- **authority**: `get_self()`
+
+> Update donation account.
+
+### params
+
+- `{string} donation_account` -  account to receive donations
+
+### example
+
+```bash
+$ cleos push action poolreg.xsat setdonateacc '["alice"]' -p poolreg.xsat
 ```
 
 ## ACTION `updateheight`
@@ -235,6 +306,23 @@ $ cleos push action poolreg.xsat config '["alice", 432]' -p poolreg.xsat
 
 ```bash
 $ cleos push action poolreg.xsat buyslot '["alice", "alice", 2]' -p alice
+```
+
+## ACTION `setdonate`
+
+- **authority**: `synchronizer`
+
+> Configure donate rate.
+
+### params
+
+- `{name} synchronizer` - synchronizer account
+- `{uint16_t} donate_rate` - the donation rate, represented as a percentage, ex: 500 means 5.00% 
+
+### example
+
+```bash
+$ cleos push action poolreg.xsat setdonate '["alice", 100]' -p alice
 ```
 
 ## ACTION `setfinacct`
