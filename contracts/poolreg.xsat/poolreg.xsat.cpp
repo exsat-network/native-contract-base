@@ -262,8 +262,10 @@ void pool::claim(const name& synchronizer) {
     }
 
     // transfer reward
-    token_transfer(get_self(), synchronizer_itr->reward_recipient, extended_asset{to_synchronizer, EXSAT_CONTRACT},
-                   synchronizer_itr->memo);
+    if (to_synchronizer.amount > 0) {
+        token_transfer(get_self(), synchronizer_itr->reward_recipient, extended_asset{to_synchronizer, EXSAT_CONTRACT},
+                       synchronizer_itr->memo);
+    }
 
     // log
 

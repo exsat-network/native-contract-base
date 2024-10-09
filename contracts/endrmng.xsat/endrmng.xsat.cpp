@@ -310,8 +310,6 @@ void endorse_manage::claim(const name& staker, const name& validator, const uint
         row.consensus_reward_balance -= consensus_reward_unclaimed;
     });
 
-    token_transfer(get_self(), native_staker_itr->staker, {to_staker, EXSAT_CONTRACT}, "claim reward");
-
     // transfer donate
     if (donated_amount.amount > 0) {
         auto config = _config.get();
@@ -320,6 +318,10 @@ void endorse_manage::claim(const name& staker, const name& validator, const uint
         auto stat = _stat.get_or_default();
         stat.xsat_total_donated += donated_amount;
         _stat.set(stat, get_self());
+    }
+
+    if (to_staker.amount > 0) {
+        token_transfer(get_self(), native_staker_itr->staker, {to_staker, EXSAT_CONTRACT}, "claim reward");
     }
 
     endorse_manage::claimlog_action _claimlog(get_self(), {get_self(), "active"_n});
@@ -469,8 +471,11 @@ void endorse_manage::evm_claim(const name& caller, const checksum160& proxy, con
     }
 
     // transfer reward
-    token_transfer(get_self(), ERC20_CONTRACT, {claimable - donated_amount, EXSAT_CONTRACT},
-                   "0x" + xsat::utils::sha1_to_hex(evm_staker_itr->staker));
+    auto to_staker = claimable - donated_amount;
+    if (to_staker.amount > 0) {
+        token_transfer(get_self(), ERC20_CONTRACT, {to_staker, EXSAT_CONTRACT},
+                       "0x" + xsat::utils::sha1_to_hex(evm_staker_itr->staker));
+    }
 
     // log
     endorse_manage::evmclaimlog_action _evmclaimlog(get_self(), {get_self(), "active"_n});
@@ -518,7 +523,10 @@ void endorse_manage::vdrclaim(const name& validator) {
     }
 
     // transfer reward
-    token_transfer(get_self(), validator_itr->reward_recipient, {to_validator, EXSAT_CONTRACT}, validator_itr->memo);
+    if (to_validator.amount > 0) {
+        token_transfer(get_self(), validator_itr->reward_recipient, {to_validator, EXSAT_CONTRACT},
+                       validator_itr->memo);
+    }
 
     // log
     string reward_recipient = validator_itr->reward_recipient == ERC20_CONTRACT

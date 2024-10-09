@@ -398,7 +398,7 @@ describe('poolreg.xsat', () => {
         )
     })
 
-    it('setdonate', async () => {
+    it('setdonate: 10%', async () => {
         await contracts.poolreg.actions.setdonate(['bob', 100]).send('bob@active')
         const synchronizer = get_synchronizer('bob')
         expect(synchronizer.donate_rate).toEqual(100)
@@ -418,5 +418,27 @@ describe('poolreg.xsat', () => {
         const donate_after_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
         expect(alice_after_balance - alice_before_balance).toEqual(9900000000)
         expect(donate_after_balance - donate_before_balance).toEqual(100000000)
+    })
+
+    it('setdonate: 100%', async () => {
+        await contracts.poolreg.actions.setdonate(['bob', 10000]).send('bob@active')
+        const synchronizer = get_synchronizer('bob')
+        expect(synchronizer.donate_rate).toEqual(10000)
+    })
+
+    it('transfer reward', async () => {
+        await contracts.exsat.actions
+            .transfer(['rwddist.xsat', 'poolreg.xsat', '100.00000000 XSAT', 'bob,840003'])
+            .send('rwddist.xsat@active')
+    })
+
+    it('claim: donate_rate = 100%', async () => {
+        const alice_before_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', XSAT.code)
+        const donate_before_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        await contracts.poolreg.actions.claim(['bob']).send('alice@active')
+        const alice_after_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', XSAT.code)
+        const donate_after_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        expect(alice_after_balance - alice_before_balance).toEqual(0)
+        expect(donate_after_balance - donate_before_balance).toEqual(10000000000)
     })
 })
