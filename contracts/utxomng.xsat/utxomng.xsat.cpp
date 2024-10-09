@@ -146,7 +146,8 @@ void utxo_manage::delblock(const uint64_t height) {
 void utxo_manage::delspentutxo(uint64_t rows) {
     require_auth(get_self());
 
-    if (rows == 0) rows = -1;
+    if (rows == 0)
+        rows = -1;
 
     auto config = _config.get();
     auto chain_state = _chain_state.get();
@@ -165,7 +166,8 @@ void utxo_manage::delspentutxo(uint64_t rows) {
 void utxo_manage::delblockdata(uint64_t rows) {
     require_auth(get_self());
 
-    if (rows == 0) rows = -1;
+    if (rows == 0)
+        rows = -1;
 
     block_sync::delchunks_action _delchunks(BLOCK_SYNC_CONTRACT, {get_self(), "active"_n});
 
@@ -176,8 +178,8 @@ void utxo_manage::delblockdata(uint64_t rows) {
     auto block_extra_end = _block_extra.upper_bound(last_height);
 
     while (block_extra_itr != block_extra_end && rows--) {
-        block_extra_itr = _block_extra.erase(block_extra_itr);
         _delchunks.send(block_extra_itr->bucket_id);
+        block_extra_itr = _block_extra.erase(block_extra_itr);
     }
 }
 
@@ -413,7 +415,8 @@ void utxo_manage::parsing_transactions(const uint64_t height, const checksum256&
         parsing_progress->num_transactions = bitcoin::varint::decode(block_stream);
     }
 
-    if (process_row == 0) process_row = -1;
+    if (process_row == 0)
+        process_row = -1;
 
     uint64_t parsed_position = 0;
     std::vector<uint8_t> script_data = {};
@@ -427,7 +430,8 @@ void utxo_manage::parsing_transactions(const uint64_t height, const checksum256&
         for (; parsing_progress->parsed_vin < transaction.inputs.size() && process_row;
              parsing_progress->parsed_vin++, process_row--) {
             auto vin = transaction.inputs[parsing_progress->parsed_vin];
-            if (transaction.is_coinbase()) continue;
+            if (transaction.is_coinbase())
+                continue;
 
             save_pending_utxo(height, hash, bitcoin::be_checksum256_from_uint(vin.previous_output_hash),
                               vin.previous_output_index, script_data, 0, "vin"_n);
@@ -439,7 +443,8 @@ void utxo_manage::parsing_transactions(const uint64_t height, const checksum256&
              parsing_progress->parsed_vout++, process_row--) {
             auto vout = transaction.outputs[parsing_progress->parsed_vout];
 
-            if (xsat::utils::is_unspendable_legacy(vout.script.data)) continue;
+            if (xsat::utils::is_unspendable_legacy(vout.script.data))
+                continue;
             save_pending_utxo(height, hash, txid, parsing_progress->parsed_vout, vout.script.data, vout.value,
                               "vout"_n);
             parsing_progress->num_utxos++;
@@ -458,7 +463,8 @@ void utxo_manage::parsing_transactions(const uint64_t height, const checksum256&
 }
 
 void utxo_manage::migrate(utxo_manage::chain_state_row& chain_state, uint64_t process_row) {
-    if (process_row == 0) process_row = -1;
+    if (process_row == 0)
+        process_row = -1;
 
     auto block_id = xsat::utils::compute_block_id(chain_state.migrating_height, chain_state.migrating_hash);
     auto pending_utxo_idx = _pending_utxo.get_index<"byblockid"_n>();
@@ -567,13 +573,15 @@ void utxo_manage::delete_data(utxo_manage::chain_state_row& chain_state, const u
 
 void utxo_manage::find_set_next_parsable_block(utxo_manage::chain_state_row& chain_state,
                                                const uint16_t parse_timeout_seconds) {
-    if (chain_state.parsing_height != 0) return;
+    if (chain_state.parsing_height != 0)
+        return;
     uint128_t id = compute_parse_height(false, chain_state.irreversible_height);
     auto block_id_idx = _consensus_block.get_index<"parseheight"_n>();
     auto consensus_block_itr = block_id_idx.upper_bound(id);
     while (consensus_block_itr != block_id_idx.end()) {
         // break if the latest one is parsed
-        if (consensus_block_itr->parse) break;
+        if (consensus_block_itr->parse)
+            break;
 
         if (chain_state.parsing_height == 0) {
             chain_state.parsing_height = consensus_block_itr->height;
