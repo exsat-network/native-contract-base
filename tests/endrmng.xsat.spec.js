@@ -1342,7 +1342,7 @@ describe('endrmng.xsat', () => {
         )
     })
 
-    it('setdonate', async () => {
+    it('setdonate: 10%', async () => {
         await contracts.endrmng.actions.setdonate(['alice', 100]).send('alice@active')
         const validator = get_validator('alice')
         expect(validator.donate_rate).toEqual(100)
@@ -1384,5 +1384,49 @@ describe('endrmng.xsat', () => {
         const donate_after_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
         expect(tony_after_balance - tony_before_balance).toEqual(1714999918)
         expect(donate_after_balance - donate_before_balance).toEqual(34999998)
+    })
+
+    it('setdonate: 100%', async () => {
+        await contracts.endrmng.actions.setdonate(['alice', 10000]).send('alice@active')
+        const validator = get_validator('alice')
+        expect(validator.donate_rate).toEqual(10000)
+    })
+
+    it('transfer reward', async () => {
+        await contracts.exsat.actions
+            .transfer([
+                'rwddist.xsat',
+                'endrmng.xsat',
+                '25.00000000 XSAT',
+                'alice,840002,22.50000000 XSAT,2.50000000 XSAT',
+            ])
+            .send('rwddist.xsat@active')
+
+        await contracts.endrmng.actions
+            .distribute([
+                840002,
+                [{ validator: 'alice', staking_rewards: '22.50000000 XSAT', consensus_rewards: '2.50000000 XSAT' }],
+            ])
+            .send('rwddist.xsat@active')
+    })
+
+    it('vdrclaim: should check if donate_rate > 0', async () => {
+        const alice_before_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', XSAT.code)
+        const donate_before_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        await contracts.endrmng.actions.vdrclaim(['alice']).send('alice@active')
+        const alice_after_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', XSAT.code)
+        const donate_after_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        expect(alice_after_balance - alice_before_balance).toEqual(0)
+        expect(donate_after_balance - donate_before_balance).toEqual(750000000)
+    })
+
+    it('claim: donate_rate = 100%', async () => {
+        const tony_before_balance = getTokenBalance(blockchain, 'tony', 'exsat.xsat', XSAT.code)
+        const donate_before_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        await contracts.endrmng.actions.claim(['tony', 'alice', 10000]).send('tony@active')
+        const tony_after_balance = getTokenBalance(blockchain, 'tony', 'exsat.xsat', XSAT.code)
+        const donate_after_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        expect(tony_after_balance - tony_before_balance).toEqual(0)
+        expect(donate_after_balance - donate_before_balance).toEqual(1749999916)
     })
 })

@@ -381,7 +381,7 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     }
 
     [[eosio::action]]
-    void claimlog(const name& synchronizer, const string& reward_recipient, const asset& claimquantity,
+    void claimlog(const name& synchronizer, const string& reward_recipient, const asset& quantity,
                   const asset& donated_amount, const asset& total_donated) {
         require_auth(get_self());
     }
