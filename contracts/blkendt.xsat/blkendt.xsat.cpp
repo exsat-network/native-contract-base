@@ -75,7 +75,7 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
     bool reached_consensus = false;
     if (endorsement_itr == endorsement_idx.end()) {
         // Verify whether the endorsement time of the next height is reached
-        if (height - 1 > START_HEIGHT) {
+        if (config.consensus_interval_seconds > 0 && height - 1 > START_HEIGHT) {
             utxo_manage::consensus_block_table _consensus_block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
             auto consensus_block_idx = _consensus_block.get_index<"byheight"_n>();
             auto consensus_itr = consensus_block_idx.find(height - 1);
