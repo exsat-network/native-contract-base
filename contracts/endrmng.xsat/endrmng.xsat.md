@@ -13,6 +13,12 @@
 ## Quickstart 
 
 ```bash
+# setdonateacc @endrmng.xsat
+$ cleos push action endrmng.xsat setdonateacc '{"donation_account": "alice"}' -p endrmng.xsat
+
+# setdonate @validator
+$ cleos push action endrmng.xsat setdonate '{"validator": "alice", "donate_rate": 100}' -p alice
+
 # addevmproxy @endrmng.xsat
 $ cleos push action endrmng.xsat addevmproxy '{"caller": "caller1", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5"}' -p endrmng.xsat
 
@@ -67,6 +73,9 @@ $ cleos push action endrmng.xsat evmnewstake '{"caller": "evmutil.xsat", "proxy"
 # evmclaim @caller whitelist["evmcaller"] 
 $ cleos push action endrmng.xsat evmclaim '{"caller": "evmutil.xsat", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5", "staker": "bbbbbbbbbbbbbbbbbbbbbbbb5530ea015b900000",  "validator": "alice"}' -p evmutil.xsat
 
+# evmclaim2 @caller whitelist["evmcaller"] 
+$ cleos push action endrmng.xsat evmclaim2 '{"caller": "evmutil.xsat", "proxy": "e4d68a77714d9d388d8233bee18d578559950cf5", "staker": "bbbbbbbbbbbbbbbbbbbbbbbb5530ea015b900000",  "validator": "alice", "donate_rate": 100}' -p evmutil.xsat
+
 # vdrclaim @validator
 $ cleos push action endrmng.xsat vdrclaim '{"validator": "alice"}' -p alice 
 
@@ -99,6 +108,7 @@ $ cleos push action endrmng.xsat creditstake '{"proxy": "e4d68a77714d9d388d8233b
 ## Table Information
 
 ```bash
+$ cleos get table endrmng.xsat endrmng.xsat config
 $ cleos get table endrmng.xsat evmcaller whitelist 
 $ cleos get table endrmng.xsat proxyreg whitelist 
 $ cleos get table endrmng.xsat <evmcaller> evmproxies
@@ -110,124 +120,136 @@ $ cleos get table endrmng.xsat endrmng.xsat stat
 ```
 
 ## Table of Content
-
 - [CONSTANT `WHITELIST_TYPES`](#constant-whitelist_types)
 - [TABLE `globalid`](#table-globalid)
   - [scope `get_self()`](#scope-get_self)
   - [params](#params)
   - [example](#example)
-- [TABLE `whitelist`](#table-whitelist)
-  - [scope `proxyreg` or `evmcaller`](#scope-proxyreg-or-evmcaller)
+- [TABLE `config`](#table-config)
+  - [scope `get_self()`](#scope-get_self-1)
   - [params](#params-1)
   - [example](#example-1)
-- [TABLE `evmproxies`](#table-evmproxies)
-  - [scope whitelist of type evmcaller](#scope-whitelist-of-type-evmcaller)
+- [TABLE `whitelist`](#table-whitelist)
+  - [scope `proxyreg` or `evmcaller`](#scope-proxyreg-or-evmcaller)
   - [params](#params-2)
   - [example](#example-2)
-- [TABLE `creditproxy`](#table-creditproxy)
-  - [scope the account whose scope is evmcaller in the `whitelist` table](#scope-the-account-whose-scope-is-evmcaller-in-the-whitelist-table)
+- [TABLE `evmproxies`](#table-evmproxies)
+  - [scope whitelist of type evmcaller](#scope-whitelist-of-type-evmcaller)
   - [params](#params-3)
   - [example](#example-3)
-- [TABLE `evmstakers`](#table-evmstakers)
-  - [scope `get_self()`](#scope-get_self-1)
+- [TABLE `creditproxy`](#table-creditproxy)
+  - [scope the account whose scope is evmcaller in the `whitelist` table](#scope-the-account-whose-scope-is-evmcaller-in-the-whitelist-table)
   - [params](#params-4)
   - [example](#example-4)
-- [TABLE `stakers`](#table-stakers)
+- [TABLE `evmstakers`](#table-evmstakers)
   - [scope `get_self()`](#scope-get_self-2)
   - [params](#params-5)
   - [example](#example-5)
-- [TABLE `validators`](#table-validators)
+- [TABLE `stakers`](#table-stakers)
   - [scope `get_self()`](#scope-get_self-3)
   - [params](#params-6)
   - [example](#example-6)
-- [TABLE `stat`](#table-stat)
+- [TABLE `validators`](#table-validators)
   - [scope `get_self()`](#scope-get_self-4)
   - [params](#params-7)
   - [example](#example-7)
-- [ACTION `addwhitelist`](#action-addwhitelist)
+- [TABLE `stat`](#table-stat)
+  - [scope `get_self()`](#scope-get_self-5)
   - [params](#params-8)
   - [example](#example-8)
-- [ACTION `delwhitelist`](#action-delwhitelist)
+- [ACTION `setdonateacc`](#action-setdonateacc)
   - [params](#params-9)
   - [example](#example-9)
-- [ACTION `addevmproxy`](#action-addevmproxy)
+- [ACTION `addwhitelist`](#action-addwhitelist)
   - [params](#params-10)
   - [example](#example-10)
-- [ACTION `delevmproxy`](#action-delevmproxy)
+- [ACTION `delwhitelist`](#action-delwhitelist)
   - [params](#params-11)
   - [example](#example-11)
-- [ACTION `addcrdtproxy`](#action-addcrdtproxy)
+- [ACTION `addevmproxy`](#action-addevmproxy)
   - [params](#params-12)
   - [example](#example-12)
-- [ACTION `delcrdtproxy`](#action-delcrdtproxy)
+- [ACTION `delevmproxy`](#action-delevmproxy)
   - [params](#params-13)
   - [example](#example-13)
-- [ACTION `setstatus`](#action-setstatus)
+- [ACTION `addcrdtproxy`](#action-addcrdtproxy)
   - [params](#params-14)
   - [example](#example-14)
-- [ACTION `regvalidator`](#action-regvalidator)
+- [ACTION `delcrdtproxy`](#action-delcrdtproxy)
   - [params](#params-15)
   - [example](#example-15)
-- [ACTION `proxyreg`](#action-proxyreg)
+- [ACTION `setstatus`](#action-setstatus)
   - [params](#params-16)
   - [example](#example-16)
-- [ACTION `config`](#action-config)
+- [ACTION `regvalidator`](#action-regvalidator)
   - [params](#params-17)
   - [example](#example-17)
-- [ACTION `stake`](#action-stake)
+- [ACTION `proxyreg`](#action-proxyreg)
   - [params](#params-18)
   - [example](#example-18)
-- [ACTION `unstake`](#action-unstake)
+- [ACTION `config`](#action-config)
   - [params](#params-19)
   - [example](#example-19)
-- [ACTION `newstake`](#action-newstake)
+- [ACTION `setdonate`](#action-setdonate)
   - [params](#params-20)
   - [example](#example-20)
-- [ACTION `claim`](#action-claim)
+- [ACTION `stake`](#action-stake)
   - [params](#params-21)
   - [example](#example-21)
-- [ACTION `evmstake`](#action-evmstake)
+- [ACTION `unstake`](#action-unstake)
   - [params](#params-22)
   - [example](#example-22)
-- [ACTION `evmunstake`](#action-evmunstake)
+- [ACTION `newstake`](#action-newstake)
   - [params](#params-23)
   - [example](#example-23)
-- [ACTION `evmnewstake`](#action-evmnewstake)
+- [ACTION `claim`](#action-claim)
   - [params](#params-24)
   - [example](#example-24)
-- [ACTION `evmclaim`](#action-evmclaim)
+- [ACTION `evmstake`](#action-evmstake)
   - [params](#params-25)
   - [example](#example-25)
-- [ACTION `vdrclaim`](#action-vdrclaim)
+- [ACTION `evmunstake`](#action-evmunstake)
   - [params](#params-26)
   - [example](#example-26)
-- [STRUCT `reward_details_row`](#struct-reward_details_row)
+- [ACTION `evmnewstake`](#action-evmnewstake)
   - [params](#params-27)
   - [example](#example-27)
-- [ACTION `distribute`](#action-distribute)
+- [ACTION `evmclaim`](#action-evmclaim)
   - [params](#params-28)
   - [example](#example-28)
-- [ACTION `stakexsat`](#action-stakexsat)
+- [ACTION `evmclaim2`](#action-evmclaim2)
   - [params](#params-29)
   - [example](#example-29)
-- [ACTION `unstakexsat`](#action-unstakexsat)
+- [ACTION `vdrclaim`](#action-vdrclaim)
   - [params](#params-30)
   - [example](#example-30)
-- [ACTION `restakexsat`](#action-restakexsat)
+- [STRUCT `reward_details_row`](#struct-reward_details_row)
   - [params](#params-31)
   - [example](#example-31)
-- [ACTION `evmstakexsat`](#action-evmstakexsat)
+- [ACTION `distribute`](#action-distribute)
   - [params](#params-32)
   - [example](#example-32)
-- [ACTION `evmunstkxsat`](#action-evmunstkxsat)
+- [ACTION `stakexsat`](#action-stakexsat)
   - [params](#params-33)
   - [example](#example-33)
-- [ACTION `evmrestkxsat`](#action-evmrestkxsat)
+- [ACTION `unstakexsat`](#action-unstakexsat)
   - [params](#params-34)
   - [example](#example-34)
-- [ACTION `creditstake`](#action-creditstake)
+- [ACTION `restakexsat`](#action-restakexsat)
   - [params](#params-35)
   - [example](#example-35)
+- [ACTION `evmstakexsat`](#action-evmstakexsat)
+  - [params](#params-36)
+  - [example](#example-36)
+- [ACTION `evmunstkxsat`](#action-evmunstkxsat)
+  - [params](#params-37)
+  - [example](#example-37)
+- [ACTION `evmrestkxsat`](#action-evmrestkxsat)
+  - [params](#params-38)
+  - [example](#example-38)
+- [ACTION `creditstake`](#action-creditstake)
+  - [params](#params-39)
+  - [example](#example-39)
 
 
 ## CONSTANT `WHITELIST_TYPES`
@@ -247,6 +269,21 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
 ```json
 {
   "staking_id": 1
+}
+```
+
+## TABLE `config`
+
+### scope `get_self()`
+### params
+
+- `{string} donation_account` - the account designated for receiving donations
+
+### example
+
+```json
+{
+  "donation_account": "donate.xsat"
 }
 ```
 
@@ -310,6 +347,7 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
 - `{name} validator` - validator account
 - `{asset} quantity` - total number of staking
 - `{asset} xsat_quantity` - the amount of XSAT tokens staked
+- `{asset} total_donated` - the total amount of XSAT that has been donated
 - `{uint64_t} stake_debt` - amount of requested stake debt
 - `{asset} staking_reward_unclaimed` - amount of stake unclaimed rewards
 - `{asset} staking_reward_claimed` - amount of stake claimed rewards
@@ -327,6 +365,7 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
   "validator": "alice",
   "quantity": "0.10000000 BTC",
   "xsat_quantity": "0.10000000 XSAT",
+  "total_donated": "1.00000000 XSAT",
   "stake_debt": 1385452,
   "staking_reward_unclaimed": "0.00000000 XSAT",
   "staking_reward_claimed": "0.00000000 XSAT",
@@ -346,6 +385,7 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
 - `{name} validator` - validator account
 - `{asset} quantity` - total number of staking
 - `{asset} xsat_quantity` - the amount of XSAT tokens staked
+- `{asset} total_donated` - the total amount of XSAT that has been donated
 - `{uint64_t} stake_debt` - amount of requested stake debt
 - `{asset} staking_reward_unclaimed` - amount of stake unclaimed rewards
 - `{asset} staking_reward_claimed` - amount of stake claimed rewards
@@ -362,6 +402,7 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
   "validator": "alice",
   "quantity": "0.10000000 BTC",
   "xsat_quantity": "0.10000000 XSAT",
+  "total_donated": "1.00000000 XSAT",
   "stake_debt": 1385452,
   "staking_reward_unclaimed": "0.00000000 XSAT",
   "staking_reward_claimed": "0.00000000 XSAT",
@@ -379,10 +420,12 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
 - `{name} owner` - staker id
 - `{name} reward_recipient` - receiving account for receiving rewards
 - `{string} memo` - memo when receiving reward transfer
-- `{uint64_t} commission_rate` - commission ratio, decimal is 10^4
+- `{uint16_t} commission_rate` - commission ratio, decimal is 10^4
 - `{asset} quantity` - the amount of BTC staked by the validator
 - `{asset} qualification` -  the qualification of the validator
 - `{asset} xsat_quantity` - the amount of XSAT tokens staked by the validator
+- `{uint16_t} donate_rate` - the donation rate, represented as a percentage, ex: 500 means 5.00%
+- `{asset} total_donated` - the total amount of XSAT that has been donated
 - `{uint128_t} stake_acc_per_share` - staking rewards earnings per share
 - `{uint128_t} consensus_acc_per_share` - consensus reward earnings per share
 - `{asset} staking_reward_unclaimed` - unclaimed staking rewards
@@ -409,6 +452,8 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
   "quantity": "102.10000000 BTC",
   "qualification": "102.10000000 BTC",
   "xsat_quantity": "1000.10000000 XSAT",
+  "donate_rate": 100,
+  "total_donated": "100.00000000 XSAT",
   "stake_acc_per_share": "39564978",
   "consensus_acc_per_share": "4945621",
   "staking_reward_unclaimed": "0.00000000 XSAT",
@@ -432,15 +477,33 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
 ### params
 
 - `{asset} total_staking` - btc total staking amount
-- `{asset} total_staking` - xsat total staking amount
+- `{asset} xsat_total_staking` - the total amount of XSAT staked 
+- `{asset} xsat_total_donated` - the cumulative amount of XSAT donated
 
 ### example
 
 ```json
 {
   "total_staking": "100.40000000 BTC",
-  "xsat_total_staking": "100.40000000 XSAT"
+  "xsat_total_staking": "100.40000000 XSAT",
+  "xsat_total_donated": "100.40000000 XSAT"
 }
+```
+
+## ACTION `setdonateacc`
+
+- **authority**: `get_self()`
+
+> Update donation account.
+
+### params
+
+- `{string} donation_account` -  account to receive donations
+
+### example
+
+```bash
+$ cleos push action endrmng.xsat setdonateacc '["alice"]' -p endrmng.xsat
 ```
 
 ## ACTION `addwhitelist`
@@ -570,7 +633,7 @@ $ cleos push action endrmng.xsat setstatus '["alice",  true]' -p alice
 
 - `{name} validator` - validator account
 - `{name} financial_account` - financial accounts
-- `{uint64_t} commission_rate` - commission ratio, decimal is 10^4
+- `{uint16_t} commission_rate` - commission ratio, decimal is 10^4
 
 ### example
 
@@ -589,7 +652,7 @@ $ cleos push action endrmng.xsat regvalidator '["alice", "alice", 1000]' -p alic
 - `{name} proxy` - proxy account
 - `{name} validator` - validator account
 - `{string} financial_account` - financial accounts
-- `{uint64_t} commission_rate` - commission ratio, decimal is 10^4
+- `{uint16_t} commission_rate` - commission ratio, decimal is 10^4
 
 ### example
 
@@ -606,13 +669,30 @@ $ cleos push action endrmng.xsat proxyreg '["test.xsat", "alice", "alice",  1000
 ### params
 
 - `{name} validator` - validator account
-- `{optional<uint64_t>} commission_rate` - commission ratio, decimal is 10^4
+- `{optional<uint16_t>} commission_rate` - commission ratio, decimal is 10^4
 - `{optional<string>} financial_account` - financial accounts
 
 ### example
 
 ```bash
 $ cleos push action endrmng.xsat config '["alice",  1000, "alice"]' -p alice
+```
+
+## ACTION `setdonate`
+
+- **authority**: `validator`
+
+> Configure donate rate.
+
+### params
+
+- `{name} validator` - synchronizer account
+- `{uint16_t} donate_rate` - the donation rate, represented as a percentage, ex: 500 means 5.00% 
+
+### example
+
+```bash
+$ cleos push action endrmng.xsat setdonate '["alice", 100]' -p alice
 ```
 
 ## ACTION `stake`
@@ -765,6 +845,26 @@ $ cleos push action endrmng.xsat evmnewstake '["evmutil.xsat", "bb776ae86d599690
 
 ```bash
 $ cleos push action endrmng.xsat evmclaim '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41", "e4d68a77714d9d388d8233bee18d578559950cf5",  "alice"]' -p evmutil.xsat
+```
+
+## ACTION `evmclaim2`
+
+- **authority**: `caller`
+
+> Claim staking rewards through evm
+
+### params
+
+- `{name} caller` - caller account
+- `{checksum160} proxy` - evm proxy account
+- `{checksum160} staker` - evm staker account
+- `{name} validator` - validator account
+- `{uint16_t} donate_rate` - the donation rate, represented as a percentage, ex: 500 means 5.00%
+
+### example
+
+```bash
+$ cleos push action endrmng.xsat evmclaim2 '["evmutil.xsat", "bb776ae86d5996908af46482f24be8ccde2d4c41", "e4d68a77714d9d388d8233bee18d578559950cf5",  "alice", 100]' -p evmutil.xsat
 ```
 
 ## ACTION `vdrclaim`

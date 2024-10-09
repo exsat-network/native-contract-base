@@ -1,7 +1,7 @@
 const { Asset, TimePointSec } = require('@greymass/eosio')
 const { Blockchain, log, expectToThrow } = require('@proton/vert')
 const { BTC, BTC_CONTRACT, XSAT } = require('./src/constants')
-const { getTokenBalance } = require('./src/help')
+const { addTime } = require('./src/help')
 
 // Vert EOS VM
 const blockchain = new Blockchain()
@@ -342,7 +342,7 @@ describe('blkendt.xsat', () => {
 
     it('endorse: the next endorsement time has not yet been reached', async () => {
         await contracts.blkendt.actions
-            .config([0, 50000, 2, 860000, 0, '21000.00000000 XSAT'])
+            .config([0, 50000, 2, 860000, 10, '21000.00000000 XSAT'])
             .send('blkendt.xsat@active')
         const height = 860000
         const hash = '00000000000000000001b48a75d5a3077913f3f441eb7e08c13c43f768db2463'
@@ -371,7 +371,17 @@ describe('blkendt.xsat', () => {
             .send('utxomng.xsat@active')
     })
 
+    it('endorse: the next endorsement time has not yet been reached', async () => {
+        const height = 860000
+        const hash = '00000000000000000001b48a75d5a3077913f3f441eb7e08c13c43f768db2463'
+        await expectToThrow(
+            contracts.blkendt.actions.endorse(['brian', height, hash]).send('brian@active'),
+            'eosio_assert_message: 1008:blkendt.xsat::endorse: the next endorsement time has not yet been reached ' + addTime(blockchain.timestamp, TimePointSec.from(10))
+        )
+    })
+
     it('endorse: the number of valid validators must be greater than or equal to 2', async () => {
+        blockchain.addTime(TimePointSec.from(10))
         const height = 860000
         const hash = '00000000000000000001b48a75d5a3077913f3f441eb7e08c13c43f768db2463'
         await expectToThrow(

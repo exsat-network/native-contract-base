@@ -13,7 +13,23 @@ const contracts = {
     exsat: blockchain.createContract('exsat.xsat', 'tests/wasm/exsat.xsat', true),
 }
 
-blockchain.createAccounts('staking.xsat', 'xsatstk.xsat', 'rwddist.xsat', 'custody.xsat', 'alice', 'bob', 'amy', 'anna', 'tony', 'tom')
+blockchain.createAccounts(
+    'staking.xsat',
+    'xsatstk.xsat',
+    'rwddist.xsat',
+    'custody.xsat',
+    'donate.xsat',
+    'alice',
+    'bob',
+    'amy',
+    'anna',
+    'tony',
+    'tom'
+)
+
+const get_config = () => {
+    return contracts.endrmng.tables.config().getTableRows()[0]
+}
 
 const get_whitelist = (type, account) => {
     const scope = Name.from(type).value.value
@@ -186,6 +202,8 @@ describe('endrmng.xsat', () => {
             qualification: '0.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
             reward_recipient: 'alice',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             stake_acc_per_share: 0,
             staking_reward_balance: '0.00000000 XSAT',
             staking_reward_claimed: '0.00000000 XSAT',
@@ -265,6 +283,8 @@ describe('endrmng.xsat', () => {
             quantity: '0.00000000 BTC',
             qualification: '0.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'anna',
             stake_acc_per_share: 0,
             staking_reward_balance: '0.00000000 XSAT',
@@ -293,6 +313,8 @@ describe('endrmng.xsat', () => {
             quantity: '0.00000000 BTC',
             qualification: '0.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'erc2o.xsat',
             stake_acc_per_share: 0,
             staking_reward_balance: '0.00000000 XSAT',
@@ -320,7 +342,7 @@ describe('endrmng.xsat', () => {
     it('config: commission_rate must be less than or equal to 10000', async () => {
         await expectToThrow(
             contracts.endrmng.actions
-                .config(['amy', 100000, '78357316239040e19fC823372cC179ca75e64b81'])
+                .config(['amy', 20000, '78357316239040e19fC823372cC179ca75e64b81'])
                 .send('amy@active'),
             'eosio_assert_message: endrmng.xsat::config: commission_rate must be less than or equal to 10000'
         )
@@ -360,6 +382,8 @@ describe('endrmng.xsat', () => {
             quantity: '0.00000000 BTC',
             qualification: '0.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'tony',
             stake_acc_per_share: 0,
             staking_reward_balance: '0.00000000 XSAT',
@@ -388,6 +412,8 @@ describe('endrmng.xsat', () => {
             quantity: '0.00000000 BTC',
             qualification: '0.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'erc2o.xsat',
             stake_acc_per_share: 0,
             staking_reward_balance: '0.00000000 XSAT',
@@ -473,6 +499,8 @@ describe('endrmng.xsat', () => {
             quantity: '100.00000000 BTC',
             qualification: '100.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: 0,
             staking_reward_balance: '0.00000000 XSAT',
@@ -486,6 +514,7 @@ describe('endrmng.xsat', () => {
             id: 1,
             quantity: '100.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 0,
             staking_reward_claimed: '0.00000000 XSAT',
@@ -542,6 +571,8 @@ describe('endrmng.xsat', () => {
             quantity: '98.00000000 BTC',
             qualification: '98.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: 0,
             staking_reward_balance: '0.00000000 XSAT',
@@ -555,6 +586,7 @@ describe('endrmng.xsat', () => {
             id: 1,
             quantity: '98.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 0,
             staking_reward_claimed: '0.00000000 XSAT',
@@ -614,6 +646,7 @@ describe('endrmng.xsat', () => {
             id: 1,
             quantity: '96.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 0,
             staking_reward_claimed: '0.00000000 XSAT',
@@ -627,6 +660,7 @@ describe('endrmng.xsat', () => {
             id: 2,
             quantity: '2.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 0,
             staking_reward_claimed: '0.00000000 XSAT',
@@ -651,6 +685,8 @@ describe('endrmng.xsat', () => {
             quantity: '96.00000000 BTC',
             qualification: '96.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: 0,
             staking_reward_balance: '0.00000000 XSAT',
@@ -675,6 +711,8 @@ describe('endrmng.xsat', () => {
             quantity: '2.00000000 BTC',
             qualification: '2.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'erc2o.xsat',
             stake_acc_per_share: 0,
             staking_reward_balance: '0.00000000 XSAT',
@@ -697,7 +735,7 @@ describe('endrmng.xsat', () => {
 
     it('claim: no balance to claim', async () => {
         await expectToThrow(
-            contracts.endrmng.actions.claim(['tony', 'alice']).send('tony@active'),
+            contracts.endrmng.actions.claim(['tony', 'alice', 0]).send('tony@active'),
             'eosio_assert: endrmng.xsat::claim: no balance to claim'
         )
     })
@@ -748,6 +786,8 @@ describe('endrmng.xsat', () => {
             quantity: '96.00000000 BTC',
             qualification: '96.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: Asset.from('15.75000000 XSAT')
                 .units.multiplying(100000000)
@@ -764,21 +804,21 @@ describe('endrmng.xsat', () => {
 
     it('claim: missing required authority', async () => {
         await expectToThrow(
-            contracts.endrmng.actions.claim(['tony', 'tony']).send('alice@active'),
+            contracts.endrmng.actions.claim(['tony', 'tony', 0]).send('alice@active'),
             'missing required authority tony'
         )
     })
 
     it('claim: [stakers] does not exists', async () => {
         await expectToThrow(
-            contracts.endrmng.actions.claim(['tony', 'tom']).send('tony@active'),
+            contracts.endrmng.actions.claim(['tony', 'tom', 0]).send('tony@active'),
             'eosio_assert: endrmng.xsat::claim: [stakers] does not exists'
         )
     })
 
     it('claim', async () => {
         const before_balance = getTokenBalance(blockchain, 'tony', 'exsat.xsat', XSAT.code)
-        await contracts.endrmng.actions.claim(['tony', 'alice']).send('tony@active')
+        await contracts.endrmng.actions.claim(['tony', 'alice', 0]).send('tony@active')
         const after_balance = getTokenBalance(blockchain, 'tony', 'exsat.xsat', XSAT.code)
 
         expect(after_balance - before_balance).toEqual(1575000000 + 174999936)
@@ -787,6 +827,7 @@ describe('endrmng.xsat', () => {
             id: 1,
             quantity: '96.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 1575000000,
             staking_reward_claimed: '15.75000000 XSAT',
@@ -810,6 +851,8 @@ describe('endrmng.xsat', () => {
             quantity: '96.00000000 BTC',
             qualification: '96.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: 16406250,
             staking_reward_balance: '6.75000000 XSAT',
@@ -827,6 +870,7 @@ describe('endrmng.xsat', () => {
             id: 1,
             quantity: '98.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 1607812500,
             staking_reward_claimed: '15.75000000 XSAT',
@@ -850,6 +894,8 @@ describe('endrmng.xsat', () => {
             quantity: '98.00000000 BTC',
             qualification: '98.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: 16406250,
             staking_reward_balance: '6.75000000 XSAT',
@@ -888,6 +934,8 @@ describe('endrmng.xsat', () => {
             quantity: '98.00000000 BTC',
             qualification: '98.00000000 BTC',
             xsat_quantity: '0.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: 16406250,
             staking_reward_balance: '0.00000000 XSAT',
@@ -953,6 +1001,8 @@ describe('endrmng.xsat', () => {
             quantity: '98.00000000 BTC',
             qualification: '98.00000000 BTC',
             xsat_quantity: '100.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: 16406250,
             staking_reward_balance: '0.00000000 XSAT',
@@ -966,6 +1016,7 @@ describe('endrmng.xsat', () => {
             id: 1,
             quantity: '98.00000000 BTC',
             xsat_quantity: '100.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 1607812500,
             staking_reward_claimed: '15.75000000 XSAT',
@@ -1023,6 +1074,8 @@ describe('endrmng.xsat', () => {
             quantity: '98.00000000 BTC',
             qualification: '98.00000000 BTC',
             xsat_quantity: '98.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: 16406250,
             staking_reward_balance: '0.00000000 XSAT',
@@ -1036,6 +1089,7 @@ describe('endrmng.xsat', () => {
             id: 1,
             quantity: '98.00000000 BTC',
             xsat_quantity: '98.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 1607812500,
             staking_reward_claimed: '15.75000000 XSAT',
@@ -1100,6 +1154,7 @@ describe('endrmng.xsat', () => {
             id: 1,
             quantity: '98.00000000 BTC',
             xsat_quantity: '96.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 1607812500,
             staking_reward_claimed: '15.75000000 XSAT',
@@ -1113,6 +1168,7 @@ describe('endrmng.xsat', () => {
             id: 2,
             quantity: '2.00000000 BTC',
             xsat_quantity: '2.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 0,
             staking_reward_claimed: '0.00000000 XSAT',
@@ -1137,6 +1193,8 @@ describe('endrmng.xsat', () => {
             quantity: '98.00000000 BTC',
             qualification: '98.00000000 BTC',
             xsat_quantity: '96.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: 16406250,
             staking_reward_balance: '0.00000000 XSAT',
@@ -1161,6 +1219,8 @@ describe('endrmng.xsat', () => {
             quantity: '2.00000000 BTC',
             qualification: '2.00000000 BTC',
             xsat_quantity: '2.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'erc2o.xsat',
             stake_acc_per_share: 0,
             staking_reward_balance: '0.00000000 XSAT',
@@ -1188,6 +1248,7 @@ describe('endrmng.xsat', () => {
             id: 1,
             quantity: '98.00000000 BTC',
             xsat_quantity: '98.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
             staker: 'tony',
             stake_debt: 1607812500,
             staking_reward_claimed: '15.75000000 XSAT',
@@ -1211,6 +1272,8 @@ describe('endrmng.xsat', () => {
             quantity: '98.00000000 BTC',
             qualification: '98.00000000 BTC',
             xsat_quantity: '98.00000000 XSAT',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
             reward_recipient: 'alice',
             stake_acc_per_share: 16406250,
             staking_reward_balance: '0.00000000 XSAT',
@@ -1243,4 +1306,83 @@ describe('endrmng.xsat', () => {
     //        'eosio_assert: endrmng.xsat::creditstake: quantity must be less than or equal 100 BTC'
     //    )
     //})
+
+    it('setdonateacc: missing required authority', async () => {
+        await expectToThrow(
+            contracts.endrmng.actions.setdonateacc(['alice']).send('alice@active'),
+            'missing required authority endrmng.xsat'
+        )
+    })
+
+    it('setdonateacc: donation account does not exists', async () => {
+        await expectToThrow(
+            contracts.endrmng.actions.setdonateacc(['xsat']).send('endrmng.xsat@active'),
+            'eosio_assert: endrmng.xsat::setdonateacc: donation account does not exists'
+        )
+    })
+
+    it('setdonateacc', async () => {
+        await contracts.endrmng.actions.setdonateacc(['donate.xsat']).send('endrmng.xsat@active'),
+            expect(get_config()).toEqual({
+                donation_account: 'donate.xsat',
+            })
+    })
+
+    it('setdonate: missing required authority', async () => {
+        await expectToThrow(
+            contracts.endrmng.actions.setdonate(['alice', 100]).send('bob@active'),
+            'missing required authority alice'
+        )
+    })
+
+    it('setdonate: donate_rate must be less than or equal to 10000', async () => {
+        await expectToThrow(
+            contracts.endrmng.actions.setdonate(['alice', 20000]).send('alice@active'),
+            'eosio_assert_message: endrmng.xsat::setdonate: donate_rate must be less than or equal to 10000'
+        )
+    })
+
+    it('setdonate', async () => {
+        await contracts.endrmng.actions.setdonate(['alice', 100]).send('alice@active')
+        const validator = get_validator('alice')
+        expect(validator.donate_rate).toEqual(100)
+    })
+
+    it('transfer reward', async () => {
+        await contracts.exsat.actions
+            .transfer([
+                'rwddist.xsat',
+                'endrmng.xsat',
+                '25.00000000 XSAT',
+                'alice,840001,22.50000000 XSAT,2.50000000 XSAT',
+            ])
+            .send('rwddist.xsat@active')
+
+        await contracts.endrmng.actions
+            .distribute([
+                840001,
+                [{ validator: 'alice', staking_rewards: '22.50000000 XSAT', consensus_rewards: '2.50000000 XSAT' }],
+            ])
+            .send('rwddist.xsat@active')
+    })
+
+    it('vdrclaim: should check if donate_rate > 0', async () => {
+        const alice_before_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', XSAT.code)
+        const donate_before_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        await contracts.endrmng.actions.vdrclaim(['alice']).send('alice@active')
+        const alice_after_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', XSAT.code)
+        const donate_after_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        expect(alice_after_balance - alice_before_balance).toEqual(742500000)
+        expect(donate_after_balance - donate_before_balance).toEqual(7500000)
+    })
+
+    it('claim: should check if donate_rate > 0', async () => {
+        const tony_before_balance = getTokenBalance(blockchain, 'tony', 'exsat.xsat', XSAT.code)
+        const donate_before_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        await contracts.endrmng.actions.claim(['tony', 'alice', 200]).send('tony@active')
+        const tony_after_balance = getTokenBalance(blockchain, 'tony', 'exsat.xsat', XSAT.code)
+        const donate_after_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        expect(tony_after_balance - tony_before_balance).toEqual(1714999918)
+        expect(donate_after_balance - donate_before_balance).toEqual(34999998)
+    })
 })
