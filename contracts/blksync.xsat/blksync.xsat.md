@@ -129,7 +129,7 @@ static const block_status verify_pass = 7;
 - `{checksum256} previous_block_hash` - hash in internal byte order of the previous block’s header
 - `{checksum256} work` - block workload
 - `{checksum256} witness_reserve_value` - witness reserve value in the block
-- `{std::optional<checksum256>} - witness commitment in the block
+- `{std::optional<checksum256>}` - witness commitment in the block
 - `{bool} has_witness` - whether any of the transactions in the block contains witness
 - `{checksum256} header_merkle` - the merkle root of the block
 - `{std::vector<checksum256>} relay_header_merkle` - check header merkle relay data
@@ -137,8 +137,8 @@ static const block_status verify_pass = 7;
 - `{uint64_t} num_transactions` - the number of transactions in the block
 - `{uint64_t} processed_position` - the location of the block that has been resolved
 - `{uint64_t} processed_transactions` - the number of processed transactions
-- `{uint32_t}` timestamp : the block time in seconds since epoch (Jan 1 1970 GMT)
-- `{uint32_t}` bits : the bits
+- `{uint32_t} timestamp` - the block time in seconds since epoch (Jan 1 1970 GMT)
+- `{uint32_t} bits` - the bits
 
 ### example
 
@@ -173,7 +173,6 @@ static const block_status verify_pass = 7;
   "bits": 386089497
 }
 ```
-
 
 ## TABLE `blockbuckets`
 
