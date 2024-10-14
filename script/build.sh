@@ -12,6 +12,7 @@ cdt-cpp ../../contracts/blkendt.xsat/blkendt.xsat.cpp -I ../../contracts/ -I ../
 cdt-cpp ../../contracts/endrmng.xsat/endrmng.xsat.cpp -I ../../contracts/ -I ../../external 
 cdt-cpp ../../contracts/blksync.xsat/blksync.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include
 cdt-cpp ../../contracts/utxomng.xsat/utxomng.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include
+cdt-cpp ../../contracts/custody.xsat/custody.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include
 
 cleos set contract btc.xsat . btc.xsat.wasm btc.xsat.abi
 cleos set contract exsat.xsat . exsat.xsat.wasm exsat.xsat.abi
@@ -24,6 +25,7 @@ cleos set contract blkendt.xsat . blkendt.xsat.wasm blkendt.xsat.abi
 cleos set contract endrmng.xsat . endrmng.xsat.wasm endrmng.xsat.abi
 cleos set contract blksync.xsat . blksync.xsat.wasm blksync.xsat.abi
 cleos set contract utxomng.xsat . utxomng.xsat.wasm utxomng.xsat.abi
+cleos set contract custody.xsat . custody.xsat.wasm custody.xsat.abi
 
 cleos push action btc.xsat create '["btc.xsat", "21000000.00000000 BTC"]' -p btc.xsat
 cleos push action exsat.xsat create '["rwddist.xsat", "21000000.00000000 XSAT"]' -p exsat.xsat
@@ -112,3 +114,10 @@ cleos set account permission utxomng.xsat active '{
         { "permission": { "actor": "utxomng.xsat", "permission": "eosio.code" }, "weight": 1 },
     ]
 }' -p utxomng.xsat;
+
+cleos set account permission custody.xsat active '{
+    "threshold": 1,
+    "accounts": [
+        { "permission": { "actor": "custody.xsat", "permission": "eosio.code" }, "weight": 1 },
+    ]
+}' -p custody.xsat;
