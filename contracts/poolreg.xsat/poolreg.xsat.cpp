@@ -1,17 +1,36 @@
 #include <poolreg.xsat/poolreg.xsat.hpp>
 #include <rescmng.xsat/rescmng.xsat.hpp>
 #include <btc.xsat/btc.xsat.hpp>
+#include <bitcoin/script/address.hpp>
 #include "../internal/defines.hpp"
 
 #ifdef DEBUG
 #include "./src/debug.hpp"
 #endif
 
-//@auth blksync.xsat
+//@auth get_self()
+[[eosio::action]]
+void pool::setdonateacc(const string& donation_account) {
+    require_auth(get_self());
+
+    bool is_eos_address = donation_account.size() <= 12;
+    if (is_eos_address) {
+        check(is_account(name(donation_account)), "poolreg.xsat::setdonateacc: donation account does not exists");
+    } else {
+        check(xsat::utils::is_valid_evm_address(donation_account),
+              "poolreg.xsat::setdonateacc: invalid donation account");
+    }
+
+    auto config = _config.get_or_default();
+    config.donation_account = donation_account;
+    _config.set(config, get_self());
+}
+
+//@auth utxomng.xsat
 [[eosio::action]]
 void pool::updateheight(const name& synchronizer, const uint64_t latest_produced_block_height,
                         const std::vector<string>& miners) {
-    require_auth(BLOCK_SYNC_CONTRACT);
+    require_auth(UTXO_MANAGE_CONTRACT);
 
     check(is_account(synchronizer), "poolreg.xsat::updateheight: synchronizer does not exists");
 
@@ -25,6 +44,8 @@ void pool::updateheight(const name& synchronizer, const uint64_t latest_produced
             row.latest_produced_block_height = latest_produced_block_height;
             row.claimed = asset{0, XSAT_SYMBOL};
             row.unclaimed = asset{0, XSAT_SYMBOL};
+            row.donate_rate = 0;
+            row.total_donated = asset{0, XSAT_SYMBOL};
         });
     } else {
         if (synchronizer_itr->latest_produced_block_height >= latest_produced_block_height) {
@@ -55,6 +76,10 @@ void pool::initpool(const name& synchronizer, const uint64_t latest_produced_blo
 
     check(is_account(synchronizer), "poolreg.xsat::initpool: synchronizer does not exists");
 
+    for (const auto& miner : miners) {
+        check(bitcoin::IsValid(miner, CHAIN_PARAMS), "poolreg.xsat::initpool: invalid miner [\"" + miner + "\"]");
+    }
+
     bool is_eos_address = financial_account.size() <= 12;
     if (is_eos_address) {
         check(is_account(name(financial_account)), "poolreg.xsat::initpool: financial account does not exists");
@@ -82,6 +107,8 @@ void pool::initpool(const name& synchronizer, const uint64_t latest_produced_blo
             row.claimed = asset{0, XSAT_SYMBOL};
             row.unclaimed = asset{0, XSAT_SYMBOL};
             row.reward_recipient = reward_recipient;
+            row.donate_rate = 0;
+            row.total_donated = asset{0, XSAT_SYMBOL};
             row.memo = memo;
         });
     } else {
@@ -180,6 +207,25 @@ void pool::setfinacct(const name& synchronizer, const string& financial_account)
     }
 }
 
+[[eosio::action]]
+void pool::setdonate(const name& synchronizer, const uint16_t donate_rate) {
+    require_auth(synchronizer);
+
+    check(donate_rate <= RATE_BASE_10000,
+          "poolreg.xsat::setdonate: donate_rate must be less than or equal to " + std::to_string(RATE_BASE_10000));
+
+    auto synchronizer_itr
+        = _synchronizer.require_find(synchronizer.value, "poolreg.xsat::setdonate: [synchronizer] does not exists");
+
+    _synchronizer.modify(synchronizer_itr, same_payer, [&](auto& row) {
+        row.donate_rate = donate_rate;
+    });
+
+    // log
+    pool::setdonatelog_action _setdonatelog(get_self(), {get_self(), "active"_n});
+    _setdonatelog.send(synchronizer, donate_rate);
+}
+
 //@auth synchronizer->reward_recipient or evmutil.xsat
 [[eosio::action]]
 void pool::claim(const name& synchronizer) {
@@ -197,21 +243,37 @@ void pool::claim(const name& synchronizer) {
     }
 
     auto claimable = synchronizer_itr->unclaimed;
+    auto donated_amount = claimable * synchronizer_itr->donate_rate / RATE_BASE_10000;
+    auto to_synchronizer = claimable - donated_amount;
     _synchronizer.modify(synchronizer_itr, same_payer, [&](auto& row) {
         row.unclaimed.amount = 0;
         row.claimed += claimable;
+        row.total_donated += donated_amount;
     });
 
-    token_transfer(get_self(), synchronizer_itr->reward_recipient, extended_asset{claimable, EXSAT_CONTRACT},
-                   synchronizer_itr->memo);
+    // transfer donate
+    if (donated_amount.amount > 0) {
+        auto config = _config.get();
+        token_transfer(get_self(), config.donation_account, extended_asset{donated_amount, EXSAT_CONTRACT});
+
+        auto stat = _stat.get_or_default();
+        stat.xsat_total_donated += donated_amount;
+        _stat.set(stat, get_self());
+    }
+
+    // transfer reward
+    if (to_synchronizer.amount > 0) {
+        token_transfer(get_self(), synchronizer_itr->reward_recipient, extended_asset{to_synchronizer, EXSAT_CONTRACT},
+                       synchronizer_itr->memo);
+    }
 
     // log
+
+    string reward_recipient = synchronizer_itr->reward_recipient == ERC20_CONTRACT
+                                  ? synchronizer_itr->memo
+                                  : synchronizer_itr->reward_recipient.to_string();
     pool::claimlog_action _claimlog(get_self(), {get_self(), "active"_n});
-    if (synchronizer_itr->reward_recipient == ERC20_CONTRACT) {
-        _claimlog.send(synchronizer, synchronizer_itr->memo, claimable);
-    } else {
-        _claimlog.send(synchronizer, synchronizer_itr->reward_recipient.to_string(), claimable);
-    }
+    _claimlog.send(synchronizer, reward_recipient, claimable, donated_amount, synchronizer_itr->total_donated);
 }
 
 //@auth synchronizer
@@ -222,19 +284,23 @@ void pool::buyslot(const name& synchronizer, const name& receiver, const uint16_
 
     auto synchronizer_itr
         = _synchronizer.require_find(receiver.value, "recsmng.xsat::buyslot: [synchronizer] does not exists");
+
+    check(synchronizer_itr->num_slots + num_slots <= MAX_NUM_SLOTS,
+          "recsmng.xsat::buyslot: the total number of slots purchased cannot exceed [1000]");
     _synchronizer.modify(synchronizer_itr, same_payer, [&](auto& row) {
         row.num_slots += num_slots;
     });
 
     // fee deduction
     resource_management::pay_action pay(RESOURCE_MANAGE_CONTRACT, {get_self(), "active"_n});
-    pay.send(0, checksum256(), synchronizer, BUY_SLOT, num_slots);
+    pay.send(0, ZERO_HASH, synchronizer, BUY_SLOT, num_slots);
 }
 
 [[eosio::on_notify("*::transfer")]]
 void pool::on_transfer(const name& from, const name& to, const asset& quantity, const string& memo) {
     // ignore transfers
-    if (to != get_self()) return;
+    if (to != get_self())
+        return;
 
     const name contract = get_first_receiver();
     check(from == REWARD_DISTRIBUTION_CONTRACT, "poolreg.xsat: only transfer from [rwddist.xsat]");
@@ -258,8 +324,8 @@ void pool::on_transfer(const name& from, const name& to, const asset& quantity, 
 }
 
 void pool::save_miners(const name& synchronizer, const vector<string>& miners) {
+    auto miner_idx = _miner.get_index<"byminer"_n>();
     for (const auto miner : miners) {
-        auto miner_idx = _miner.get_index<"byminer"_n>();
         auto miner_itr = miner_idx.find(xsat::utils::hash(miner));
         if (miner_itr == miner_idx.end()) {
             _miner.emplace(get_self(), [&](auto& row) {
@@ -268,6 +334,17 @@ void pool::save_miners(const name& synchronizer, const vector<string>& miners) {
                 row.miner = miner;
             });
         }
+    }
+}
+
+void pool::token_transfer(const name& from, const string& to, const extended_asset& value) {
+    btc::transfer_action transfer(value.contract, {from, "active"_n});
+
+    bool is_eos_account = to.size() <= 12;
+    if (is_eos_account) {
+        transfer.send(from, name(to), value.quantity, "");
+    } else {
+        transfer.send(from, ERC20_CONTRACT, value.quantity, to);
     }
 }
 

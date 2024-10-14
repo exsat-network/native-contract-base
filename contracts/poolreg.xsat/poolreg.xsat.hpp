@@ -14,6 +14,27 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     using contract::contract;
 
     /**
+     * ## TABLE `config`
+     *
+     * ### scope `get_self()`
+     * ### params
+     *
+     * - `{string} donation_account` - the account designated for receiving donations
+     * 
+     * ### example
+     *
+     * ```json
+     * {
+     *   "donation_account": "donate.xsat"
+     * }
+     * ```
+     */
+    struct [[eosio::table]] config_row {
+        string donation_account;
+    };
+    typedef eosio::singleton<"config"_n, config_row> config_table;
+
+    /**
      * ## TABLE `synchronizer`
      *
      * ### scope `get_self()`
@@ -24,8 +45,9 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
      * - `{string} memo` - memo when receiving reward transfer
      * - `{uint16_t} num_slots` - number of slots owned
      * - `{uint64_t} latest_produced_block_height` - the latest block number
-     * - `{uint16_t} produced_block_limit` - upload block limit, for example, if 432 is set, the upload height needs to
-     * be a synchronizer that has produced blocks in 432 blocks before it can be uploaded.
+     * - `{uint16_t} produced_block_limit` - upload block limit, for example, if 432 is set, the upload height needs to be a synchronizer that has produced blocks in 432 blocks before it can be uploaded.
+     * - `{uint16_t} donate_rate` - the donation rate, represented as a percentage, ex: 500 means 5.00%
+     * - `{asset} total_donated` - the total amount of XSAT that has been donated
      * - `{asset} unclaimed` - unclaimed rewards
      * - `{asset} claimed` - rewards claimed
      * - `{uint64_t} latest_reward_block` - the latest block number to receive rewards
@@ -41,6 +63,8 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
      *    "num_slots": 2,
      *    "latest_produced_block_height": 840000,
      *    "produced_block_limit": 432,
+     *    "donate_rate": 100,
+     *    "total_donated": "100.00000000 XSAT",
      *    "unclaimed": "5.00000000 XSAT",
      *    "claimed": "0.00000000 XSAT",
      *    "latest_reward_block": 840001,
@@ -55,13 +79,19 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
         uint16_t num_slots;
         uint64_t latest_produced_block_height;
         uint16_t produced_block_limit;
+        uint16_t donate_rate;
+        asset total_donated;
         asset unclaimed;
         asset claimed;
         uint64_t latest_reward_block;
         time_point_sec latest_reward_time;
         uint64_t primary_key() const { return synchronizer.value; }
+        uint64_t by_total_donated() const { return total_donated.amount; }
     };
-    typedef eosio::multi_index<"synchronizer"_n, synchronizer_row> synchronizer_table;
+    typedef eosio::multi_index<
+        "synchronizer"_n, synchronizer_row,
+        eosio::indexed_by<"bydonate"_n, const_mem_fun<synchronizer_row, uint64_t, &synchronizer_row::by_total_donated>>>
+        synchronizer_table;
 
     /**
      * ## TABLE `miners`
@@ -99,9 +129,49 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
         miner_table;
 
     /**
+     * ## TABLE `stat`
+     *
+     * ### scope `get_self()`
+     * ### params
+     *
+     * - `{asset} xsat_total_donated` - the cumulative amount of XSAT donated
+     *
+     * ### example
+     *
+     * ```json
+     * {
+     *   "xsat_total_donated": "100.40000000 XSAT"
+     * }
+     * ```
+     */
+    struct [[eosio::table]] stat_row {
+        asset xsat_total_donated = {0, XSAT_SYMBOL};
+    };
+    typedef eosio::singleton<"stat"_n, stat_row> stat_table;
+
+    /**
+     * ## ACTION `setdonateacc`
+     *
+     * - **authority**: `get_self()`
+     *
+     * > Update donation account.
+     *
+     * ### params
+     *
+     * - `{string} donation_account` -  account to receive donations
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat setdonateacc '["alice"]' -p poolreg.xsat
+     * ```
+     */
+    void setdonateacc(const string& donation_account);
+
+    /**
      * ## ACTION `updateheight`
      *
-     * - **authority**: `blksync.xsat`
+     * - **authority**: `utxomng.xsat`
      *
      * > Update synchronizer’s latest block height and add associated btc miners.
      *
@@ -114,8 +184,7 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action poolreg.xsat updateheight '["alice", 839999, ["3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv",
-     * "bc1p8k4v4xuz55dv49svzjg43qjxq2whur7ync9tm0xgl5t4wjl9ca9snxgmlt"]]' -p poolreg.xsat
+     * $ cleos push action poolreg.xsat updateheight '["alice", 839999, ["3PiyiAezRdSUQub3ewUXsgw5M6mv6tskGv", "bc1p8k4v4xuz55dv49svzjg43qjxq2whur7ync9tm0xgl5t4wjl9ca9snxgmlt"]]' -p utxomng.xsat
      * ```
      */
     [[eosio::action]]
@@ -139,8 +208,7 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action poolreg.xsat initpool '["alice", 839997, "alice", ["37jKPSmbEGwgfacCr2nayn1wTaqMAbA94Z",
-     * "39C7fxSzEACPjM78Z7xdPxhf7mKxJwvfMJ"]]' -p poolreg.xsat
+     * $ cleos push action poolreg.xsat initpool '["alice", 839997, "alice", ["37jKPSmbEGwgfacCr2nayn1wTaqMAbA94Z", "39C7fxSzEACPjM78Z7xdPxhf7mKxJwvfMJ"]]' -p poolreg.xsat
      * ```
      */
     [[eosio::action]]
@@ -197,8 +265,7 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
      * ### params
      *
      * - `{name} synchronizer` - synchronizer account
-     * - `{uint16_t} produced_block_limit` - upload block limit, for example, if 432 is set, the upload height needs to
-     * be a synchronizer that has produced blocks in 432 blocks before it can be uploaded.
+     * - `{uint16_t} produced_block_limit` - upload block limit, for example, if 432 is set, the upload height needs to be a synchronizer that has produced blocks in 432 blocks before it can be uploaded.
      *
      * ### example
      *
@@ -208,6 +275,27 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
      */
     [[eosio::action]]
     void config(const name& synchronizer, const uint16_t produced_block_limit);
+
+    /**
+     * ## ACTION `setdonate`
+     *
+     * - **authority**: `synchronizer`
+     *
+     * > Configure donate rate.
+     *
+     * ### params
+     *
+     * - `{name} synchronizer` - synchronizer account
+     * - `{uint16_t} donate_rate` - the donation rate, represented as a percentage, ex: 500 means 5.00% 
+     *
+     * ### example
+     *
+     * ```bash
+     * $ cleos push action poolreg.xsat setdonate '["alice", 100]' -p alice
+     * ```
+     */
+    [[eosio::action]]
+    void setdonate(const name& synchronizer, const uint16_t donate_rate);
 
     /**
      * ## ACTION `buyslot`
@@ -293,7 +381,13 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     }
 
     [[eosio::action]]
-    void claimlog(const name& synchronizer, const string& reward_recipient, const asset& quantity) {
+    void claimlog(const name& synchronizer, const string& reward_recipient, const asset& quantity,
+                  const asset& donated_amount, const asset& total_donated) {
+        require_auth(get_self());
+    }
+
+    [[eosio::action]]
+    void setdonatelog(const name& synchronizer, const uint16_t donate_rate) {
         require_auth(get_self());
     }
 
@@ -302,12 +396,18 @@ class [[eosio::contract("poolreg.xsat")]] pool : public contract {
     using claimlog_action = eosio::action_wrapper<"claimlog"_n, &pool::claimlog>;
     using poollog_action = eosio::action_wrapper<"poollog"_n, &pool::poollog>;
     using delpoollog_action = eosio::action_wrapper<"delpoollog"_n, &pool::delpoollog>;
+    using setdonatelog_action = eosio::action_wrapper<"setdonatelog"_n, &pool::setdonatelog>;
 
    private:
     synchronizer_table _synchronizer = synchronizer_table(_self, _self.value);
     miner_table _miner = miner_table(_self, _self.value);
+    config_table _config = config_table(_self, _self.value);
+    stat_table _stat = stat_table(_self, _self.value);
 
     void save_miners(const name& synchronizer, const vector<string>& miners);
+
+    void token_transfer(const name& from, const string& to, const extended_asset& value);
+
     void token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo);
 
 #ifdef DEBUG

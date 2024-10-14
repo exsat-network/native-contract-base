@@ -8,6 +8,24 @@
 
 //@auth get_self()
 [[eosio::action]]
+void endorse_manage::setdonateacc(const string& donation_account) {
+    require_auth(get_self());
+
+    bool is_eos_address = donation_account.size() <= 12;
+    if (is_eos_address) {
+        check(is_account(name(donation_account)), "endrmng.xsat::setdonateacc: donation account does not exists");
+    } else {
+        check(xsat::utils::is_valid_evm_address(donation_account),
+              "endrmng.xsat::setdonateacc: invalid donation account");
+    }
+
+    auto config = _config.get_or_default();
+    config.donation_account = donation_account;
+    _config.set(config, get_self());
+}
+
+//@auth get_self()
+[[eosio::action]]
 void endorse_manage::addwhitelist(const name& type, const name& account) {
     require_auth(get_self());
 
@@ -40,9 +58,14 @@ void endorse_manage::delwhitelist(const name& type, const name& account) {
 
 //@auth get_self()
 [[eosio::action]]
-void endorse_manage::addevmproxy(const checksum160& proxy) {
+void endorse_manage::addevmproxy(const name& caller, const checksum160& proxy) {
     require_auth(get_self());
 
+    whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
+    auto whitelist_itr = _whitelist.require_find(
+        caller.value, "endrmng.xsat::addevmproxy: caller is not in the `evmcaller` whitelist");
+
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
     auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
     auto evm_proxy_itr = evm_proxy_idx.find(xsat::utils::compute_id(proxy));
     check(evm_proxy_itr == evm_proxy_idx.end(), "endrmng.xsat::addevmproxy: proxy already exists");
@@ -54,12 +77,13 @@ void endorse_manage::addevmproxy(const checksum160& proxy) {
 
 //@auth get_self()
 [[eosio::action]]
-void endorse_manage::delevmproxy(const checksum160& proxy) {
+void endorse_manage::delevmproxy(const name& caller, const checksum160& proxy) {
     require_auth(get_self());
 
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
     auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
     auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
-                                                    "endrmng.xsat::delevmproxy: [evmproxys] does not exist");
+                                                    "endrmng.xsat::delevmproxy: [evmproxies] does not exist");
 
     evm_proxy_idx.erase(evm_proxy_itr);
 }
@@ -67,7 +91,7 @@ void endorse_manage::delevmproxy(const checksum160& proxy) {
 //@auth validator
 [[eosio::action]]
 void endorse_manage::regvalidator(const name& validator, const string& financial_account,
-                                  const uint64_t commission_rate) {
+                                  const uint16_t commission_rate) {
     require_auth(validator);
     register_validator({}, validator, financial_account, commission_rate);
 }
@@ -75,10 +99,10 @@ void endorse_manage::regvalidator(const name& validator, const string& financial
 //@auth proxy
 [[eosio::action]]
 void endorse_manage::proxyreg(const name& proxy, const name& validator, const string& financial_account,
-                              const uint64_t commission_rate) {
+                              const uint16_t commission_rate) {
     require_auth(proxy);
     whitelist_table _whitelist(get_self(), "proxyreg"_n.value);
-    _whitelist.require_find(proxy.value, "endrmng.xsat::proxyreg: the proxy account is not in the whitelist");
+    _whitelist.require_find(proxy.value, "endrmng.xsat::proxyreg: caller is not in the `proxyreg` whitelist");
 
     check(is_account(validator), "endrmng.xsat::proxyreg: validator account does not exists");
 
@@ -86,10 +110,10 @@ void endorse_manage::proxyreg(const name& proxy, const name& validator, const st
 }
 
 void endorse_manage::register_validator(const name& proxy, const name& validator, const string& financial_account,
-                                        const uint64_t commission_rate) {
-    check(commission_rate <= COMMISSION_RATE_BASE,
-          "endrmng.xsat::regvalidator: commission_rate must be less than or equal to "
-              + std::to_string(COMMISSION_RATE_BASE));
+                                        const uint16_t commission_rate) {
+    check(
+        commission_rate <= RATE_BASE_10000,
+        "endrmng.xsat::regvalidator: commission_rate must be less than or equal to " + std::to_string(RATE_BASE_10000));
     bool is_eos_address = financial_account.size() <= 12;
     if (is_eos_address) {
         check(is_account(name(financial_account)), "endrmng.xsat::regvalidator: financial account does not exists");
@@ -110,6 +134,10 @@ void endorse_manage::register_validator(const name& proxy, const name& validator
             row.memo = financial_account;
         }
         row.quantity = asset{0, BTC_SYMBOL};
+        row.xsat_quantity = asset{0, XSAT_SYMBOL};
+        row.qualification = {0, BTC_SYMBOL};
+        row.donate_rate = 0;
+        row.total_donated = {0, XSAT_SYMBOL};
         row.staking_reward_unclaimed = asset{0, XSAT_SYMBOL};
         row.staking_reward_claimed = asset{0, XSAT_SYMBOL};
         row.consensus_reward_unclaimed = asset{0, XSAT_SYMBOL};
@@ -126,30 +154,61 @@ void endorse_manage::register_validator(const name& proxy, const name& validator
 
 //@auth validator
 [[eosio::action]]
-void endorse_manage::config(const name& validator, const uint64_t commission_rate, const string& financial_account) {
+void endorse_manage::config(const name& validator, const optional<uint16_t>& commission_rate,
+                            const optional<string>& financial_account) {
     require_auth(validator);
-    check(
-        commission_rate <= COMMISSION_RATE_BASE,
-        "endrmng.xsat::config: commission_rate must be less than or equal to " + std::to_string(COMMISSION_RATE_BASE));
-
-    bool is_eos_address = financial_account.size() <= 12;
-    if (is_eos_address) {
-        check(is_account(name(financial_account)), "endrmng.xsat::config: financial account does not exists");
-    } else {
-        check(xsat::utils::is_valid_evm_address(financial_account), "endrmng.xsat::config: invalid financial account");
-    }
+    check(commission_rate.has_value() || financial_account.has_value(),
+          "endrmng.xsat::config: commissionrate and financial account cannot be empty at the same time");
+    check(!commission_rate.has_value() || *commission_rate <= RATE_BASE_10000,
+          "endrmng.xsat::config: commission_rate must be less than or equal to " + std::to_string(RATE_BASE_10000));
 
     auto validator_itr = _validator.require_find(validator.value, "endrmng.xsat::config: [validators] does not exists");
     _validator.modify(validator_itr, same_payer, [&](auto& row) {
-        row.commission_rate = commission_rate;
-        if (is_eos_address) {
-            row.reward_recipient = name(financial_account);
-            row.memo = "";
-        } else {
-            row.reward_recipient = ERC20_CONTRACT;
-            row.memo = financial_account;
+        if (commission_rate.has_value()) {
+            row.commission_rate = *commission_rate;
+        }
+        if (financial_account.has_value()) {
+            bool is_eos_account = financial_account->size() <= 12;
+            if (is_eos_account) {
+                check(is_account(name(*financial_account)), "endrmng.xsat::config: financial account does not exists");
+                row.reward_recipient = name(*financial_account);
+                row.memo = "";
+            } else {
+                check(xsat::utils::is_valid_evm_address(*financial_account),
+                      "endrmng.xsat::config: invalid financial account");
+                row.reward_recipient = ERC20_CONTRACT;
+                row.memo = *financial_account;
+            }
         }
     });
+
+    // log
+    endorse_manage::configlog_action _configlog(get_self(), {get_self(), "active"_n});
+    if (validator_itr->reward_recipient == ERC20_CONTRACT) {
+        _configlog.send(validator, validator_itr->commission_rate, validator_itr->memo);
+    } else {
+        _configlog.send(validator, validator_itr->commission_rate, validator_itr->reward_recipient.to_string());
+    }
+}
+
+//@auth validator
+[[eosio::action]]
+void endorse_manage::setdonate(const name& validator, const uint16_t donate_rate) {
+    require_auth(validator);
+
+    check(donate_rate <= RATE_BASE_10000,
+          "endrmng.xsat::setdonate: donate_rate must be less than or equal to " + std::to_string(RATE_BASE_10000));
+
+    auto validator_itr
+        = _validator.require_find(validator.value, "endrmng.xsat::setdonate: [validator] does not exists");
+
+    _validator.modify(validator_itr, same_payer, [&](auto& row) {
+        row.donate_rate = donate_rate;
+    });
+
+    // log
+    endorse_manage::setdonatelog_action _setdonatelog(get_self(), {get_self(), "active"_n});
+    _setdonatelog.send(validator, donate_rate);
 }
 
 //@auth get_self()
@@ -164,27 +223,32 @@ void endorse_manage::setstatus(const name& validator, const bool disabled_stakin
     });
 }
 
+//==============================================================  staking btc =========================================================
+
 //@auth staking.xsat
 [[eosio::action]]
 void endorse_manage::stake(const name& staker, const name& validator, const asset& quantity) {
     require_auth(STAKING_CONTRACT);
 
-    auto validator_staking = stake_without_auth(staker, validator, quantity);
+    asset validator_staking, validator_qualification;
+    std::tie(validator_staking, validator_qualification) = stake_without_auth(staker, validator, quantity, quantity);
 
     // log
     endorse_manage::stakelog_action _stakelog(get_self(), {get_self(), "active"_n});
-    _stakelog.send(staker, validator, quantity, validator_staking);
+    _stakelog.send(staker, validator, quantity, validator_staking, validator_qualification);
 }
 
 //@auth staking.xsat
 [[eosio::action]]
 void endorse_manage::unstake(const name& staker, const name& validator, const asset& quantity) {
     require_auth(STAKING_CONTRACT);
-    auto validator_staking = unstake_without_auth(staker, validator, quantity);
+
+    asset validator_staking, validator_qualification;
+    std::tie(validator_staking, validator_qualification) = unstake_without_auth(staker, validator, quantity, quantity);
 
     // log
     endorse_manage::unstakelog_action _unstakelog(get_self(), {get_self(), "active"_n});
-    _unstakelog.send(staker, validator, quantity, validator_staking);
+    _unstakelog.send(staker, validator, quantity, validator_staking, validator_qualification);
 }
 
 //@auth staker
@@ -193,18 +257,27 @@ void endorse_manage::newstake(const name& staker, const name& old_validator, con
                               const asset& quantity) {
     require_auth(staker);
 
-    auto old_validator_staking = unstake_without_auth(staker, old_validator, quantity);
-    auto new_validator_staking = stake_without_auth(staker, new_validator, quantity);
+    asset old_validator_staking, old_validator_qualification;
+    std::tie(old_validator_staking, old_validator_qualification)
+        = unstake_without_auth(staker, old_validator, quantity, quantity);
+    asset new_validator_staking, new_validator_qualification;
+    std::tie(new_validator_staking, new_validator_qualification)
+        = stake_without_auth(staker, new_validator, quantity, quantity);
 
     // log
     endorse_manage::newstakelog_action _newstakelog(get_self(), {get_self(), "active"_n});
-    _newstakelog.send(staker, old_validator, new_validator, quantity, old_validator_staking, new_validator_staking);
+    _newstakelog.send(staker, old_validator, new_validator, quantity, old_validator_staking,
+                      old_validator_qualification, new_validator_staking, new_validator_qualification);
 }
 
 //@auth staker
 [[eosio::action]]
-void endorse_manage::claim(const name& staker, const name& validator) {
+void endorse_manage::claim(const name& staker, const name& validator, const uint16_t donate_rate) {
     require_auth(staker);
+
+    check(donate_rate <= RATE_BASE_10000,
+          "endrmng.xsat::claim: donate_rate must be less than or equal to " + std::to_string(RATE_BASE_10000));
+
     auto native_staker_idx = _native_stake.get_index<"bystakingid"_n>();
     auto native_staker_itr = native_staker_idx.require_find(compute_staking_id(staker, validator),
                                                             "endrmng.xsat::claim: [stakers] does not exists");
@@ -221,7 +294,11 @@ void endorse_manage::claim(const name& staker, const name& validator) {
     auto claimable = staking_reward_unclaimed + consensus_reward_unclaimed;
     check(claimable.amount > 0, "endrmng.xsat::claim: no balance to claim");
 
+    asset donated_amount = claimable * donate_rate / RATE_BASE_10000;
+    asset to_staker = claimable - donated_amount;
+
     native_staker_idx.modify(native_staker_itr, same_payer, [&](auto& row) {
+        row.total_donated += donated_amount;
         row.staking_reward_claimed += staking_reward_unclaimed;
         row.consensus_reward_claimed += consensus_reward_unclaimed;
         row.staking_reward_unclaimed -= staking_reward_unclaimed;
@@ -233,68 +310,110 @@ void endorse_manage::claim(const name& staker, const name& validator) {
         row.consensus_reward_balance -= consensus_reward_unclaimed;
     });
 
-    token_transfer(get_self(), native_staker_itr->staker, {claimable, EXSAT_CONTRACT}, "claim reward");
+    // transfer donate
+    if (donated_amount.amount > 0) {
+        auto config = _config.get();
+        token_transfer(get_self(), config.donation_account, extended_asset{donated_amount, EXSAT_CONTRACT});
+
+        auto stat = _stat.get_or_default();
+        stat.xsat_total_donated += donated_amount;
+        _stat.set(stat, get_self());
+    }
+
+    if (to_staker.amount > 0) {
+        token_transfer(get_self(), native_staker_itr->staker, {to_staker, EXSAT_CONTRACT}, "claim reward");
+    }
 
     endorse_manage::claimlog_action _claimlog(get_self(), {get_self(), "active"_n});
-    _claimlog.send(staker, validator, claimable);
+    _claimlog.send(staker, validator, claimable, donated_amount, native_staker_itr->total_donated);
 }
 
-// @auth caller scope is `evmcaller` whitelist account
+// @auth scope is `evmcaller` evmproxies account
 [[eosio::action]]
 void endorse_manage::evmstake(const name& caller, const checksum160& proxy, const checksum160& staker,
                               const name& validator, const asset& quantity) {
     require_auth(caller);
 
-    whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmstake: caller is not in the `evmcaller` whitelist");
-
-    auto validator_staking = evm_stake_without_auth(proxy, staker, validator, quantity);
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
+    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
+    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                    "endrmng.xsat::evmstake: [evmproxies] does not exist");
+    asset validator_staking, validator_qualification;
+    std::tie(validator_staking, validator_qualification)
+        = evm_stake_without_auth(proxy, staker, validator, quantity, quantity);
 
     // log
     endorse_manage::evmstakelog_action _evmstakelog(get_self(), {get_self(), "active"_n});
-    _evmstakelog.send(proxy, staker, validator, quantity, validator_staking);
+    _evmstakelog.send(proxy, staker, validator, quantity, validator_staking, validator_qualification);
 }
 
-// @auth scope is `evmcaller` whitelist account
+// @auth scope is `evmcaller` evmproxies account
 [[eosio::action]]
 void endorse_manage::evmunstake(const name& caller, const checksum160& proxy, const checksum160& staker,
                                 const name& validator, const asset& quantity) {
     require_auth(caller);
 
-    whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmunstake: caller is not in the `evmcaller` whitelist");
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
+    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
+    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                    "endrmng.xsat::evmunstake: [evmproxies] does not exist");
 
-    auto validator_staking = evm_unstake_without_auth(proxy, staker, validator, quantity);
+    asset validator_staking, validator_qualification;
+    std::tie(validator_staking, validator_qualification)
+        = evm_unstake_without_auth(proxy, staker, validator, quantity, quantity);
 
     // log
     endorse_manage::evmunstlog_action _evmunstlog(get_self(), {get_self(), "active"_n});
-    _evmunstlog.send(proxy, staker, validator, quantity, validator_staking);
+    _evmunstlog.send(proxy, staker, validator, quantity, validator_staking, validator_qualification);
 }
 
-// @auth scope is `evmcaller` whitelist account
+// @auth scope is `evmcaller` evmproxies account
 [[eosio::action]]
 void endorse_manage::evmnewstake(const name& caller, const checksum160& proxy, const checksum160& staker,
                                  const name& old_validator, const name& new_validator, const asset& quantity) {
     require_auth(caller);
 
-    whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmnewstake: caller is not in the `evmcaller` whitelist");
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
+    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
+    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                    "endrmng.xsat::evmnewstake: [evmproxies] does not exist");
 
     // unstake
-    auto old_validator_staking = evm_unstake_without_auth(proxy, staker, old_validator, quantity);
-    auto new_validator_staking = evm_stake_without_auth(proxy, staker, new_validator, quantity);
+
+    asset old_validator_staking, old_validator_qualification;
+    std::tie(old_validator_staking, old_validator_qualification)
+        = evm_unstake_without_auth(proxy, staker, old_validator, quantity, quantity);
+
+    asset new_validator_staking, new_validator_qualification;
+    std::tie(new_validator_staking, new_validator_qualification)
+        = evm_stake_without_auth(proxy, staker, new_validator, quantity, quantity);
 
     // log
     endorse_manage::evmnewstlog_action _evmnewstlog(get_self(), {get_self(), "active"_n});
     _evmnewstlog.send(proxy, staker, old_validator, new_validator, quantity, old_validator_staking,
-                      new_validator_staking);
+                      old_validator_qualification, new_validator_staking, new_validator_qualification);
 }
 
 // @auth scope is `evmcaller` whitelist account
 [[eosio::action]]
 void endorse_manage::evmclaim(const name& caller, const checksum160& proxy, const checksum160& staker,
                               const name& validator) {
+    evm_claim(caller, proxy, staker, validator, 0);
+}
+
+// @auth scope is `evmcaller` whitelist account
+[[eosio::action]]
+void endorse_manage::evmclaim2(const name& caller, const checksum160& proxy, const checksum160& staker,
+                               const name& validator, const uint16_t donate_rate) {
+    evm_claim(caller, proxy, staker, validator, donate_rate);
+}
+
+void endorse_manage::evm_claim(const name& caller, const checksum160& proxy, const checksum160& staker,
+                               const name& validator, const uint16_t donate_rate) {
     require_auth(caller);
+
+    check(donate_rate <= RATE_BASE_10000,
+          "endrmng.xsat::evmclaim: donate_rate must be less than or equal to " + std::to_string(RATE_BASE_10000));
 
     whitelist_table _whitelist(get_self(), "evmcaller"_n.value);
     _whitelist.require_find(caller.value, "endrmng.xsat::evmclaim: caller is not in the `evmcaller` whitelist");
@@ -314,7 +433,20 @@ void endorse_manage::evmclaim(const name& caller, const checksum160& proxy, cons
     auto claimable = staking_reward_unclaimed + consensus_reward_unclaimed;
     check(claimable.amount > 0, "endrmng.xsat::evmclaim: no balance to claim");
 
+    asset validator_donated_amount = {0, XSAT_SYMBOL};
+    asset staker_donated_amount = {0, XSAT_SYMBOL};
+    auto credit_proxy_idx = _credit_proxy.get_index<"byproxy"_n>();
+    auto credit_proxy_itr = credit_proxy_idx.find(xsat::utils::compute_id(proxy));
+    bool is_credit_staking = credit_proxy_itr != credit_proxy_idx.end();
+    // Use validator's donate_rate for credit staking, otherwise use input donate_rate
+    if (is_credit_staking) {
+        validator_donated_amount = claimable * validator_itr->donate_rate / RATE_BASE_10000;
+    } else {
+        staker_donated_amount = claimable * donate_rate / RATE_BASE_10000;
+    }
+
     evm_staker_idx.modify(evm_staker_itr, same_payer, [&](auto& row) {
+        row.total_donated += staker_donated_amount;
         row.staking_reward_claimed += staking_reward_unclaimed;
         row.consensus_reward_claimed += consensus_reward_unclaimed;
         row.staking_reward_unclaimed -= staking_reward_unclaimed;
@@ -322,16 +454,33 @@ void endorse_manage::evmclaim(const name& caller, const checksum160& proxy, cons
     });
 
     _validator.modify(validator_itr, same_payer, [&](auto& row) {
+        row.total_donated += validator_donated_amount;
         row.staking_reward_balance -= staking_reward_unclaimed;
         row.consensus_reward_balance -= consensus_reward_unclaimed;
     });
 
-    token_transfer(get_self(), ERC20_CONTRACT, {claimable, EXSAT_CONTRACT},
-                   "0x" + xsat::utils::sha1_to_hex(evm_staker_itr->staker));
+    auto donated_amount = staker_donated_amount + validator_donated_amount;
+    // transfer donate
+    if (donated_amount.amount > 0) {
+        auto config = _config.get();
+        token_transfer(get_self(), config.donation_account, extended_asset{donated_amount, EXSAT_CONTRACT});
+
+        auto stat = _stat.get_or_default();
+        stat.xsat_total_donated += donated_amount;
+        _stat.set(stat, get_self());
+    }
+
+    // transfer reward
+    auto to_staker = claimable - donated_amount;
+    if (to_staker.amount > 0) {
+        token_transfer(get_self(), ERC20_CONTRACT, {to_staker, EXSAT_CONTRACT},
+                       "0x" + xsat::utils::sha1_to_hex(evm_staker_itr->staker));
+    }
 
     // log
     endorse_manage::evmclaimlog_action _evmclaimlog(get_self(), {get_self(), "active"_n});
-    _evmclaimlog.send(proxy, staker, validator, claimable);
+    _evmclaimlog.send(proxy, staker, validator, claimable, staker_donated_amount, validator_donated_amount,
+                      evm_staker_itr->total_donated, validator_itr->total_donated);
 }
 
 //@auth validator
@@ -350,7 +499,11 @@ void endorse_manage::vdrclaim(const name& validator) {
     auto consensus_reward_unclaimed = validator_itr->consensus_reward_unclaimed;
     auto claimable = staking_reward_unclaimed + consensus_reward_unclaimed;
     check(claimable.amount > 0, "endrmng.xsat::vdrclaim: no balance to claim");
+
+    auto donated_amount = claimable * validator_itr->donate_rate / RATE_BASE_10000;
+    auto to_validator = claimable - donated_amount;
     _validator.modify(validator_itr, same_payer, [&](auto& row) {
+        row.total_donated += donated_amount;
         row.staking_reward_claimed += staking_reward_unclaimed;
         row.consensus_reward_claimed += consensus_reward_unclaimed;
         row.staking_reward_unclaimed -= staking_reward_unclaimed;
@@ -359,27 +512,38 @@ void endorse_manage::vdrclaim(const name& validator) {
         row.staking_reward_balance -= staking_reward_unclaimed;
     });
 
-    token_transfer(get_self(), validator_itr->reward_recipient, {claimable, EXSAT_CONTRACT}, validator_itr->memo);
+    // transfer donate
+    if (donated_amount.amount > 0) {
+        auto config = _config.get();
+        token_transfer(get_self(), config.donation_account, extended_asset{donated_amount, EXSAT_CONTRACT});
+
+        auto stat = _stat.get_or_default();
+        stat.xsat_total_donated += donated_amount;
+        _stat.set(stat, get_self());
+    }
+
+    // transfer reward
+    if (to_validator.amount > 0) {
+        token_transfer(get_self(), validator_itr->reward_recipient, {to_validator, EXSAT_CONTRACT},
+                       validator_itr->memo);
+    }
 
     // log
+    string reward_recipient = validator_itr->reward_recipient == ERC20_CONTRACT
+                                  ? validator_itr->memo
+                                  : validator_itr->reward_recipient.to_string();
     endorse_manage::vdrclaimlog_action _vdrclaimlog(get_self(), {get_self(), "active"_n});
-    if (validator_itr->reward_recipient == ERC20_CONTRACT) {
-        _vdrclaimlog.send(validator, validator_itr->memo, claimable);
-    } else {
-        _vdrclaimlog.send(validator, validator_itr->reward_recipient.to_string(), claimable);
-    }
+    _vdrclaimlog.send(validator, reward_recipient, claimable, donated_amount, validator_itr->total_donated);
 }
 
-asset endorse_manage::evm_stake_without_auth(const checksum160& proxy, const checksum160& staker, const name& validator,
-                                             const asset& quantity) {
+std::pair<asset, asset> endorse_manage::evm_stake_without_auth(const checksum160& proxy, const checksum160& staker,
+                                                               const name& validator, const asset& quantity,
+                                                               const asset& qualification) {
     check(quantity.amount > 0, "endrmng.xsat::evmstake: quantity must be greater than 0");
     check(quantity.symbol == BTC_SYMBOL, "endrmng.xsat::evmstake: quantity symbol must be BTC");
     check(quantity.amount <= BTC_SUPPLY,
           "endrmng.xsat::evmstake: quantity must be less than [btc.xsat/BTC] max_supply");
 
-    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
-    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
-                                                    "endrmng.xsat::evmstake: [evmproxys] does not exist");
     auto validator_itr
         = _validator.require_find(validator.value, "endrmng.xsat::evmstake: [validators] does not exists");
     check(!validator_itr->disabled_staking,
@@ -395,21 +559,24 @@ asset endorse_manage::evm_stake_without_auth(const checksum160& proxy, const che
             row.staker = staker;
             row.validator = validator;
             row.quantity = {0, BTC_SYMBOL};
+            row.xsat_quantity = {0, XSAT_SYMBOL};
+            row.total_donated = {0, XSAT_SYMBOL};
             row.staking_reward_unclaimed = asset{0, XSAT_SYMBOL};
             row.staking_reward_claimed = asset{0, XSAT_SYMBOL};
             row.consensus_reward_unclaimed = asset{0, XSAT_SYMBOL};
             row.consensus_reward_claimed = asset{0, XSAT_SYMBOL};
         });
 
-        staking_change(validator_itr, _evm_stake, stake_itr, quantity);
+        staking_change(validator_itr, _evm_stake, stake_itr, quantity, qualification);
     } else {
-        staking_change(validator_itr, evm_staker_idx, stake_itr, quantity);
+        staking_change(validator_itr, evm_staker_idx, stake_itr, quantity, qualification);
     }
-    return validator_itr->quantity;
+    return std::make_pair(validator_itr->quantity, validator_itr->qualification);
 }
 
-asset endorse_manage::evm_unstake_without_auth(const checksum160& proxy, const checksum160& staker,
-                                               const name& validator, const asset& quantity) {
+std::pair<asset, asset> endorse_manage::evm_unstake_without_auth(const checksum160& proxy, const checksum160& staker,
+                                                                 const name& validator, const asset& quantity,
+                                                                 const asset& qualification) {
     check(quantity.amount > 0, "endrmng.xsat::evmunstake: quantity must be greater than 0");
     check(quantity.symbol == BTC_SYMBOL, "endrmng.xsat::evmunstake: quantity symbol must be BTC");
 
@@ -421,11 +588,12 @@ asset endorse_manage::evm_unstake_without_auth(const checksum160& proxy, const c
     auto validator_itr = _validator.require_find(evm_staker_itr->validator.value,
                                                  "endrmng.xsat::evmunstake: [validators] does not exists");
 
-    staking_change(validator_itr, evm_staker_idx, evm_staker_itr, -quantity);
-    return validator_itr->quantity;
+    staking_change(validator_itr, evm_staker_idx, evm_staker_itr, -quantity, -qualification);
+    return std::make_pair(validator_itr->quantity, validator_itr->qualification);
 }
 
-asset endorse_manage::stake_without_auth(const name& staker, const name& validator, const asset& quantity) {
+std::pair<asset, asset> endorse_manage::stake_without_auth(const name& staker, const name& validator,
+                                                           const asset& quantity, const asset& qualification) {
     check(quantity.amount > 0, "endrmng.xsat::stake: quantity must be greater than 0");
     check(quantity.symbol == BTC_SYMBOL, "endrmng.xsat::stake: quantity symbol must be BTC");
 
@@ -442,20 +610,22 @@ asset endorse_manage::stake_without_auth(const name& staker, const name& validat
             row.staker = staker;
             row.validator = validator;
             row.quantity = asset{0, BTC_SYMBOL};
-
+            row.xsat_quantity = asset{0, XSAT_SYMBOL};
+            row.total_donated = {0, XSAT_SYMBOL};
             row.staking_reward_unclaimed = asset{0, XSAT_SYMBOL};
             row.staking_reward_claimed = asset{0, XSAT_SYMBOL};
             row.consensus_reward_unclaimed = asset{0, XSAT_SYMBOL};
             row.consensus_reward_claimed = asset{0, XSAT_SYMBOL};
         });
-        staking_change(validator_itr, _native_stake, stake_itr, quantity);
+        staking_change(validator_itr, _native_stake, stake_itr, quantity, qualification);
     } else {
-        staking_change(validator_itr, native_staker_idx, stake_itr, quantity);
+        staking_change(validator_itr, native_staker_idx, stake_itr, quantity, qualification);
     }
-    return validator_itr->quantity;
+    return std::make_pair(validator_itr->quantity, validator_itr->qualification);
 }
 
-asset endorse_manage::unstake_without_auth(const name& staker, const name& validator, const asset& quantity) {
+std::pair<asset, asset> endorse_manage::unstake_without_auth(const name& staker, const name& validator,
+                                                             const asset& quantity, const asset& qualification) {
     check(quantity.amount > 0, "endrmng.xsat::unstake: quantity must be greater than 0");
     check(quantity.symbol == BTC_SYMBOL, "endrmng.xsat::unstake: quantity symbol must be BTC");
 
@@ -468,13 +638,13 @@ asset endorse_manage::unstake_without_auth(const name& staker, const name& valid
     auto validator_itr = _validator.require_find(native_staker_itr->validator.value,
                                                  "endrmng.xsat::unstake: [validators] does not exists");
 
-    staking_change(validator_itr, native_staker_idx, native_staker_itr, -quantity);
-    return validator_itr->quantity;
+    staking_change(validator_itr, native_staker_idx, native_staker_itr, -quantity, -qualification);
+    return std::make_pair(validator_itr->quantity, validator_itr->qualification);
 }
 
 template <typename T, typename C>
 void endorse_manage::staking_change(validator_table::const_iterator& validator_itr, T& _stake, C& stake_itr,
-                                    const asset& quantity) {
+                                    const asset& quantity, const asset& qualification) {
     // update reward
     auto now_amount_for_validator = validator_itr->quantity + quantity;
     auto pre_amount_for_staker = stake_itr->quantity;
@@ -482,6 +652,7 @@ void endorse_manage::staking_change(validator_table::const_iterator& validator_i
 
     _validator.modify(validator_itr, same_payer, [&](auto& row) {
         row.quantity = now_amount_for_validator;
+        row.qualification += qualification;
         row.latest_staking_time = current_time_point();
     });
 
@@ -504,14 +675,14 @@ void endorse_manage::update_validator_reward(const uint64_t height, const name& 
     // calculated reward
     if (staking_rewards > 0 && validator_itr->quantity.amount > 0) {
         validator_staking_rewards
-            = safemath128::muldiv(staking_rewards, validator_itr->commission_rate, COMMISSION_RATE_BASE);
+            = safemath128::muldiv(staking_rewards, validator_itr->commission_rate, RATE_BASE_10000);
         incr_stake_acc_per_share = safemath128::muldiv(staking_rewards - validator_staking_rewards, RATE_BASE,
                                                        validator_itr->quantity.amount);
     }
 
     if (consensus_rewards > 0 && validator_itr->quantity.amount > 0) {
         validator_consensus_rewards
-            = safemath128::muldiv(consensus_rewards, validator_itr->commission_rate, COMMISSION_RATE_BASE);
+            = safemath128::muldiv(consensus_rewards, validator_itr->commission_rate, RATE_BASE_10000);
         incr_consensus_acc_per_share = safemath128::muldiv(consensus_rewards - validator_consensus_rewards, RATE_BASE,
                                                            validator_itr->quantity.amount);
     }
@@ -554,26 +725,366 @@ void endorse_manage::update_staking_reward(const uint128_t stake_acc_per_share, 
     });
 }
 
+//==============================================================  staking xsat  =========================================================
+
+//@auth xsatstk.xsat
+[[eosio::action]]
+void endorse_manage::stakexsat(const name& staker, const name& validator, const asset& quantity) {
+    require_auth(XSAT_STAKING_CONTRACT);
+
+    auto validator_staking = stake_xsat_without_auth(staker, validator, quantity);
+
+    // log
+    endorse_manage::stakexsatlog_action _stakexsatlog(get_self(), {get_self(), "active"_n});
+    _stakexsatlog.send(staker, validator, quantity, validator_staking);
+}
+
+//@auth xsatstk.xsat
+[[eosio::action]]
+void endorse_manage::unstakexsat(const name& staker, const name& validator, const asset& quantity) {
+    require_auth(XSAT_STAKING_CONTRACT);
+    auto validator_staking = unstake_xsat_without_auth(staker, validator, quantity);
+
+    // log
+    endorse_manage::unstkxsatlog_action _unstkxsatlog(get_self(), {get_self(), "active"_n});
+    _unstkxsatlog.send(staker, validator, quantity, validator_staking);
+}
+
+//@auth staker
+[[eosio::action]]
+void endorse_manage::restakexsat(const name& staker, const name& old_validator, const name& new_validator,
+                                 const asset& quantity) {
+    require_auth(staker);
+
+    auto old_validator_staking = unstake_xsat_without_auth(staker, old_validator, quantity);
+    auto new_validator_staking = stake_xsat_without_auth(staker, new_validator, quantity);
+
+    // log
+    endorse_manage::restkxsatlog_action _restkxsatlog(get_self(), {get_self(), "active"_n});
+    _restkxsatlog.send(staker, old_validator, new_validator, quantity, old_validator_staking, new_validator_staking);
+}
+
+// @auth scope is `evmcaller` evmproxies account
+[[eosio::action]]
+void endorse_manage::evmstakexsat(const name& caller, const checksum160& proxy, const checksum160& staker,
+                                  const name& validator, const asset& quantity) {
+    require_auth(caller);
+
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
+    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
+    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                    "endrmng.xsat::evmstakexsat: [evmproxies] does not exist");
+
+    auto validator_staking = evm_stake_xsat_without_auth(proxy, staker, validator, quantity);
+
+    // log
+    endorse_manage::estkxsatlog_action _estkxsatlog(get_self(), {get_self(), "active"_n});
+    _estkxsatlog.send(proxy, staker, validator, quantity, validator_staking);
+}
+
+// @auth scope is `evmcaller` evmproxies account
+[[eosio::action]]
+void endorse_manage::evmunstkxsat(const name& caller, const checksum160& proxy, const checksum160& staker,
+                                  const name& validator, const asset& quantity) {
+    require_auth(caller);
+
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
+    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
+    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                    "endrmng.xsat::evmunstkxsat: [evmproxies] does not exist");
+
+    auto validator_staking = evm_unstake_xsat_without_auth(proxy, staker, validator, quantity);
+
+    // log
+    endorse_manage::eustkxsatlog_action _eustkxsatlog(get_self(), {get_self(), "active"_n});
+    _eustkxsatlog.send(proxy, staker, validator, quantity, validator_staking);
+}
+
+// @auth scope is `evmcaller` evmproxies account
+[[eosio::action]]
+void endorse_manage::evmrestkxsat(const name& caller, const checksum160& proxy, const checksum160& staker,
+                                  const name& old_validator, const name& new_validator, const asset& quantity) {
+    require_auth(caller);
+
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
+    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
+    auto evm_proxy_itr = evm_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                    "endrmng.xsat::evmrestkxsat: [evmproxies] does not exist");
+
+    // unstake
+    auto old_validator_staking = evm_unstake_xsat_without_auth(proxy, staker, old_validator, quantity);
+    auto new_validator_staking = evm_stake_xsat_without_auth(proxy, staker, new_validator, quantity);
+
+    // log
+    endorse_manage::erstkxsatlog_action _erstkxsatlog(get_self(), {get_self(), "active"_n});
+    _erstkxsatlog.send(proxy, staker, old_validator, new_validator, quantity, old_validator_staking,
+                       new_validator_staking);
+}
+
+asset endorse_manage::evm_stake_xsat_without_auth(const checksum160& proxy, const checksum160& staker,
+                                                  const name& validator, const asset& quantity) {
+    check(quantity.amount > 0, "endrmng.xsat::evmstakexsat: quantity must be greater than 0");
+    check(quantity.symbol == XSAT_SYMBOL, "endrmng.xsat::evmstakexsat: quantity symbol must be XSAT");
+    check(quantity.amount <= XSAT_SUPPLY,
+          "endrmng.xsat::evmstakexsat: quantity must be less than [btc.xsat/BTC] max_supply");
+
+    auto validator_itr
+        = _validator.require_find(validator.value, "endrmng.xsat::evmstakexsat: [validators] does not exists");
+    check(!validator_itr->disabled_staking,
+          "endrmng.xsat::evmstakexsat: the current validator's staking status is disabled");
+
+    auto evm_staker_idx = _evm_stake.get_index<"bystakingid"_n>();
+    auto staker_itr = evm_staker_idx.find(compute_staking_id(proxy, staker, validator));
+
+    if (staker_itr == evm_staker_idx.end()) {
+        auto staking_id = next_staking_id();
+        _evm_stake.emplace(get_self(), [&](auto& row) {
+            row.id = staking_id;
+            row.proxy = proxy;
+            row.staker = staker;
+            row.validator = validator;
+            row.quantity = {0, BTC_SYMBOL};
+            row.xsat_quantity = quantity;
+            row.total_donated = {0, XSAT_SYMBOL};
+            row.staking_reward_unclaimed = asset{0, XSAT_SYMBOL};
+            row.staking_reward_claimed = asset{0, XSAT_SYMBOL};
+            row.consensus_reward_unclaimed = asset{0, XSAT_SYMBOL};
+            row.consensus_reward_claimed = asset{0, XSAT_SYMBOL};
+        });
+    } else {
+        evm_staker_idx.modify(staker_itr, same_payer, [&](auto& row) {
+            row.xsat_quantity += quantity;
+        });
+    }
+
+    _validator.modify(validator_itr, same_payer, [&](auto& row) {
+        row.xsat_quantity += quantity;
+        row.latest_staking_time = current_time_point();
+    });
+
+    stat_row stat = _stat.get_or_default();
+    stat.xsat_total_staking += quantity;
+    _stat.set(stat, get_self());
+
+    return validator_itr->xsat_quantity;
+}
+
+asset endorse_manage::evm_unstake_xsat_without_auth(const checksum160& proxy, const checksum160& staker,
+                                                    const name& validator, const asset& quantity) {
+    check(quantity.amount > 0, "endrmng.xsat::evmunstkxsat: quantity must be greater than 0");
+    check(quantity.symbol == XSAT_SYMBOL, "endrmng.xsat::evmunstkxsat: quantity symbol must be XSAT");
+
+    auto evm_staker_idx = _evm_stake.get_index<"bystakingid"_n>();
+    auto evm_staker_itr = evm_staker_idx.require_find(compute_staking_id(proxy, staker, validator),
+                                                      "endrmng.xsat::evmunstkxsat: [evmstakers] does not exists");
+    check(evm_staker_itr->xsat_quantity >= quantity, "endrmng.xsat::evmunstkxsat: insufficient stake");
+
+    auto validator_itr = _validator.require_find(evm_staker_itr->validator.value,
+                                                 "endrmng.xsat::evmunstkxsat: [validators] does not exists");
+
+    evm_staker_idx.modify(evm_staker_itr, same_payer, [&](auto& row) {
+        row.xsat_quantity -= quantity;
+    });
+
+    _validator.modify(validator_itr, same_payer, [&](auto& row) {
+        row.xsat_quantity -= quantity;
+        row.latest_staking_time = current_time_point();
+    });
+
+    stat_row stat = _stat.get_or_default();
+    stat.xsat_total_staking -= quantity;
+    _stat.set(stat, get_self());
+
+    return validator_itr->xsat_quantity;
+}
+
+asset endorse_manage::stake_xsat_without_auth(const name& staker, const name& validator, const asset& quantity) {
+    check(quantity.amount > 0, "endrmng.xsat::stakexsat: quantity must be greater than 0");
+    check(quantity.symbol == XSAT_SYMBOL, "endrmng.xsat::stakexsat: quantity symbol must be XSAT");
+
+    auto validator_itr
+        = _validator.require_find(validator.value, "endrmng.xsat::stakexsat: [validators] does not exists");
+    check(!validator_itr->disabled_staking,
+          "endrmng.xsat::stakexsat: the current validator's staking status is disabled");
+
+    auto native_staker_idx = _native_stake.get_index<"bystakingid"_n>();
+    auto stake_itr = native_staker_idx.find(compute_staking_id(staker, validator));
+
+    auto staking_id = next_staking_id();
+    if (stake_itr == native_staker_idx.end()) {
+        auto stake_itr = _native_stake.emplace(get_self(), [&](auto& row) {
+            row.id = staking_id;
+            row.staker = staker;
+            row.validator = validator;
+            row.quantity = asset{0, BTC_SYMBOL};
+            row.xsat_quantity = quantity;
+            row.total_donated = {0, XSAT_SYMBOL};
+            row.staking_reward_unclaimed = asset{0, XSAT_SYMBOL};
+            row.staking_reward_claimed = asset{0, XSAT_SYMBOL};
+            row.consensus_reward_unclaimed = asset{0, XSAT_SYMBOL};
+            row.consensus_reward_claimed = asset{0, XSAT_SYMBOL};
+        });
+    } else {
+        native_staker_idx.modify(stake_itr, same_payer, [&](auto& row) {
+            row.xsat_quantity += quantity;
+        });
+    }
+
+    _validator.modify(validator_itr, same_payer, [&](auto& row) {
+        row.xsat_quantity += quantity;
+        row.latest_staking_time = current_time_point();
+    });
+
+    stat_row stat = _stat.get_or_default();
+    stat.xsat_total_staking += quantity;
+    _stat.set(stat, get_self());
+
+    return validator_itr->xsat_quantity;
+}
+
+asset endorse_manage::unstake_xsat_without_auth(const name& staker, const name& validator, const asset& quantity) {
+    check(quantity.amount > 0, "endrmng.xsat::unstakexsat: quantity must be greater than 0");
+    check(quantity.symbol == XSAT_SYMBOL, "endrmng.xsat::unstakexsat: quantity symbol must be XSAT");
+
+    auto native_staker_idx = _native_stake.get_index<"bystakingid"_n>();
+    auto native_staker_itr = native_staker_idx.require_find(compute_staking_id(staker, validator),
+                                                            "endrmng.xsat::unstakexsat: [stakers] does not exists");
+    check(native_staker_itr->xsat_quantity >= quantity,
+          "endrmng.xsat::unstakexsat: the number of unstakes exceeds the staking amount");
+
+    auto validator_itr = _validator.require_find(native_staker_itr->validator.value,
+                                                 "endrmng.xsat::unstakexsat: [validators] does not exists");
+
+    native_staker_idx.modify(native_staker_itr, same_payer, [&](auto& row) {
+        row.xsat_quantity -= quantity;
+    });
+
+    _validator.modify(validator_itr, same_payer, [&](auto& row) {
+        row.xsat_quantity -= quantity;
+        row.latest_staking_time = current_time_point();
+    });
+
+    stat_row stat = _stat.get_or_default();
+    stat.xsat_total_staking -= quantity;
+    _stat.set(stat, get_self());
+
+    return validator_itr->quantity;
+}
+
+//============================================================== credit staking btc  =========================================================
+
+//@auth get_self()
+[[eosio::action]]
+void endorse_manage::addcrdtproxy(const checksum160& proxy) {
+    require_auth(get_self());
+
+    auto credit_proxy_idx = _credit_proxy.get_index<"byproxy"_n>();
+    auto credit_proxy_itr = credit_proxy_idx.find(xsat::utils::compute_id(proxy));
+    check(credit_proxy_itr == credit_proxy_idx.end(), "endrmng.xsat::addcrdtproxy: proxy already exists");
+    _credit_proxy.emplace(get_self(), [&](auto& row) {
+        row.id = _credit_proxy.available_primary_key();
+        row.proxy = proxy;
+    });
+}
+
+//@auth get_self()
+[[eosio::action]]
+void endorse_manage::delcrdtproxy(const checksum160& proxy) {
+    require_auth(get_self());
+
+    auto credit_proxy_idx = _credit_proxy.get_index<"byproxy"_n>();
+    auto credit_proxy_itr = credit_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                          "endrmng.xsat::delcrdtproxy: [evmproxies] does not exist");
+
+    credit_proxy_idx.erase(credit_proxy_itr);
+}
+
+// @auth custody.xsat
+[[eosio::action]]
+void endorse_manage::creditstake(const checksum160& proxy, const checksum160& staker, const name& validator,
+                                 const asset& quantity) {
+    require_auth(CUSTODY_CONTRACT);
+
+    auto credit_proxy_idx = _credit_proxy.get_index<"byproxy"_n>();
+    auto credit_proxy_itr = credit_proxy_idx.require_find(xsat::utils::compute_id(proxy),
+                                                          "endrmng.xsat::creditstake: [creditproxy] does not exist");
+
+    check(quantity.symbol == BTC_SYMBOL, "endrmng.xsat::creditstake: quantity symbol must be BTC");
+    check(quantity.amount <= MIN_BTC_STAKE_FOR_VALIDATOR,
+          "endrmng.xsat::creditstake: quantity must be less than or equal 100 BTC");
+    auto validator_itr
+        = _validator.require_find(validator.value, "endrmng.xsat::creditstake: [validators] does not exists");
+    check(!validator_itr->disabled_staking,
+          "endrmng.xsat::creditstake: the current validator's staking status is disabled");
+
+    auto evm_staker_idx = _evm_stake.get_index<"bystakingid"_n>();
+    auto stake_itr = evm_staker_idx.find(compute_staking_id(proxy, staker, validator));
+    asset old_quantity = {0, BTC_SYMBOL};
+    if (stake_itr != evm_staker_idx.end()) {
+        old_quantity = stake_itr->quantity;
+    }
+
+    if (old_quantity < quantity) {
+        asset qualification
+            = old_quantity.amount == 0 ? asset{MIN_BTC_STAKE_FOR_VALIDATOR, BTC_SYMBOL} : asset{0, BTC_SYMBOL};
+        asset new_quantity = quantity - old_quantity;
+
+        asset validator_staking, validator_qualification;
+        std::tie(validator_staking, validator_qualification)
+            = evm_stake_without_auth(proxy, staker, validator, new_quantity, qualification);
+
+        // log
+        endorse_manage::evmstakelog_action _evmstakelog(get_self(), {get_self(), "active"_n});
+        _evmstakelog.send(proxy, staker, validator, quantity, validator_staking, validator_qualification);
+    } else if (old_quantity > quantity) {
+        asset qualification
+            = quantity.amount == 0 ? asset{MIN_BTC_STAKE_FOR_VALIDATOR, BTC_SYMBOL} : asset{0, BTC_SYMBOL};
+        asset new_quantity = old_quantity - quantity;
+
+        asset validator_staking, validator_qualification;
+        std::tie(validator_staking, validator_qualification)
+            = evm_unstake_without_auth(proxy, staker, validator, new_quantity, qualification);
+
+        // log
+        endorse_manage::evmunstlog_action _evmunstlog(get_self(), {get_self(), "active"_n});
+        _evmunstlog.send(proxy, staker, validator, quantity, validator_staking, validator_qualification);
+    }
+}
+
 //@auth rwddist.xsat
 [[eosio::action]]
 void endorse_manage::distribute(const uint64_t height, const vector<reward_details_row> rewards) {
     require_auth(REWARD_DISTRIBUTION_CONTRACT);
     check(rewards.size() > 0, "endrmng.xsat::distribute: rewards are empty");
     for (const auto reward : rewards) {
-        update_validator_reward(height, reward.validator, reward.staking_rewards.amount,
-                                reward.consensus_rewards.amount);
+        if (reward.staking_rewards.amount > 0 || reward.consensus_rewards.amount > 0) {
+            update_validator_reward(height, reward.validator, reward.staking_rewards.amount,
+                                    reward.consensus_rewards.amount);
+        }
     }
 }
 
 [[eosio::on_notify("*::transfer")]]
 void endorse_manage::on_transfer(const name& from, const name& to, const asset& quantity, const string& memo) {
     // ignore transfers
-    if (to != get_self()) return;
+    if (to != get_self())
+        return;
 
     const name contract = get_first_receiver();
     check(from == REWARD_DISTRIBUTION_CONTRACT, "endrmng.xsat: only transfer from [rwddist.xsat]");
     check(contract == EXSAT_CONTRACT && quantity.symbol == XSAT_SYMBOL,
           "endrmng.xsat: only transfer [exsat.xsat/XSAT]");
+}
+
+void endorse_manage::token_transfer(const name& from, const string& to, const extended_asset& value) {
+    btc::transfer_action transfer(value.contract, {from, "active"_n});
+
+    bool is_eos_account = to.size() <= 12;
+    if (is_eos_account) {
+        transfer.send(from, name(to), value.quantity, "");
+    } else {
+        transfer.send(from, ERC20_CONTRACT, value.quantity, to);
+    }
 }
 
 void endorse_manage::token_transfer(const name& from, const name& to, const extended_asset& value, const string& memo) {

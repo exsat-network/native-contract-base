@@ -11,7 +11,8 @@
 
 namespace bitcoin::core {
 
-    bitcoin::uint256_t generate_header_merkle(const std::vector<bitcoin::core::transaction>& transactions) {
+    bitcoin::uint256_t generate_header_merkle(const std::vector<bitcoin::core::transaction>& transactions,
+                                              bool* mutated) {
         auto transaction_hashes = std::vector<bitcoin::uint256_t>();
         transaction_hashes.reserve(transactions.size());
         for (const auto& transaction : transactions) {
@@ -19,7 +20,7 @@ namespace bitcoin::core {
             transaction_hashes.emplace_back(std::move(hash));
         }
 
-        return bitcoin::generate_merkle_root(transaction_hashes);
+        return bitcoin::generate_merkle_root(transaction_hashes, mutated);
     }
 
     bitcoin::uint256_t generate_witness_merkle(std::vector<eosio::checksum256>& hashes,
@@ -32,7 +33,8 @@ namespace bitcoin::core {
         return bitcoin::dhash(concatenated_hashes);
     }
 
-    bitcoin::uint256_t generate_witness_merkle(const std::vector<bitcoin::core::transaction>& transactions) {
+    bitcoin::uint256_t generate_witness_merkle(const std::vector<bitcoin::core::transaction>& transactions,
+                                               bool* mutated) {
         auto transaction_hashes = std::vector<bitcoin::uint256_t>();
         transaction_hashes.reserve(transactions.size());
 
@@ -47,7 +49,7 @@ namespace bitcoin::core {
         }
 
         auto cur_hashes = std::vector<bitcoin::uint256_t>(transaction_hashes);
-        return bitcoin::generate_merkle_root(cur_hashes);
+        return bitcoin::generate_merkle_root(cur_hashes, mutated);
     }
     struct block_header {
         uint32_t version;
@@ -65,7 +67,7 @@ namespace bitcoin::core {
             return bitcoin::dhash(header_data);
         }
 
-        bitcoin::uint256_t target() const { return bitcoin::compact::expand(bits); }
+        bitcoin::uint256_t target() const { return bitcoin::compact::decode(bits); }
 
         bitcoin::uint256_t work() const {
             // refer to
@@ -82,13 +84,14 @@ namespace bitcoin::core {
 
         bool target_is_valid() const { return hash() <= target(); }
 
-        bool transactions_are_valid(const std::vector<bitcoin::core::transaction>& transactions) const {
-            return generate_header_merkle(transactions) == merkle;
+        bool transactions_are_valid(const std::vector<bitcoin::core::transaction>& transactions, bool* mutated) const {
+            return generate_header_merkle(transactions, mutated) == merkle;
         }
 
         bool transactions_are_valid(const std::vector<bitcoin::core::transaction>& transactions,
-                                    const uint256_t& witness_reserved_value, const uint256_t& witness_commitment) {
-            bitcoin::uint256_t witness_merkle = generate_witness_merkle(transactions);
+                                    const uint256_t& witness_reserved_value, const uint256_t& witness_commitment,
+                                    bool* mutated) {
+            bitcoin::uint256_t witness_merkle = generate_witness_merkle(transactions, mutated);
             auto concatenated_hashes = std::array<uint8_t, 64>();
             auto ds = eosio::datastream<uint8_t*>(concatenated_hashes.data(), concatenated_hashes.size());
             ds << witness_merkle << witness_reserved_value;
@@ -96,6 +99,12 @@ namespace bitcoin::core {
             auto expected_witness_commitment = bitcoin::dhash(concatenated_hashes);
 
             return witness_commitment == expected_witness_commitment;
+        }
+
+        bool version_are_invalid(const uint64_t height, const bitcoin::core::Params& params) {
+            return ((version < 2 && height > params.deployment_height(bitcoin::core::DEPLOYMENT_HEIGHTINCB))
+                    || (version < 3 && height > params.deployment_height(bitcoin::core::DEPLOYMENT_DERSIG))
+                    || (version < 4 && height > params.deployment_height(bitcoin::core::DEPLOYMENT_CLTV)));
         }
 
         EOSLIB_SERIALIZE(block_header, (version)(previous_block_hash)(merkle)(timestamp)(bits)(nonce))

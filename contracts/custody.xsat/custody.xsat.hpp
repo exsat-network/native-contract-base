@@ -5,8 +5,8 @@
 #include <eosio/singleton.hpp>
 #include <eosio/asset.hpp>
 #include <sstream>
-#include <utxomng.xsat/utxomng.xsat.hpp>
 #include <endrmng.xsat/endrmng.xsat.hpp>
+#include <btc.xsat/btc.xsat.hpp>
 #include <bitcoin/utility/address_converter.hpp>
 #include "../internal/defines.hpp"
 #include "../internal/utils.hpp"
@@ -19,6 +19,8 @@ class [[eosio::contract("custody.xsat")]] custody : public contract {
 
 public:
     using contract::contract;
+
+    static const uint64_t MAX_STAKING = 10000000000; // 100 BTC in satoshi
 
     /**
      * ## ACTION `addcustody`
@@ -45,27 +47,6 @@ public:
     void addcustody(const checksum160 staker, const checksum160 proxy, const name validator, const optional<string> btc_address, optional<vector<uint8_t>> scriptpubkey);
 
     /**
-     * ## ACTION `updatecusty`
-     *
-     * - **authority**: `get_self()`
-     *
-     * > Update custody record
-     *
-     * ### params
-     *
-     * - `{checksum160} staker` - staker evm address
-     * - `{name} validator` - validator account
-     *
-     * ### example
-     *
-     * ```bash
-     * $ cleos push action custody.xsat updatecusty '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", "val1.xsat"]' -p custody.xsat
-     * ```
-     */
-    [[eosio::action]]
-    void updatecusty(const checksum160 staker, const name validator);
-
-    /**
      * ## ACTION `delcustody`
      *
      * - **authority**: `get_self()`
@@ -86,20 +67,25 @@ public:
     void delcustody(const checksum160 staker);
 
     /**
-     * ## ACTION `syncstake`
+     * ## ACTION `creditstake`
      *
-     * - **authority**: `anyone`
+     * - **authority**: `get_self()`
      *
-     * > Sync staker btc address stake
+     * > Sync staker btc address stake off chain
+     *
+     * ### params
+     *
+     * - `{checksum160} staker` - staker evm address
+     * - `{uint64_t} balance` - staker btc balance
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action custody.xsat syncstake '[]' -p custody.xsat
+     * $ cleos push action custody.xsat creditstake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", 10000000000]' -p custody.xsat
      * ```
      */
     [[eosio::action]]
-    void syncstake(optional<uint64_t> process_rows);
+    void creditstake(const checksum160& staker, const uint64_t balance);
 
 #ifdef DEBUG
     [[eosio::action]]
@@ -108,13 +94,11 @@ public:
     void addr2pubkey(const string& address);
     [[eosio::action]]
     void pubkey2addr(const vector<uint8_t> data);
-    [[eosio::action]]
-    void updateheight(const uint64_t height);
 #endif
 
 private:
     /**
-     * ## TABLE `globalid`
+     * ## TABLE `globals`
      *
      * ### scope `get_self()`
      * ### params
@@ -125,17 +109,15 @@ private:
      *
      * ```json
      * {
-     *   "custody_id": 1
+     *   "custody_id": 1,
      * }
      * ```
      */
-    struct [[eosio::table]] global_id_row {
+    struct [[eosio::table]] global_row {
         uint64_t custody_id;
-        uint64_t last_custody_id;
-        uint64_t last_height;
     };
-    typedef singleton<"globalid"_n, global_id_row> global_id_table;
-    global_id_table _global_id = global_id_table(_self, _self.value);
+    typedef singleton<"globals"_n, global_row> global_table;
+    global_table _global = global_table(_self, _self.value);
 
     /**
      * ## TABLE `custodies`
@@ -186,8 +168,16 @@ private:
         eosio::indexed_by<"scriptpubkey"_n, const_mem_fun<custody_row, checksum256, &custody_row::by_scriptpubkey>>>
         custody_index;
 
+    // table init
+    custody_index _custody = custody_index(_self, _self.value);
+
+    template <typename T>
+    uint64_t get_current_staking_value(T& itr);
+
+    template <typename T>
+    void handle_staking(T& itr, uint64_t balance);
+
     uint64_t next_custody_id();
-    uint64_t current_irreversible_height();
 
 #ifdef DEBUG
     template <typename T>

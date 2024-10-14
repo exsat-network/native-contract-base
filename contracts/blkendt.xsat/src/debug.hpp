@@ -17,6 +17,8 @@ void block_endorse::cleartable(const name table_name, const optional<uint64_t> s
 
     if (table_name == "endorsements"_n)
         clear_table(_endorsement, rows_to_clear);
+    else if (table_name == "config"_n)
+        _config.remove();
     else
         check(false, "blkendt.xsat::cleartable: [table_name] unknown table to clear");
 }

@@ -11,7 +11,7 @@
 $ cleos push action rwddist.xsat distribute '{"height": 840000}' -p utxomng.xsat
 
 # endtreward @utxomng.xsat
-$ cleos push action rwddist.xsat endtreward '{"parser": "alice", "height": 840000, "from_index": 0, "to_index": 10}' -p utxomng.xsat
+$ cleos push action rwddist.xsat endtreward '{"height": 840000, "from_index": 0, "to_index": 10}' -p utxomng.xsat
 ```
 
 ## Table Information
@@ -67,8 +67,7 @@ $ cleos get table rwddist.xsat rwddist.xsat rewardbal
 - `{uint32_t} num_validators` - the number of validators who pledge more than 100 BTC
 - `{std::vector<validator_info> } provider_validators` - list of endorsed validators
 - `{uint64_t} endorsed_staking` - total endorsed staking amount
-- `{uint64_t} reached_consensus_staking` - the total staking amount to reach consensus is
-`(number of validators * 2/3+ 1 staking amount)`
+- `{uint64_t} reached_consensus_staking` - the total staking amount to reach consensus is `(number of validators * 2/3+ 1 staking amount)`
 - `{uint32_t} num_validators_assigned` - the number of validators that have been allocated rewards
 - `{name} synchronizer` -synchronizer account
 - `{name} miner` - miner account
@@ -150,7 +149,6 @@ $ cleos push action rwddist.xsat distribute '[840000]' -p utxomng.xsat
 
 ### params
 
-- `{name} parser` - parse account
 - `{uint64_t} height` - block height
 - `{uint32_t} from_index` - the starting reward index of provider_validators
 - `{uint32_t} to_index` - end reward index of provider_validators
@@ -158,5 +156,5 @@ $ cleos push action rwddist.xsat distribute '[840000]' -p utxomng.xsat
 ### example
 
 ```bash
-$ cleos push action rwddist.xsat endtreward '["alice", 840000, 0, 10]' -p utxomng.xsat
+$ cleos push action rwddist.xsat endtreward '[840000, 0, 10]' -p utxomng.xsat
 ```

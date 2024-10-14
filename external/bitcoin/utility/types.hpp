@@ -73,7 +73,7 @@ namespace bitcoin {
     }  // namespace varint
 
     namespace compact {
-        inline uint256_t expand(const uint32_t& compact) {
+        inline uint256_t decode(const uint32_t& compact) {
             constexpr uint32_t sign_mask = 0x00800000U;
             constexpr uint32_t exp_shift = 24U;
             constexpr uint32_t mnt_mask = 0x007FFFFFU;
@@ -92,6 +92,31 @@ namespace bitcoin {
             } else {
                 return result << (8 * (exponent - 3));
             }
+        }
+
+        inline uint32_t encode(const bitcoin::uint256_t& value, const bool fNegative = false) {
+            eosio::check(value > 0, "invalid bits");
+            int bits = sizeof(value) * 8 - intx::clz(value);
+            int nSize = (bits + 7) / 8;
+            uint32_t nCompact = 0;
+            constexpr uint64_t mask = 0xFFFFFFFFFFFFFFFFU;
+            if (nSize <= 3) {
+                nCompact = uint64_t(value & mask) << 8 * (3 - nSize);
+            } else {
+                uint256_t bn = value >> 8 * (nSize - 3);
+                nCompact = uint64_t(bn & mask);
+            }
+            // The 0x00800000 bit denotes the sign.
+            // Thus, if it is already set, divide the mantissa by 256 and increase the exponent.
+            if (nCompact & 0x00800000) {
+                nCompact >>= 8;
+                nSize++;
+            }
+            eosio::check((nCompact & ~0x007fffffU) == 0, "invalid bits");
+            eosio::check(nSize < 256, "invalid bits");
+            nCompact |= nSize << 24;
+            nCompact |= (fNegative && (nCompact & 0x007fffff) ? 0x00800000 : 0);
+            return nCompact;
         }
     }  // namespace compact
 }  // namespace bitcoin

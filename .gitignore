@@ -6,3 +6,5 @@ coverage
 .clangd
 .idea
 wasm
+cmake-build-debug
+contracts/verify

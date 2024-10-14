@@ -11,6 +11,7 @@ const BLKENDT_CONTRACT = 'blkendt.xsat'
 const ENDRMNG_CONTRACT = 'endrmng.xsat'
 const STAKING_CONTRACT = 'staking.xsat'
 const UTXO_CONTRACT = 'utxomng.xsat'
+const BRDGMNG_CONTRACT = 'brdgmng.xsat'
 
 const DECIMAL = 1000000000000
 const EOS = Asset.Symbol.fromParts('EOS', 4)
@@ -30,10 +31,11 @@ module.exports = {
     ENDRMNG_CONTRACT,
     STAKING_CONTRACT,
     UTXO_CONTRACT,
+    BRDGMNG_CONTRACT,
     DECIMAL,
     EOS,
     BTC,
-    XSAT: XSAT,
+    XSAT,
     ZERO_BTC,
     ZERO_XSAT: ZERO_XSAT
 }

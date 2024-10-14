@@ -13,6 +13,7 @@ void endorse_manage::cleartable(const name table_name, const optional<name> scop
     const uint64_t value = scope ? scope->value : get_self().value;
 
     endorse_manage::whitelist_table _whitelist(get_self(), value);
+    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), value);
 
     if (table_name == "globalid"_n)
         _global_id.remove();
@@ -24,7 +25,7 @@ void endorse_manage::cleartable(const name table_name, const optional<name> scop
         clear_table(_native_stake, rows_to_clear);
     else if (table_name == "evmstakers"_n)
         clear_table(_evm_stake, rows_to_clear);
-    else if (table_name == "evmproxys"_n)
+    else if (table_name == "evmproxies"_n)
         clear_table(_evm_proxy, rows_to_clear);
     else if (table_name == "whitelist"_n)
         clear_table(_whitelist, rows_to_clear);

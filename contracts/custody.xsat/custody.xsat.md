@@ -3,9 +3,8 @@
 ## Actions
 
 - addcustody
-- updatecusty
 - delcustody
-- syncstake
+- creditstake
 
 
 ## Quickstart
@@ -14,25 +13,22 @@
 # addcustody @custody.xsat
 $ cleos push action custody.xsat addcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "0000000000000000000000000000000000000001", "chen.sat", "3LB8ocwXtqgq7sDfiwv3EbDZNEPwKLQcsN", null ]' -p custody.xsat
 
-# updatecusty @custody.xsat
-$ cleos push action custody.xsat updatecusty '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3", "chen2.sat"]' -p custody.xsat
-
 # delcustody @custody.xsat
 $ cleos push action custody.xsat delcustody '["1995587ef4e2dd5e6c61a8909110b0ca9a56b1b3"]' -p custody.xsat
 
-# syncstake @custody.xsat
-$ cleos push action custody.xsat syncstake '[100]' -p custody.xsat
+# creditstake @custody.xsat
+$ cleos push action custody.xsat creditstake '["1231deb6f5749ef6ce6943a275a1d3e7486f4eae", 10000000000]' -p custody.xsat
 
 ## Table Information
 
 ```bash
-$ cleos get table custody.xsat custody.xsat globalid
+$ cleos get table custody.xsat custody.xsat globals
 $ cleos get table custody.xsat custody.xsat custodies
 ```
 
 ## Table of Content
 
-- [TABLE `globalid`](#table-globalid)
+- [TABLE `globals`](#table-globals)
   - [scope `get_self()`](#scope-get_self)
   - [params](#params)
   - [example](#example)
@@ -41,22 +37,18 @@ $ cleos get table custody.xsat custody.xsat custodies
   - [params](#params-1)
   - [example](#example-1)
 
-## TABLE `globalid`
+## TABLE `globals`
 
 ### scope `get_self()`
 ### params
 
-- `{uint64_t} custody_id` - The custody id is automatically incremented
-- `{uint64_t} last_custody_id` - last processed custody id
-- `{uint64_t} last_height` - last processed height
+- `{uint64_t} custody_id` - the custody id is automatically incremented
 
 ### example
 
 ```json
 {
-  "custody_id": 4,
-  "last_custody_id": 3,
-  "last_height": 0
+  "custody_id": 4
 }
 ```
 

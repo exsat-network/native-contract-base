@@ -16,6 +16,7 @@
 | [blksync.xsat](https://bloks.io/account/blksync.xsat) | Block Synchronization Contract | [blksync.xsat document](./contracts/blksync.xsat/blksync.xsat.md) |
 | [endrmng.xsat](https://bloks.io/account/endrmng.xsat) | Validator Manage Contract      | [endrmng.xsat document](./contracts/endrmng.xsat/endrmng.xsat.md) |
 | [staking.xsat](https://bloks.io/account/staking.xsat) | Staking Contract               | [staking.xsat document](./contracts/staking.xsat/staking.xsat.md) |
+| [custody.xsat](https://bloks.io/account/custody.xsat) | Custody Contract               | [custody.xsat document](./contracts/custody.xsat/custody.xsat.md) |
 
 ## Contract Architecture
 
