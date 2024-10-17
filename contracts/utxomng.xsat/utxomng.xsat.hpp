@@ -689,15 +689,16 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * ### params
      *
      * - `{uint64_t} row` - number of rows to delete utxo
+     * - `{uint64_t} nonce` - unique value for each call to prevent duplicate transactions 
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action utxomng.xsat delspentutxo '[1000]' -p utxomng.xsat
+     * $ cleos push action utxomng.xsat delspentutxo '[1000, 1]' -p utxomng.xsat
      * ```
      */
     [[eosio::action]]
-    void delspentutxo(uint64_t rows);
+    void delspentutxo(uint64_t rows, const uint64_t nonce);
 
     /**
      * ## ACTION `delblockdata`
@@ -709,15 +710,16 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      * ### params
      *
      * - `{uint64_t} row` - number of rows of block data to delete
+     * - `{uint64_t} nonce` - unique value for each call to prevent duplicate transactions 
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action utxomng.xsat delblockdata '[1000]' -p utxomng.xsat
+     * $ cleos push action utxomng.xsat delblockdata '[1000, 1]' -p utxomng.xsat
      * ```
      */
     [[eosio::action]]
-    void delblockdata(uint64_t rows);
+    void delblockdata(uint64_t rows, const uint64_t nonce);
 
     /**
      * ## ACTION `processblock`
@@ -730,15 +732,16 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
      *
      * - `{name} synchronizer` - synchronizer account
      * - `{uint64_t} process_rows` - number of vins and vouts to be parsed
+     * - `{uint64_t} none` - unique value for each call to prevent duplicate transactions 
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action utxomng.xsat processblock '["alice", 1000]' -p alice
+     * $ cleos push action utxomng.xsat processblock '["alice", 1000, 1]' -p alice
      * ```
      */
     [[eosio::action]]
-    process_block_result processblock(const name &synchronizer, uint64_t process_rows);
+    process_block_result processblock(const name &synchronizer, uint64_t process_rows, const uint64_t nonce);
 
     /**
      * ## ACTION `consensus`
@@ -845,7 +848,8 @@ class [[eosio::contract("utxomng.xsat")]] utxo_manage : public contract {
         utxo_manage::consensus_block_table _consensus_block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
         auto consensus_block_idx = _consensus_block.get_index<"byblockid"_n>();
         auto consensus_block_itr = consensus_block_idx.find(xsat::utils::compute_block_id(height, hash));
-        if (consensus_block_itr != consensus_block_idx.end()) return true;
+        if (consensus_block_itr != consensus_block_idx.end())
+            return true;
 
         utxo_manage::block_table _block(UTXO_MANAGE_CONTRACT, UTXO_MANAGE_CONTRACT.value);
         auto block_itr = _block.find(height);

@@ -529,15 +529,17 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
      * - `{name} synchronizer` - synchronizer account
      * - `{uint64_t} height` - block height
      * - `{checksum256} hash` - block hash
+     * - `{uint64_t} nonce` - unique value for each call to prevent duplicate transactions 
      *
      * ### example
      *
      * ```bash
-     * $ cleos push action blksync.xsat verify '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+     * $ cleos push action blksync.xsat verify '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 1]' -p alice
      * ```
      */
     [[eosio::action]]
-    verify_block_result verify(const name &synchronizer, const uint64_t height, const checksum256 &hash);
+    verify_block_result verify(const name &synchronizer, const uint64_t height, const checksum256 &hash,
+                               const uint64_t nonce);
 
 #ifdef DEBUG
     [[eosio::action]]

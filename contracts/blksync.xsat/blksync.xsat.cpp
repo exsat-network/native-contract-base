@@ -284,7 +284,7 @@ void block_sync::delbucket(const name& synchronizer, const uint64_t height, cons
 //@auth synchronizer
 [[eosio::action]]
 block_sync::verify_block_result block_sync::verify(const name& synchronizer, const uint64_t height,
-                                                   const checksum256& hash) {
+                                                   const checksum256& hash, const uint64_t nonce) {
     require_auth(synchronizer);
 
     block_bucket_table _block_bucket = block_bucket_table(get_self(), synchronizer.value);
@@ -676,7 +676,8 @@ void block_sync::find_miner(std::vector<bitcoin::core::transaction_output> outpu
             }
         }
     }
-    if (!miner) btc_miners.clear();
+    if (!miner)
+        btc_miners.clear();
 }
 
 uint64_t block_sync::next_bucket_id() {
