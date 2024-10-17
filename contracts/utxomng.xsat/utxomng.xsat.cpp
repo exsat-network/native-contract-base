@@ -143,7 +143,7 @@ void utxo_manage::delblock(const uint64_t height) {
 
 //@auth get_self()
 [[eosio::action]]
-void utxo_manage::delspentutxo(uint64_t rows) {
+void utxo_manage::delspentutxo(uint64_t rows, const uint64_t nonce) {
     require_auth(get_self());
 
     if (rows == 0)
@@ -163,7 +163,7 @@ void utxo_manage::delspentutxo(uint64_t rows) {
 
 //@auth get_self()
 [[eosio::action]]
-void utxo_manage::delblockdata(uint64_t rows) {
+void utxo_manage::delblockdata(uint64_t rows, const uint64_t nonce) {
     require_auth(get_self());
 
     if (rows == 0)
@@ -279,7 +279,8 @@ void utxo_manage::consensus(const uint64_t height, const checksum256& hash) {
 
 //@auth
 [[eosio::action]]
-utxo_manage::process_block_result utxo_manage::processblock(const name& synchronizer, uint64_t process_row) {
+utxo_manage::process_block_result utxo_manage::processblock(const name& synchronizer, uint64_t process_row,
+                                                            const uint64_t nonce) {
     require_auth(synchronizer);
 
     auto chain_state = _chain_state.get();

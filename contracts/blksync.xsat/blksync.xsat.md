@@ -23,7 +23,7 @@ $ cleos push action blksync.xsat delchunk '{"synchronizer": "alice", "height": 8
 $ cleos push action blksync.xsat delbucket '{"synchronizer": "alice", "height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"}' -p alice
 
 # verify @synchronizer
-$ cleos push action blksync.xsat verify '{"synchronizer": "alice", "height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"}' -p alice
+$ cleos push action blksync.xsat verify '{"synchronizer": "alice", "height": 840000, "hash": "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", "nonce": 1}' -p alice
 ```
 
 ## Table Information
@@ -444,9 +444,10 @@ $ cleos push action blksync.xsat delbucket '["alice", 840000, "00000000000000000
 - `{name} synchronizer` - synchronizer account
 - `{uint64_t} height` - block height
 - `{checksum256} hash` - block hash
+- `{uint64_t} nonce` - unique value for each call to prevent duplicate transactions 
 
 ### example
 
 ```bash
-$ cleos push action blksync.xsat verify '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+$ cleos push action blksync.xsat verify '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5", 1]' -p alice
 ```
