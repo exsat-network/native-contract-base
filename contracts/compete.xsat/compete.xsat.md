@@ -2,13 +2,17 @@
 
 ## Actions
 
+- setmindonate
 - addround
 - activate
 
 ## Quickstart
 
 ````bash
-# addcompete @compete.xsat
+# setmindonate @compete.xsat
+$ cleos push action setmindonate '[2000]' -p compete.xsat
+
+# addround @compete.xsat
 $ cleos push action compete.xsat addround '[2, null]' -p compete.xsat
 
 # activate @valia.sat

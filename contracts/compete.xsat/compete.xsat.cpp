@@ -5,6 +5,14 @@
 #endif
 
 [[eosio::action]]
+void compete::setmindonate(const uint16_t min_donate_rate) {
+    require_auth(get_self());
+    global_row global = _global.get_or_default();
+    global.min_donate_rate = min_donate_rate;
+    _global.set(global, get_self());
+}
+
+[[eosio::action]]
 void compete::addround(const uint8_t quota, const optional<time_point_sec> start_time) {
     require_auth(get_self());
     global_row global = _global.get_or_default();

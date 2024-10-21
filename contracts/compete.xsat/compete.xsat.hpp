@@ -14,6 +14,9 @@ class [[eosio::contract("compete.xsat")]] compete : public contract {
     static constexpr name ENDORSER_MANAGE_CONTRACT = "endrmng.xsat"_n;
 
     [[eosio::action]]
+    void setmindonate(const uint16_t min_donate_rate);
+
+    [[eosio::action]]
     void addround(const uint8_t quota, const optional<time_point_sec> start_time);
 
     [[eosio::action]]
