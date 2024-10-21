@@ -23,15 +23,15 @@ void compete::addround(const uint8_t quota, const optional<time_point_sec> start
 [[eosio::action]]
 void compete::activate(const name& validator) {
     require_auth(validator);
+    global_row global = _global.get_or_default();
     validator_table _validators(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);
     auto validator_itr = _validators.require_find(validator.value, "compete.xsat::activate: validator does not exists");
     check(validator_itr->qualification.amount >= 10000000000, "compete.xsat::activate: validator qualification has less than 100 BTC staked");
-    check(validator_itr->donate_rate > 0, "compete.xsat::activate: validator donate needs to be set first");
+    check(validator_itr->donate_rate > global.min_donate_rate, "compete.xsat::activate: validator donate rate is less than the minimum donate rate");
 
     auto activation_itr = _activation.find(validator.value);
     check(activation_itr == _activation.end(), "compete.xsat::activate: validator already activated");
 
-    global_row global = _global.get_or_default();
     check(global.total_activations < global.total_quotas, "compete.xsat::activate: current round quota is full, please wait for the next round");
 
     auto round_itr = _round.require_find(global.round_id, "compete.xsat::activate: round does not exists");

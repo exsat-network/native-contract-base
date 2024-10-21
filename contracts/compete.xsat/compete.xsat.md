@@ -42,6 +42,7 @@ $ cleos get table compete.xsat compete.xsat activations
 ### params
 
 - `{uint64_t} round_id` - the current round identifier
+- `{uint16_t} min_donate_rate` - the minimum donate rate for a validator
 - `{uint16_t} total_quotas` - the total number of quotas available for all rounds
 - `{uint64_t} total_activations` - the total number of activations that have occurred
 
@@ -50,6 +51,7 @@ $ cleos get table compete.xsat compete.xsat activations
 ```json
 {
   "round_id": 1,
+  "min_donate_rate": 2000,
   "total_quotas": 7,
   "total_activations": 2
 }

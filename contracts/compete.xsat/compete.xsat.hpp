@@ -32,6 +32,7 @@ class [[eosio::contract("compete.xsat")]] compete : public contract {
      * ### params
      *
      * - `{uint64_t} round_id` - the current round identifier
+     * - `{uint16_t} min_donate_rate` - the minimum donate rate for a validator
      * - `{uint16_t} total_quotas` - the total number of quotas available for all rounds
      * - `{uint64_t} total_activations` - the total number of activations that have occurred
      *
@@ -40,6 +41,7 @@ class [[eosio::contract("compete.xsat")]] compete : public contract {
      * ```
      * {
      *   "round_id": 1,
+     *   "min_donate_rate": 2000,
      *   "total_quotas": 7,
      *   "total_activations": 2
      * }
@@ -47,6 +49,7 @@ class [[eosio::contract("compete.xsat")]] compete : public contract {
      */
     struct [[eosio::table]] global_row {
         uint64_t round_id;
+        uint16_t min_donate_rate;
         uint16_t total_quotas;
         uint64_t total_activations;
     };
