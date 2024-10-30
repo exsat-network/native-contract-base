@@ -35,7 +35,7 @@ void compete::activate(const name& validator) {
     validator_table _validators(ENDORSER_MANAGE_CONTRACT, ENDORSER_MANAGE_CONTRACT.value);
     auto validator_itr = _validators.require_find(validator.value, "compete.xsat::activate: validator does not exists");
     check(validator_itr->qualification.amount >= 10000000000, "compete.xsat::activate: validator credit staking has less than 100 BTC staked");
-    check(validator_itr->donate_rate >= global.min_donate_rate, "compete.xsat::activate: validator donation ratio is less than the minimum donate ratio(" + to_string(global.min_donate_rate/100) + "%)");
+    check(validator_itr->donate_rate >= global.min_donate_rate, "compete.xsat::activate: check your donation's config");
 
     auto activation_itr = _activation.find(validator.value);
     check(activation_itr == _activation.end(), "compete.xsat::activate: validator already activated");
