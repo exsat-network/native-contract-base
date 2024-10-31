@@ -16,7 +16,17 @@ const contracts = {
 }
 
 // accounts
-blockchain.createAccounts('blksync.xsat', 'rwddist.xsat', 'alice', 'bob', 'amy', 'fees.xsat', 'donate.xsat')
+blockchain.createAccounts(
+    'blksync.xsat',
+    'rwddist.xsat',
+    'alice',
+    'bob',
+    'amy',
+    'brian',
+    'fees.xsat',
+    'donate.xsat',
+    'utxomng.xsat'
+)
 
 const get_config = () => {
     return contracts.poolreg.tables.config().getTableRows()[0]
@@ -230,6 +240,42 @@ describe('poolreg.xsat', () => {
         })
     })
 
+    it('delpool: cannot delete pool while rewards are not zero', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.delpool(['bob']).send('poolreg.xsat@active'),
+            'eosio_assert: poolreg.xsat::delpool: cannot erase synchronizer while unclaimed rewards exist'
+        )
+    })
+
+    it('setdonateacc: missing required authority', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.setdonateacc(['alice', 0]).send('alice@active'),
+            'missing required authority poolreg.xsat'
+        )
+    })
+
+    it('setdonateacc: donation account does not exists', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.setdonateacc(['xsat', 10]).send('poolreg.xsat@active'),
+            'eosio_assert: poolreg.xsat::setdonateacc: donation account does not exists'
+        )
+    })
+
+    it('setdonateacc: min_donate_rate must be less than or equal to 10000"', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.setdonateacc(['donate.xsat', 20000]).send('poolreg.xsat@active'),
+            'eosio_assert_message: poolreg.xsat::setdonateacc: min_donate_rate must be less than or equal to 10000'
+        )
+    })
+
+    it('setdonateacc', async () => {
+        await contracts.poolreg.actions.setdonateacc(['donate.xsat', 0]).send('poolreg.xsat@active'),
+            expect(get_config()).toEqual({
+                donation_account: 'donate.xsat',
+                min_donate_rate: 0,
+            })
+    })
+
     it('setfinacct: missing required authority', async () => {
         await expectToThrow(
             contracts.poolreg.actions.setfinacct(['bob', 'bob']).send('alice@active'),
@@ -352,36 +398,15 @@ describe('poolreg.xsat', () => {
         await contracts.poolreg.actions.config(['bob', 0]).send('poolreg.xsat@active')
         expect(get_synchronizer('bob').produced_block_limit).toEqual(0)
     })
-    
-    it('config', async () => {
-        await contracts.poolreg.actions.config(['bob', 0]).send('poolreg.xsat@active')
-        expect(get_synchronizer('bob').produced_block_limit).toEqual(0)
-    })
 
     it('config', async () => {
         await contracts.poolreg.actions.config(['bob', 0]).send('poolreg.xsat@active')
         expect(get_synchronizer('bob').produced_block_limit).toEqual(0)
     })
 
-    it('setdonateacc: missing required authority', async () => {
-        await expectToThrow(
-            contracts.poolreg.actions.setdonateacc(['alice']).send('alice@active'),
-            'missing required authority poolreg.xsat'
-        )
-    })
-
-    it('setdonateacc: donation account does not exists', async () => {
-        await expectToThrow(
-            contracts.poolreg.actions.setdonateacc(['xsat']).send('poolreg.xsat@active'),
-            'eosio_assert: poolreg.xsat::setdonateacc: donation account does not exists'
-        )
-    })
-
-    it('setdonateacc', async () => {
-        await contracts.poolreg.actions.setdonateacc(['donate.xsat']).send('poolreg.xsat@active'),
-            expect(get_config()).toEqual({
-                donation_account: 'donate.xsat',
-            })
+    it('config', async () => {
+        await contracts.poolreg.actions.config(['bob', 0]).send('poolreg.xsat@active')
+        expect(get_synchronizer('bob').produced_block_limit).toEqual(0)
     })
 
     it('setdonate: missing required authority', async () => {
@@ -420,6 +445,21 @@ describe('poolreg.xsat', () => {
         expect(donate_after_balance - donate_before_balance).toEqual(100000000)
     })
 
+    it('claim:  donate_rate < min_donate_rate', async () => {
+        await contracts.exsat.actions
+            .transfer(['rwddist.xsat', 'poolreg.xsat', '100.00000000 XSAT', 'bob,840002'])
+            .send('rwddist.xsat@active')
+        await contracts.poolreg.actions.setdonateacc(['donate.xsat', 2000]).send('poolreg.xsat@active')
+
+        const alice_before_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', XSAT.code)
+        const donate_before_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        await contracts.poolreg.actions.claim(['bob']).send('alice@active')
+        const alice_after_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', XSAT.code)
+        const donate_after_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        expect(alice_after_balance - alice_before_balance).toEqual(8000000000)
+        expect(donate_after_balance - donate_before_balance).toEqual(2000000000)
+    })
+
     it('setdonate: 100%', async () => {
         await contracts.poolreg.actions.setdonate(['bob', 10000]).send('bob@active')
         const synchronizer = get_synchronizer('bob')
@@ -440,5 +480,90 @@ describe('poolreg.xsat', () => {
         const donate_after_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
         expect(alice_after_balance - alice_before_balance).toEqual(0)
         expect(donate_after_balance - donate_before_balance).toEqual(10000000000)
+    })
+
+    it('updateheight: missing required authority', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions
+                .updateheight(['bob', 839999, ['1KGG9kvV5zXiqyQAMfY32sGt9eFLMmgpgX']])
+                .send('alice@active'),
+            'missing required authority utxomng.xsat'
+        )
+    })
+
+    it('updateheight: if account does not exists, skip register synchronizer', async () => {
+        await contracts.poolreg.actions
+            .updateheight(['brook', 839999, ['1KGG9kvV5zXiqyQAMfY32sGt9eFLMmgpgX']])
+            .send('utxomng.xsat@active')
+        expect(get_synchronizer('brook')).toEqual(undefined)
+    })
+
+    it('updateheight: if account exists, register synchronizer', async () => {
+        await contracts.poolreg.actions
+            .updateheight(['brian', 839999, ['1KGG9kvV5zXiqyQAMfY32sGt9eFLMmgpgX']])
+            .send('utxomng.xsat@active')
+        expect(get_synchronizer('brian')).toEqual({
+            synchronizer: 'brian',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
+            claimed: '0.00000000 XSAT',
+            latest_produced_block_height: 839999,
+            memo: '',
+            num_slots: 2,
+            produced_block_limit: 432,
+            reward_recipient: 'brian',
+            unclaimed: '0.00000000 XSAT',
+            latest_reward_block: 0,
+            latest_reward_time: '1970-01-01T00:00:00',
+        })
+
+        expect(get_miners()).toEqual([
+            {
+                id: 0,
+                miner: '12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL',
+                synchronizer: 'bob',
+            },
+            {
+                id: 1,
+                miner: '1CGB4JC7iaThXyv1j6PNFx7jUgRhFuPTmx',
+                synchronizer: 'bob',
+            },
+            {
+                id: 2,
+                miner: '1KGG9kvV5zXiqyQAMfY32sGt9eFLMmgpgX',
+                synchronizer: 'brian',
+            },
+        ])
+    })
+
+    it('updateheight: height is less than latest_produced_block_height, skipping update', async () => {
+        await contracts.poolreg.actions
+            .updateheight(['bob', 0, ['12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL']])
+            .send('utxomng.xsat@active')
+        expect(get_synchronizer('bob').latest_produced_block_height).toEqual(839999)
+    })
+
+    it('updateheight', async () => {
+        await contracts.poolreg.actions
+            .updateheight(['bob', 850000, ['12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL']])
+            .send('utxomng.xsat@active')
+        expect(get_synchronizer('bob').latest_produced_block_height).toEqual(850000)
+        expect(get_miners()).toEqual([
+            {
+                id: 0,
+                miner: '12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL',
+                synchronizer: 'bob',
+            },
+            {
+                id: 1,
+                miner: '1CGB4JC7iaThXyv1j6PNFx7jUgRhFuPTmx',
+                synchronizer: 'bob',
+            },
+            {
+                id: 2,
+                miner: '1KGG9kvV5zXiqyQAMfY32sGt9eFLMmgpgX',
+                synchronizer: 'brian',
+            },
+        ])
     })
 })

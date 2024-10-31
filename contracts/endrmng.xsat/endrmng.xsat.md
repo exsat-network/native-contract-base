@@ -14,7 +14,7 @@
 
 ```bash
 # setdonateacc @endrmng.xsat
-$ cleos push action endrmng.xsat setdonateacc '{"donation_account": "alice"}' -p endrmng.xsat
+$ cleos push action endrmng.xsat setdonateacc '{"donation_account": "alice", "min_donate_rate": 2000}' -p endrmng.xsat
 
 # setdonate @validator
 $ cleos push action endrmng.xsat setdonate '{"validator": "alice", "donate_rate": 100}' -p alice
@@ -278,12 +278,14 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
 ### params
 
 - `{string} donation_account` - the account designated for receiving donations
+- `{binary_extension<uint16_t>} min_donate_rate` - minimum donation rate
 
 ### example
 
 ```json
 {
-  "donation_account": "donate.xsat"
+  "donation_account": "donate.xsat",
+  "min_donate_rate": 2000
 }
 ```
 
@@ -499,11 +501,12 @@ const std::set<name> WHITELIST_TYPES = {"proxyreg"_n, "evmcaller"_n};
 ### params
 
 - `{string} donation_account` -  account to receive donations
+- `{uint16_t} min_donate_rate` - minimum donation rate 
 
 ### example
 
 ```bash
-$ cleos push action endrmng.xsat setdonateacc '["alice"]' -p endrmng.xsat
+$ cleos push action endrmng.xsat setdonateacc '["alice", 2000]' -p endrmng.xsat
 ```
 
 ## ACTION `addwhitelist`

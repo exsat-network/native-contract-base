@@ -70,6 +70,8 @@ const pushChunk = (sender, height, hash, chunk_id, chunk) => {
     return contracts.blksync.actions.pushchunk([sender, height, hash, chunk_id, chunk]).send(`${sender}@active`)
 }
 
+const get_nonce = () => new Date().getTime()
+
 // one-time setup
 beforeAll(async () => {
     blockchain.setTime(TimePointSec.from(new Date()))
@@ -454,7 +456,7 @@ describe('utxomng.xsat', () => {
         await pushUpload('bob', height, hash, block)
         let max_times = 10
         while (max_times--) {
-            await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
+            await contracts.blksync.actions.verify(['bob', height, hash, get_nonce()]).send('bob@active')
             const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             //if(retval.status == 'verify_fail') console.log(get_block_bucket('bob'))
             if (retval.status == 'verify_pass') break
@@ -504,7 +506,7 @@ describe('utxomng.xsat', () => {
 
     it('parse 840000', async () => {
         //coinbase 1 vin 2 vout
-        await contracts.utxomng.actions.processblock(['bob', 1]).send('bob@active')
+        await contracts.utxomng.actions.processblock(['bob', 1, get_nonce()]).send('bob@active')
         expect(get_chain_state()).toEqual({
             head_height: 840000,
             irreversible_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
@@ -540,7 +542,7 @@ describe('utxomng.xsat', () => {
             status: 5,
         })
 
-        await contracts.utxomng.actions.processblock(['bob', 1]).send('bob@active')
+        await contracts.utxomng.actions.processblock(['bob', 1, get_nonce()]).send('bob@active')
         expect(get_chain_state()).toEqual({
             head_height: 840000,
             irreversible_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
@@ -576,7 +578,7 @@ describe('utxomng.xsat', () => {
             status: 5,
         })
 
-        await contracts.utxomng.actions.processblock(['bob', 0]).send('bob@active')
+        await contracts.utxomng.actions.processblock(['bob', 0, get_nonce()]).send('bob@active')
         expect(get_chain_state()).toEqual({
             head_height: 840000,
             irreversible_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
@@ -616,7 +618,7 @@ describe('utxomng.xsat', () => {
         await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
-            await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
+            await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
             const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
@@ -665,14 +667,14 @@ describe('utxomng.xsat', () => {
 
     it('parse 840001: you are not a parser of the current block', async () => {
         await expectToThrow(
-            contracts.utxomng.actions.processblock(['bob', 100]).send('bob@active'),
+            contracts.utxomng.actions.processblock(['bob', 100, get_nonce()]).send('bob@active'),
             'eosio_assert: 4003:utxomng.xsat::processblock: you are not a parser of the current block'
         )
     })
 
     it('parse 840001', async () => {
         blockchain.addTime(TimePointSec.from(600))
-        await contracts.utxomng.actions.processblock(['bob', 0]).send('bob@active')
+        await contracts.utxomng.actions.processblock(['bob', 0, get_nonce()]).send('bob@active')
 
         expect(get_consensus_block(2).parser).toEqual('bob')
 
@@ -699,7 +701,7 @@ describe('utxomng.xsat', () => {
 
     it('there are currently no block to parse', async () => {
         await expectToThrow(
-            contracts.utxomng.actions.processblock(['bob', 0]).send('bob@active'),
+            contracts.utxomng.actions.processblock(['bob', 0, get_nonce()]).send('bob@active'),
             'eosio_assert: 4001:utxomng.xsat::processblock: there are currently no block to parse'
         )
     })
@@ -716,7 +718,7 @@ describe('utxomng.xsat', () => {
         await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
-            await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
+            await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
             const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
@@ -740,7 +742,7 @@ describe('utxomng.xsat', () => {
         await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
-            await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
+            await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
             const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
@@ -764,7 +766,7 @@ describe('utxomng.xsat', () => {
         await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
-            await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
+            await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
             const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
@@ -788,7 +790,7 @@ describe('utxomng.xsat', () => {
         await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
-            await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
+            await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
             const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
@@ -812,7 +814,7 @@ describe('utxomng.xsat', () => {
         await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
-            await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
+            await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
             const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
@@ -836,7 +838,7 @@ describe('utxomng.xsat', () => {
         await pushUpload('alice', height, hash, block)
         let max_times = 10
         while (max_times--) {
-            await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
+            await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
             const retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
             if (retval.status == 'verify_pass') break
         }
@@ -850,7 +852,7 @@ describe('utxomng.xsat', () => {
 
     it('parse 840002', async () => {
         blockchain.addTime(TimePointSec.from(600))
-        await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active')
+        await contracts.utxomng.actions.processblock(['alice', 0, get_nonce()]).send('alice@active')
         expect(get_chain_state()).toEqual({
             head_height: 840007,
             irreversible_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
@@ -889,7 +891,7 @@ describe('utxomng.xsat', () => {
 
     it('parse 840003', async () => {
         blockchain.addTime(TimePointSec.from(600))
-        await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active')
+        await contracts.utxomng.actions.processblock(['alice', 0, get_nonce()]).send('alice@active')
         expect(get_chain_state()).toEqual({
             head_height: 840007,
             irreversible_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
@@ -928,7 +930,7 @@ describe('utxomng.xsat', () => {
 
     it('parse 840004', async () => {
         blockchain.addTime(TimePointSec.from(600))
-        await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active')
+        await contracts.utxomng.actions.processblock(['alice', 0, get_nonce()]).send('alice@active')
         expect(get_chain_state()).toEqual({
             head_height: 840007,
             irreversible_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
@@ -967,7 +969,7 @@ describe('utxomng.xsat', () => {
 
     it('parse 840005', async () => {
         blockchain.addTime(TimePointSec.from(600))
-        await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active')
+        await contracts.utxomng.actions.processblock(['alice', 0, get_nonce()]).send('alice@active')
         expect(get_chain_state()).toEqual({
             head_height: 840007,
             irreversible_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
@@ -1007,7 +1009,7 @@ describe('utxomng.xsat', () => {
     it('parse 840006: migrate utxo', async () => {
         blockchain.addTime(TimePointSec.from(600))
         while (true) {
-            await contracts.utxomng.actions.processblock(['alice', 5000]).send('alice@active')
+            await contracts.utxomng.actions.processblock(['alice', 5000, get_nonce()]).send('alice@active')
             if (get_chain_state().status == 3) {
                 break
             }
@@ -1050,7 +1052,7 @@ describe('utxomng.xsat', () => {
 
     it('parse 840006: delete data', async () => {
         blockchain.addTime(TimePointSec.from(600))
-        await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active')
+        await contracts.utxomng.actions.processblock(['alice', 0, get_nonce()]).send('alice@active')
         expect(get_chain_state()).toEqual({
             head_height: 840007,
             irreversible_hash: '0000000000000000000172014ba58d66455762add0512355ad651207918494ab',
@@ -1089,7 +1091,7 @@ describe('utxomng.xsat', () => {
 
     it('parse 840006: distribute rewards', async () => {
         blockchain.addTime(TimePointSec.from(600))
-        await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active'),
+        await contracts.utxomng.actions.processblock(['alice', 0, get_nonce()]).send('alice@active'),
             expect(get_chain_state()).toEqual({
                 head_height: 840007,
                 irreversible_hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',
@@ -1128,7 +1130,7 @@ describe('utxomng.xsat', () => {
 
     it('parse 840006: parse', async () => {
         blockchain.addTime(TimePointSec.from(600))
-        await contracts.utxomng.actions.processblock(['alice', 0]).send('alice@active'),
+        await contracts.utxomng.actions.processblock(['alice', 0, get_nonce()]).send('alice@active'),
             expect(get_chain_state()).toEqual({
                 head_height: 840007,
                 irreversible_hash: '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5',

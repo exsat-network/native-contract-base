@@ -10,7 +10,7 @@
 
 //@auth get_self()
 [[eosio::action]]
-void pool::setdonateacc(const string& donation_account) {
+void pool::setdonateacc(const string& donation_account, const uint16_t min_donate_rate) {
     require_auth(get_self());
 
     bool is_eos_address = donation_account.size() <= 12;
@@ -20,9 +20,13 @@ void pool::setdonateacc(const string& donation_account) {
         check(xsat::utils::is_valid_evm_address(donation_account),
               "poolreg.xsat::setdonateacc: invalid donation account");
     }
+    check(
+        min_donate_rate <= RATE_BASE_10000,
+        "poolreg.xsat::setdonateacc: min_donate_rate must be less than or equal to " + std::to_string(RATE_BASE_10000));
 
     auto config = _config.get_or_default();
     config.donation_account = donation_account;
+    config.min_donate_rate = min_donate_rate;
     _config.set(config, get_self());
 }
 
@@ -32,7 +36,9 @@ void pool::updateheight(const name& synchronizer, const uint64_t latest_produced
                         const std::vector<string>& miners) {
     require_auth(UTXO_MANAGE_CONTRACT);
 
-    check(is_account(synchronizer), "poolreg.xsat::updateheight: synchronizer does not exists");
+    // Prevent consensus failure by blocking invalid OP_RETURN settings
+    if (!is_account(synchronizer))
+        return;
 
     auto synchronizer_itr = _synchronizer.find(synchronizer.value);
     if (synchronizer_itr == _synchronizer.end()) {
@@ -134,6 +140,8 @@ void pool::delpool(const name& synchronizer) {
 
     auto synchronizer_itr
         = _synchronizer.require_find(synchronizer.value, "poolreg.xsat::delpool: [synchronizer] does not exists");
+    check(synchronizer_itr->unclaimed.amount == 0,
+          "poolreg.xsat::delpool: cannot erase synchronizer while unclaimed rewards exist");
     _synchronizer.erase(synchronizer_itr);
 
     // erase miners
@@ -242,8 +250,11 @@ void pool::claim(const name& synchronizer) {
         require_auth(synchronizer_itr->reward_recipient);
     }
 
+    auto config = _config.get();
+    auto donate_rate = std::max(config.min_donate_rate.value_or(uint16_t(0)), synchronizer_itr->donate_rate);
+
     auto claimable = synchronizer_itr->unclaimed;
-    auto donated_amount = claimable * synchronizer_itr->donate_rate / RATE_BASE_10000;
+    auto donated_amount = claimable * donate_rate / RATE_BASE_10000;
     auto to_synchronizer = claimable - donated_amount;
     _synchronizer.modify(synchronizer_itr, same_payer, [&](auto& row) {
         row.unclaimed.amount = 0;
@@ -253,7 +264,6 @@ void pool::claim(const name& synchronizer) {
 
     // transfer donate
     if (donated_amount.amount > 0) {
-        auto config = _config.get();
         token_transfer(get_self(), config.donation_account, extended_asset{donated_amount, EXSAT_CONTRACT});
 
         auto stat = _stat.get_or_default();
