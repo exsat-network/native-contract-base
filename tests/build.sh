@@ -12,4 +12,3 @@ cdt-cpp ../../contracts/blkendt.xsat/blkendt.xsat.cpp -I ../../contracts/ -I ../
 cdt-cpp ../../contracts/endrmng.xsat/endrmng.xsat.cpp -I ../../contracts/ -I ../../external -DDEBUG
 cdt-cpp ../../contracts/blksync.xsat/blksync.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include -DDEBUG
 cdt-cpp ../../contracts/utxomng.xsat/utxomng.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include -DDEBUG
-cdt-cpp ../../contracts/brdgmng.xsat/brdgmng.xsat.cpp -I ../../contracts/ -I ../../external -I ../../external/intx/include -DDEBUG

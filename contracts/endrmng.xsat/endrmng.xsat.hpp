@@ -4,6 +4,7 @@
 #include <eosio/eosio.hpp>
 #include <eosio/singleton.hpp>
 #include <eosio/crypto.hpp>
+#include <eosio/binary_extension.hpp>
 #include "../internal/defines.hpp"
 #include "../internal/utils.hpp"
 
@@ -45,17 +46,20 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      * ### params
      *
      * - `{string} donation_account` - the account designated for receiving donations
+     * - `{binary_extension<uint16_t>} min_donate_rate` - minimum donation rate
      * 
      * ### example
      *
      * ```json
      * {
-     *   "donation_account": "donate.xsat"
+     *   "donation_account": "donate.xsat",
+     *   "min_donate_rate": 2000
      * }
      * ```
      */
     struct [[eosio::table]] config_row {
         string donation_account;
+        binary_extension<uint16_t> min_donate_rate;
     };
     typedef eosio::singleton<"config"_n, config_row> config_table;
 
@@ -410,14 +414,15 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
      * ### params
      *
      * - `{string} donation_account` -  account to receive donations
-     *
+     * - `{uint16_t} min_donate_rate` - minimum donation rate 
+     * 
      * ### example
      *
      * ```bash
-     * $ cleos push action endrmng.xsat setdonateacc '["alice"]' -p endrmng.xsat
+     * $ cleos push action endrmng.xsat setdonateacc '["alice", 2000]' -p endrmng.xsat
      * ```
      */
-    void setdonateacc(const string& donation_account);
+    void setdonateacc(const string& donation_account, const uint16_t min_donate_rate);
 
     /**
      * ## ACTION `addwhitelist`

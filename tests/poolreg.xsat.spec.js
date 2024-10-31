@@ -16,7 +16,17 @@ const contracts = {
 }
 
 // accounts
-blockchain.createAccounts('blksync.xsat', 'rwddist.xsat', 'alice', 'bob', 'amy', 'fees.xsat', 'donate.xsat')
+blockchain.createAccounts(
+    'blksync.xsat',
+    'rwddist.xsat',
+    'alice',
+    'bob',
+    'amy',
+    'brian',
+    'fees.xsat',
+    'donate.xsat',
+    'utxomng.xsat'
+)
 
 const get_config = () => {
     return contracts.poolreg.tables.config().getTableRows()[0]
@@ -230,6 +240,37 @@ describe('poolreg.xsat', () => {
         })
     })
 
+        })
+
+    it('setdonateacc: missing required authority', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.setdonateacc(['alice', 0]).send('alice@active'),
+            'missing required authority poolreg.xsat'
+        )
+    })
+
+    it('setdonateacc: donation account does not exists', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.setdonateacc(['xsat', 10]).send('poolreg.xsat@active'),
+            'eosio_assert: poolreg.xsat::setdonateacc: donation account does not exists'
+        )
+    })
+
+    it('setdonateacc: min_donate_rate must be less than or equal to 10000"', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.setdonateacc(['donate.xsat', 20000]).send('poolreg.xsat@active'),
+            'eosio_assert_message: poolreg.xsat::setdonateacc: min_donate_rate must be less than or equal to 10000'
+        )
+    })
+
+    it('setdonateacc', async () => {
+        await contracts.poolreg.actions.setdonateacc(['donate.xsat', 0]).send('poolreg.xsat@active'),
+            expect(get_config()).toEqual({
+                donation_account: 'donate.xsat',
+                min_donate_rate: 0,
+            })
+    })
+
     it('setfinacct: missing required authority', async () => {
         await expectToThrow(
             contracts.poolreg.actions.setfinacct(['bob', 'bob']).send('alice@active'),
@@ -352,37 +393,17 @@ describe('poolreg.xsat', () => {
         await contracts.poolreg.actions.config(['bob', 0]).send('poolreg.xsat@active')
         expect(get_synchronizer('bob').produced_block_limit).toEqual(0)
     })
-    
-    it('config', async () => {
-        await contracts.poolreg.actions.config(['bob', 0]).send('poolreg.xsat@active')
-        expect(get_synchronizer('bob').produced_block_limit).toEqual(0)
-    })
 
     it('config', async () => {
         await contracts.poolreg.actions.config(['bob', 0]).send('poolreg.xsat@active')
         expect(get_synchronizer('bob').produced_block_limit).toEqual(0)
     })
 
-    it('setdonateacc: missing required authority', async () => {
-        await expectToThrow(
-            contracts.poolreg.actions.setdonateacc(['alice']).send('alice@active'),
-            'missing required authority poolreg.xsat'
-        )
+    it('config', async () => {
+        await contracts.poolreg.actions.config(['bob', 0]).send('poolreg.xsat@active')
+        expect(get_synchronizer('bob').produced_block_limit).toEqual(0)
     })
 
-    it('setdonateacc: donation account does not exists', async () => {
-        await expectToThrow(
-            contracts.poolreg.actions.setdonateacc(['xsat']).send('poolreg.xsat@active'),
-            'eosio_assert: poolreg.xsat::setdonateacc: donation account does not exists'
-        )
-    })
-
-    it('setdonateacc', async () => {
-        await contracts.poolreg.actions.setdonateacc(['donate.xsat']).send('poolreg.xsat@active'),
-            expect(get_config()).toEqual({
-                donation_account: 'donate.xsat',
-            })
-    })
 
     it('setdonate: missing required authority', async () => {
         await expectToThrow(
@@ -419,6 +440,22 @@ describe('poolreg.xsat', () => {
         expect(alice_after_balance - alice_before_balance).toEqual(9900000000)
         expect(donate_after_balance - donate_before_balance).toEqual(100000000)
     })
+
+    it('claim:  donate_rate < min_donate_rate', async () => {
+        await contracts.exsat.actions
+            .transfer(['rwddist.xsat', 'poolreg.xsat', '100.00000000 XSAT', 'bob,840002'])
+            .send('rwddist.xsat@active')
+        await contracts.poolreg.actions.setdonateacc(['donate.xsat', 2000]).send('poolreg.xsat@active')
+
+        const alice_before_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', XSAT.code)
+        const donate_before_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        await contracts.poolreg.actions.claim(['bob']).send('alice@active')
+        const alice_after_balance = getTokenBalance(blockchain, 'alice', 'exsat.xsat', XSAT.code)
+        const donate_after_balance = getTokenBalance(blockchain, 'donate.xsat', 'exsat.xsat', XSAT.code)
+        expect(alice_after_balance - alice_before_balance).toEqual(8000000000)
+        expect(donate_after_balance - donate_before_balance).toEqual(2000000000)
+    })
+
 
     it('setdonate: 100%', async () => {
         await contracts.poolreg.actions.setdonate(['bob', 10000]).send('bob@active')
