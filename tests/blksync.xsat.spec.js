@@ -77,6 +77,8 @@ const getChunk = (block, index) => {
     return block_buffer.slice(begin, end)
 }
 
+const get_nonce = () => new Date().getTime()
+
 // one-time setup
 beforeAll(async () => {
     blockchain.setTime(TimePointSec.from(new Date()))
@@ -340,8 +342,8 @@ describe('blksync.xsat', () => {
             .send('alice@active')
         await pushUpload('alice', height, hash, block)
 
-        await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-        await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
+        await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
+        await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
 
         expect(get_block_bucket('alice')).toEqual([
             {
@@ -361,7 +363,7 @@ describe('blksync.xsat', () => {
             },
         ])
         await expectToThrow(
-            contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active'),
+            contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active'),
             'eosio_assert_message: 2019:blksync.xsat::verify: cannot validate block in the current state [verify_fail]'
         )
     })
@@ -425,11 +427,11 @@ describe('blksync.xsat', () => {
         blockchain.addBlocks(10)
         const height = 840000
         const hash = '0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5'
-        await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
+        await contracts.blksync.actions.verify(['bob', height, hash, get_nonce()]).send('bob@active')
         retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
         expect(retval.status).toBe('verify_merkle')
-        await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
-        await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
+        await contracts.blksync.actions.verify(['bob', height, hash, get_nonce()]).send('bob@active')
+        await contracts.blksync.actions.verify(['bob', height, hash, get_nonce()]).send('bob@active')
         retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
         expect(retval.status).toBe('verify_pass')
         expect(get_pass_index(height)).toEqual([
@@ -588,12 +590,12 @@ describe('blksync.xsat', () => {
             .send('alice@active')
         await pushUpload('alice', height, hash, block)
 
-        await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
-        await contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active')
+        await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
+        await contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active')
 
         expect(get_block_bucket('alice')[0].reason).toEqual('data_exceeds')
         await expectToThrow(
-            contracts.blksync.actions.verify(['alice', height, hash]).send('alice@active'),
+            contracts.blksync.actions.verify(['alice', height, hash, get_nonce()]).send('alice@active'),
             'eosio_assert_message: 2019:blksync.xsat::verify: cannot validate block in the current state [verify_fail]'
         )
     })
@@ -610,9 +612,9 @@ describe('blksync.xsat', () => {
             .send('bob@active')
         // push upload
         await pushUpload('bob', height, hash, read_block(height))
-        await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
-        await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
-        await contracts.blksync.actions.verify(['bob', height, hash]).send('bob@active')
+        await contracts.blksync.actions.verify(['bob', height, hash, get_nonce()]).send('bob@active')
+        await contracts.blksync.actions.verify(['bob', height, hash, get_nonce()]).send('bob@active')
+        await contracts.blksync.actions.verify(['bob', height, hash, get_nonce()]).send('bob@active')
         retval = decodeReturn_verify(blockchain.actionTraces[0].returnValue)
         expect(retval.status).toBe('verify_pass')
         expect(get_pass_index(height)).toEqual([
