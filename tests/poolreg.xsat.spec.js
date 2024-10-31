@@ -240,7 +240,12 @@ describe('poolreg.xsat', () => {
         })
     })
 
-        })
+    it('delpool: cannot delete pool while rewards are not zero', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions.delpool(['bob']).send('poolreg.xsat@active'),
+            'eosio_assert: poolreg.xsat::delpool: cannot erase synchronizer while unclaimed rewards exist'
+        )
+    })
 
     it('setdonateacc: missing required authority', async () => {
         await expectToThrow(
@@ -404,7 +409,6 @@ describe('poolreg.xsat', () => {
         expect(get_synchronizer('bob').produced_block_limit).toEqual(0)
     })
 
-
     it('setdonate: missing required authority', async () => {
         await expectToThrow(
             contracts.poolreg.actions.setdonate(['bob', 100]).send('alice@active'),
@@ -455,7 +459,6 @@ describe('poolreg.xsat', () => {
         expect(alice_after_balance - alice_before_balance).toEqual(8000000000)
         expect(donate_after_balance - donate_before_balance).toEqual(2000000000)
     })
-
 
     it('setdonate: 100%', async () => {
         await contracts.poolreg.actions.setdonate(['bob', 10000]).send('bob@active')

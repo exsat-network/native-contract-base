@@ -140,6 +140,8 @@ void pool::delpool(const name& synchronizer) {
 
     auto synchronizer_itr
         = _synchronizer.require_find(synchronizer.value, "poolreg.xsat::delpool: [synchronizer] does not exists");
+    check(synchronizer_itr->unclaimed.amount == 0,
+          "poolreg.xsat::delpool: cannot erase synchronizer while unclaimed rewards exist");
     _synchronizer.erase(synchronizer_itr);
 
     // erase miners
