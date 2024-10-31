@@ -8,7 +8,7 @@
 
 //@auth get_self()
 [[eosio::action]]
-void endorse_manage::setdonateacc(const string& donation_account) {
+void endorse_manage::setdonateacc(const string& donation_account, const uint16_t min_donate_rate) {
     require_auth(get_self());
 
     bool is_eos_address = donation_account.size() <= 12;
@@ -18,9 +18,13 @@ void endorse_manage::setdonateacc(const string& donation_account) {
         check(xsat::utils::is_valid_evm_address(donation_account),
               "endrmng.xsat::setdonateacc: invalid donation account");
     }
+    check(
+        min_donate_rate <= RATE_BASE_10000,
+        "endrmng.xsat::setdonateacc: min_donate_rate must be less than or equal to " + std::to_string(RATE_BASE_10000));
 
     auto config = _config.get_or_default();
     config.donation_account = donation_account;
+    config.min_donate_rate = min_donate_rate;
     _config.set(config, get_self());
 }
 
@@ -433,14 +437,18 @@ void endorse_manage::evm_claim(const name& caller, const checksum160& proxy, con
     auto claimable = staking_reward_unclaimed + consensus_reward_unclaimed;
     check(claimable.amount > 0, "endrmng.xsat::evmclaim: no balance to claim");
 
+    auto config = _config.get();
+
     asset validator_donated_amount = {0, XSAT_SYMBOL};
     asset staker_donated_amount = {0, XSAT_SYMBOL};
     auto credit_proxy_idx = _credit_proxy.get_index<"byproxy"_n>();
     auto credit_proxy_itr = credit_proxy_idx.find(xsat::utils::compute_id(proxy));
     bool is_credit_staking = credit_proxy_itr != credit_proxy_idx.end();
+
     // Use validator's donate_rate for credit staking, otherwise use input donate_rate
     if (is_credit_staking) {
-        validator_donated_amount = claimable * validator_itr->donate_rate / RATE_BASE_10000;
+        auto donate_rate = std::max(config.min_donate_rate.value_or(uint16_t(0)), validator_itr->donate_rate);
+        validator_donated_amount = claimable * donate_rate / RATE_BASE_10000;
     } else {
         staker_donated_amount = claimable * donate_rate / RATE_BASE_10000;
     }
@@ -462,7 +470,6 @@ void endorse_manage::evm_claim(const name& caller, const checksum160& proxy, con
     auto donated_amount = staker_donated_amount + validator_donated_amount;
     // transfer donate
     if (donated_amount.amount > 0) {
-        auto config = _config.get();
         token_transfer(get_self(), config.donation_account, extended_asset{donated_amount, EXSAT_CONTRACT});
 
         auto stat = _stat.get_or_default();
@@ -500,7 +507,10 @@ void endorse_manage::vdrclaim(const name& validator) {
     auto claimable = staking_reward_unclaimed + consensus_reward_unclaimed;
     check(claimable.amount > 0, "endrmng.xsat::vdrclaim: no balance to claim");
 
-    auto donated_amount = claimable * validator_itr->donate_rate / RATE_BASE_10000;
+    auto config = _config.get();
+    auto donate_rate = std::max(config.min_donate_rate.value_or(uint16_t(0)), validator_itr->donate_rate);
+
+    auto donated_amount = claimable * donate_rate / RATE_BASE_10000;
     auto to_validator = claimable - donated_amount;
     _validator.modify(validator_itr, same_payer, [&](auto& row) {
         row.total_donated += donated_amount;
@@ -514,7 +524,6 @@ void endorse_manage::vdrclaim(const name& validator) {
 
     // transfer donate
     if (donated_amount.amount > 0) {
-        auto config = _config.get();
         token_transfer(get_self(), config.donation_account, extended_asset{donated_amount, EXSAT_CONTRACT});
 
         auto stat = _stat.get_or_default();

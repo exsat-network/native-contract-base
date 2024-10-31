@@ -15,7 +15,7 @@
 
 ```bash
 # setdonateacc @poolreg.xsat
-$ cleos push action poolreg.xsat setdonateacc '{"donation_account": "alice"}' -p poolreg.xsat
+$ cleos push action poolreg.xsat setdonateacc '{"donation_account": "alice", "min_donate_rate": 2000}' -p poolreg.xsat
 
 # setdonate @synchronizer
 $ cleos push action poolreg.xsat setdonate '{"synchronizer": "alice", "donate_rate": 100}' -p alice
@@ -108,12 +108,14 @@ $ cleos get table poolreg.xsat poolreg.xsat stat
 ### params
 
 - `{string} donation_account` - the account designated for receiving donations
+- `{binary_extension<uint16_t>} min_donate_rate` - minimum donation rate
 
 ### example
 
 ```json
 {
-  "donation_account": "donate.xsat"
+  "donation_account": "donate.xsat",
+  "min_donate_rate": 2000
 }
 ```
 
@@ -197,11 +199,12 @@ $ cleos get table poolreg.xsat poolreg.xsat stat
 ### params
 
 - `{string} donation_account` -  account to receive donations
+- `{uint16_t} min_donate_rate` - minimum donation rate 
 
 ### example
 
 ```bash
-$ cleos push action poolreg.xsat setdonateacc '["alice"]' -p poolreg.xsat
+$ cleos push action poolreg.xsat setdonateacc '["alice", 2000]' -p poolreg.xsat
 ```
 
 ## ACTION `updateheight`
