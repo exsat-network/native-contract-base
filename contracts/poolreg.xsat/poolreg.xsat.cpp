@@ -36,7 +36,9 @@ void pool::updateheight(const name& synchronizer, const uint64_t latest_produced
                         const std::vector<string>& miners) {
     require_auth(UTXO_MANAGE_CONTRACT);
 
-    check(is_account(synchronizer), "poolreg.xsat::updateheight: synchronizer does not exists");
+    // Prevent consensus failure by blocking invalid OP_RETURN settings
+    if (!is_account(synchronizer))
+        return;
 
     auto synchronizer_itr = _synchronizer.find(synchronizer.value);
     if (synchronizer_itr == _synchronizer.end()) {

@@ -478,4 +478,89 @@ describe('poolreg.xsat', () => {
         expect(alice_after_balance - alice_before_balance).toEqual(0)
         expect(donate_after_balance - donate_before_balance).toEqual(10000000000)
     })
+
+    it('updateheight: missing required authority', async () => {
+        await expectToThrow(
+            contracts.poolreg.actions
+                .updateheight(['bob', 839999, ['1KGG9kvV5zXiqyQAMfY32sGt9eFLMmgpgX']])
+                .send('alice@active'),
+            'missing required authority utxomng.xsat'
+        )
+    })
+
+    it('updateheight: if account does not exists, skip register synchronizer', async () => {
+        await contracts.poolreg.actions
+            .updateheight(['brook', 839999, ['1KGG9kvV5zXiqyQAMfY32sGt9eFLMmgpgX']])
+            .send('utxomng.xsat@active')
+        expect(get_synchronizer('brook')).toEqual(undefined)
+    })
+
+    it('updateheight: if account exists, register synchronizer', async () => {
+        await contracts.poolreg.actions
+            .updateheight(['brian', 839999, ['1KGG9kvV5zXiqyQAMfY32sGt9eFLMmgpgX']])
+            .send('utxomng.xsat@active')
+        expect(get_synchronizer('brian')).toEqual({
+            synchronizer: 'brian',
+            total_donated: '0.00000000 XSAT',
+            donate_rate: 0,
+            claimed: '0.00000000 XSAT',
+            latest_produced_block_height: 839999,
+            memo: '',
+            num_slots: 2,
+            produced_block_limit: 432,
+            reward_recipient: 'brian',
+            unclaimed: '0.00000000 XSAT',
+            latest_reward_block: 0,
+            latest_reward_time: '1970-01-01T00:00:00',
+        })
+
+        expect(get_miners()).toEqual([
+            {
+                id: 0,
+                miner: '12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL',
+                synchronizer: 'bob',
+            },
+            {
+                id: 1,
+                miner: '1CGB4JC7iaThXyv1j6PNFx7jUgRhFuPTmx',
+                synchronizer: 'bob',
+            },
+            {
+                id: 2,
+                miner: '1KGG9kvV5zXiqyQAMfY32sGt9eFLMmgpgX',
+                synchronizer: 'brian',
+            },
+        ])
+    })
+
+    it('updateheight: height is less than latest_produced_block_height, skipping update', async () => {
+        await contracts.poolreg.actions
+            .updateheight(['bob', 0, ['12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL']])
+            .send('utxomng.xsat@active')
+        expect(get_synchronizer('bob').latest_produced_block_height).toEqual(839999)
+    })
+
+    it('updateheight', async () => {
+        await contracts.poolreg.actions
+            .updateheight(['bob', 850000, ['12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL']])
+            .send('utxomng.xsat@active')
+        expect(get_synchronizer('bob').latest_produced_block_height).toEqual(850000)
+        expect(get_miners()).toEqual([
+            {
+                id: 0,
+                miner: '12KKDt4Mj7N5UAkQMN7LtPZMayenXHa8KL',
+                synchronizer: 'bob',
+            },
+            {
+                id: 1,
+                miner: '1CGB4JC7iaThXyv1j6PNFx7jUgRhFuPTmx',
+                synchronizer: 'bob',
+            },
+            {
+                id: 2,
+                miner: '1KGG9kvV5zXiqyQAMfY32sGt9eFLMmgpgX',
+                synchronizer: 'brian',
+            },
+        ])
+    })
 })
