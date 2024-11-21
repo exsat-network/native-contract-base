@@ -148,7 +148,7 @@ void block_sync::pushchunk(const name& synchronizer, const uint64_t height, cons
 
     auto status = block_bucket_itr->status;
     check(
-        status != verify_merkle && status != verify_parent_hash && status != verify_pass,
+        status == uploading || status == upload_complete || status == verify_fail,
         "2013:blksync.xsat::pushchunk: cannot push chunk in the current state [" + get_block_status_name(status) + "]");
 
     // fee deduction
@@ -184,6 +184,7 @@ void block_sync::pushchunk(const name& synchronizer, const uint64_t height, cons
         } else {
             row.status = uploading;
         }
+        row.updated_at = current_time_point();
     });
 
     // log
@@ -204,7 +205,7 @@ void block_sync::delchunk(const name& synchronizer, const uint64_t height, const
         xsat::utils::compute_block_id(height, hash), "2014:blksync.xsat::delchunk: [blockbuckets] does not exists");
 
     auto status = block_bucket_itr->status;
-    check(status != verify_merkle && status != verify_parent_hash && status != verify_pass,
+    check(status == uploading || status == upload_complete || status == verify_fail,
           "2015:blksync.xsat::delchunk: cannot delete chunk in the current state [" + get_block_status_name(status)
               + "]");
 
