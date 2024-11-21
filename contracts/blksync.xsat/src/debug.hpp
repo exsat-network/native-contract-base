@@ -122,3 +122,10 @@ void block_sync::forkblock(const name &synchronizer, const uint64_t height, cons
     }
     eosio::printhex(hash_data.data(), hash_data.size());
 }
+
+[[eosio::action]]
+uint32_t block_sync::getbits(uint32_t timestamp, const uint64_t p_height, const uint32_t p_timestamp,
+                             const uint32_t p_bits) {
+    auto parent_block = bitcoin::core::block{.height = p_height, .timestamp = p_timestamp, .bits = p_bits};
+    return bitcoin::core::get_next_work_required(parent_block, timestamp, utxo_manage::get_ancestor, CHAIN_PARAMS);
+}
