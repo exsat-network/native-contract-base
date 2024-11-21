@@ -4,7 +4,7 @@ const { BTC, BTC_CONTRACT } = require('./src/constants')
 const fs = require('fs')
 const path = require('path')
 
-const { decodeReturn_verify, max_chunk_size } = require('./src/help')
+const { decodeReturn_verify, max_chunk_size, addTime } = require('./src/help')
 
 // Vert EOS VM
 const blockchain = new Blockchain()
@@ -127,6 +127,12 @@ beforeAll(async () => {
         ])
         .send('poolreg.xsat@active')
 
+    await contracts.poolreg.actions.initpool(['brian', 839997, 'brian', []]).send('poolreg.xsat@active')
+
+    await contracts.poolreg.actions
+        .initpool(['anna', 839999, 'anna', ['1HeXKmczG6MdYi6jfs3RYSyBayRBETcFh1']])
+        .send('poolreg.xsat@active')
+
     await contracts.poolreg.actions.config(['bob', 0]).send('poolreg.xsat@active')
 
     // register validator
@@ -137,7 +143,7 @@ beforeAll(async () => {
     await contracts.endrmng.actions.regvalidator(['brian', 'brian', 2000]).send('brian@active')
 
     // init
-    await contracts.blkendt.actions.config([0, 0, 2, 860000, 0, "21000.00000000 XSAT"]).send('blkendt.xsat@active')
+    await contracts.blkendt.actions.config([0, 0, 2, 860000, 0, '21000.00000000 XSAT']).send('blkendt.xsat@active')
 
     // staking
     await contracts.btc.actions.transfer(['alice', 'staking.xsat', '100.00000000 BTC', 'alice']).send('alice@active')
@@ -668,5 +674,88 @@ describe('blksync.xsat', () => {
                 },
             },
         ])
+    })
+
+    it('delbucket: 840672', async () => {
+        const height = 840672
+        const hash = '00000000000000000001d2cbad2209f51143679b6797aef393a45e82eb88a9ae'
+        await contracts.blksync.actions.delbucket(['bob', height, hash]).send('bob@active')
+    })
+
+    it('reinitialize the bucket and push the chunk need to update updated_at', async () => {
+        const height = 840001
+        const hash = '00000000000000000001b48a75d5a3077913f3f441eb7e08c13c43f768db2463'
+
+        const block = read_block(height)
+        const block_size = block.length / 2
+        const num_chunks = Math.ceil(block.length / max_chunk_size)
+
+        await contracts.blksync.actions
+            .initbucket(['brian', height, hash, block_size, num_chunks, max_chunk_size])
+            .send('brian@active')
+        await pushUpload('brian', height, hash, block)
+        // 2823 txs
+        // 2048 txs per verify
+        // status == verify_merkle
+        await contracts.blksync.actions.verify(['brian', height, hash, get_nonce()]).send('brian@active')
+        expect(get_block_bucket('brian')[0].status).toEqual(3)
+        await expectToThrow(
+            contracts.blksync.actions
+                .initbucket(['brian', height, hash, block_size, num_chunks, max_chunk_size])
+                .send('brian@active'),
+            'eosio_assert_message: 2008:blksync.xsat::initbucket: cannot init bucket in the current state [verify_merkle]'
+        )
+
+        await expectToThrow(
+            contracts.blksync.actions.pushchunk(['brian', height, hash, 0, getChunk(block, 1)]).send('brian@active'),
+            'eosio_assert_message: 2013:blksync.xsat::pushchunk: cannot push chunk in the current state [verify_merkle]'
+        )
+
+        await expectToThrow(
+            contracts.blksync.actions.delchunk(['brian', height, hash, 0]).send('brian@active'),
+            'eosio_assert_message: 2015:blksync.xsat::delchunk: cannot delete chunk in the current state [verify_merkle]'
+        )
+
+        // status == verify_parent_hash
+        await contracts.blksync.actions.verify(['brian', height, hash, get_nonce()]).send('brian@active')
+        expect(get_block_bucket('brian')[0].status).toEqual(4)
+
+        await expectToThrow(
+            contracts.blksync.actions
+                .initbucket(['brian', height, hash, block_size, num_chunks, max_chunk_size])
+                .send('brian@active'),
+            'eosio_assert_message: 2008:blksync.xsat::initbucket: cannot init bucket in the current state [verify_parent_hash]'
+        )
+
+        await expectToThrow(
+            contracts.blksync.actions.pushchunk(['brian', height, hash, 0, getChunk(block, 1)]).send('brian@active'),
+            'eosio_assert_message: 2013:blksync.xsat::pushchunk: cannot push chunk in the current state [verify_parent_hash]'
+        )
+
+        await expectToThrow(
+            contracts.blksync.actions.delchunk(['brian', height, hash, 0]).send('brian@active'),
+            'eosio_assert_message: 2015:blksync.xsat::delchunk: cannot delete chunk in the current state [verify_parent_hash]'
+        )
+
+        // status == waiting_miner_verification
+        await contracts.blksync.actions.verify(['brian', height, hash, get_nonce()]).send('brian@active')
+        expect(get_block_bucket('brian')[0].status).toEqual(5)
+
+        await expectToThrow(
+            contracts.blksync.actions
+                .initbucket(['brian', height, hash, block_size, num_chunks, max_chunk_size])
+                .send('brian@active'),
+            'eosio_assert_message: 2008:blksync.xsat::initbucket: cannot init bucket in the current state [waiting_miner_verification]'
+        )
+
+        await expectToThrow(
+            contracts.blksync.actions.pushchunk(['brian', height, hash, 0, getChunk(block, 1)]).send('brian@active'),
+            'eosio_assert_message: 2013:blksync.xsat::pushchunk: cannot push chunk in the current state [waiting_miner_verification]'
+        )
+
+        await expectToThrow(
+            contracts.blksync.actions.delchunk(['brian', height, hash, 0]).send('brian@active'),
+            'eosio_assert_message: 2015:blksync.xsat::delchunk: cannot delete chunk in the current state [waiting_miner_verification]'
+        )
     })
 })
