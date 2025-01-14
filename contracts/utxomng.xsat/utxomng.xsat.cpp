@@ -61,6 +61,9 @@ void utxo_manage::addutxo(const uint64_t id, const checksum256& txid, const uint
                           const vector<uint8_t>& scriptpubkey, const uint64_t value) {
     require_auth(get_self());
 
+    auto chain_state = _chain_state.get_or_default();
+    check(chain_state.head_height <= START_HEIGHT, "utxomng.xsat::addutxo: height must be less than or equal to 839999");
+
     auto utxo_idx = _utxo.get_index<"byutxoid"_n>();
     auto utxo_itr = utxo_idx.find(xsat::utils::compute_utxo_id(txid, index));
     if (utxo_itr == utxo_idx.end()) {
@@ -71,7 +74,6 @@ void utxo_manage::addutxo(const uint64_t id, const checksum256& txid, const uint
             row.scriptpubkey = scriptpubkey;
             row.value = value;
         });
-        auto chain_state = _chain_state.get_or_default();
         chain_state.num_utxos += 1;
         _chain_state.set(chain_state, get_self());
     } else {
@@ -87,10 +89,12 @@ void utxo_manage::addutxo(const uint64_t id, const checksum256& txid, const uint
 void utxo_manage::delutxo(const uint64_t id) {
     require_auth(get_self());
 
+    auto chain_state = _chain_state.get_or_default();
+    check(chain_state.head_height <= START_HEIGHT, "utxomng.xsat::delutxo: height must be less than or equal to 839999");
+
     auto& utxo = _utxo.get(id, "utxomng.xsat::delutxo: [utxos] does not exist");
     _utxo.erase(utxo);
 
-    auto chain_state = _chain_state.get_or_default();
     chain_state.num_utxos -= 1;
     _chain_state.set(chain_state, get_self());
 }

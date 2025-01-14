@@ -14,7 +14,7 @@ namespace bitcoin::core {
     uint32_t calculate_next_work_required(const block& prev_block, const uint32_t first_block_time,
                                           GetAncestor get_ancestor, const bitcoin::core::Params& params) {
         // Limit adjustment step
-        int64_t actual_timespan = prev_block.timestamp - first_block_time;
+        int64_t actual_timespan = (int64_t)prev_block.timestamp - (int64_t)first_block_time;
 
         if (actual_timespan < params.pow_target_timespan / 4)
             actual_timespan = params.pow_target_timespan / 4;

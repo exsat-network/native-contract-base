@@ -556,6 +556,9 @@ class [[eosio::contract("blksync.xsat")]] block_sync : public contract {
     [[eosio::action]]
     void forkblock(const name &synchronizer, const uint64_t height, const checksum256 &hash, const name &account,
                    const uint32_t nonce);
+
+    [[eosio::action]]
+    uint32_t getbits(uint32_t timestamp, const uint64_t p_height, const uint32_t p_timestamp, const uint32_t p_bits);
 #endif
 
     // logs

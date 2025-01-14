@@ -36,8 +36,8 @@ namespace bitcoin::core {
         bool pow_allow_min_difficulty_blocks;
         bool enforce_BIP94;
         bool pow_no_retargeting;
-        uint64_t pow_target_spacing;
-        uint64_t pow_target_timespan;
+        int64_t pow_target_spacing;
+        int64_t pow_target_timespan;
 
         std::vector<unsigned char> base58Prefixes[MAX_BASE58_TYPES];
         std::string bech32_hrp;
