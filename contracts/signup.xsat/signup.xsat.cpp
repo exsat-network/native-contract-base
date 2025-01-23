@@ -96,11 +96,12 @@ void signup::on_transfer(const name& from, const name& to, const asset& quantity
     };
 
     authority active = {.threshold = 1, .keys = {pubkey_weight_a}, .accounts = {}, .waits = {}};
-    newaccount new_account = {.creator = _self, .name = new_account_name, .owner = owner, .active = active};
-    permission_level self_active = {get_self(), name("active")};
+    newaccount new_account = {.creator = SUFFIX, .name = new_account_name, .owner = owner, .active = active};
+    permission_level self_active = {_self, name("active")};
+    permission_level suffix_active = {SUFFIX, name("active")};
 
     // Create new account
-    action(self_active, EOSIO, name("newaccount"), new_account).send();
+    action(suffix_active, EOSIO, name("newaccount"), new_account).send();
 
     config_row config = _config.get_or_default();
 
