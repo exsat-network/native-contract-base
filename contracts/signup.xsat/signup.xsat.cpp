@@ -51,8 +51,14 @@ void signup::on_transfer(const name& from, const name& to, const asset& quantity
 
     auto parts = xsat::utils::split(memo, "-");
     check(parts.size() >= 2, "invalid memo ex: <account_name>-<owner_key>-<active_key>");
+
     std::string account_name_str = parts[0];
-    check(account_name_str.length() <= 12, "invalid account name");
+    auto name_size = account_name_str.size();
+    check(name_size >= 5 && name_size <= 12, "invalid account name");
+    if (account_name_str.compare(name_size - 4, 4, "." + SUFFIX.to_string()) != 0) {
+        check(name_size == 12, "account name must end with the suffix ." + SUFFIX.to_string());
+    }
+
     name new_account_name = name(account_name_str);
     check(!is_account(new_account_name), "account name already exists");
 
