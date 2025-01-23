@@ -15,7 +15,7 @@ class [[eosio::contract("signup.xsat")]] signup : public contract {
    public:
     using contract::contract;
     static constexpr name EOSIO = "eosio"_n;
-    static constexpr name SUFFIX = "sao"_n;
+    static constexpr name SUFFIX = "sat"_n;
     static constexpr symbol EOS_SYMBOL = symbol("EOS", 4);
 
     [[eosio::action]]
