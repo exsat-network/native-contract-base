@@ -1231,7 +1231,7 @@ void endorse_manage::evmregvldtor(const name& validator, const uint32_t role, co
 
     // log
     endorse_manage::regvldtorlog_action _validatorlog(get_self(), {get_self(), "active"_n});
-    _validatorlog.send(caller, validator, role, stake_addr, reward_addr, commission_rate);
+    _validatorlog.send(validator, role, stake_addr, reward_addr, commission_rate);
 }
 
 //@auth validator

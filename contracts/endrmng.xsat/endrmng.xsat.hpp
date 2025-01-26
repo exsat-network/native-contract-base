@@ -1246,7 +1246,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
     }
 
     [[eosio::action]]
-    void regvldtorlog(const name& caller, const name& validator, const uint32_t role, const checksum160& stake_addr,
+    void regvldtorlog(const name& validator, const uint32_t role, const checksum160& stake_addr,
                       const optional<checksum160>& reward_addr, const optional<uint16_t>& commission_rate) {
         require_auth(get_self());
     }
