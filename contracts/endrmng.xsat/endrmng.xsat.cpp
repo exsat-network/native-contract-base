@@ -1172,14 +1172,10 @@ uint64_t endorse_manage::next_staking_id() {
 ///
 //@auth validator
 [[eosio::action]]
-void endorse_manage::evmregvldtor(const name& caller, const name& validator, const uint32_t role, const checksum160& stake_addr,
+void endorse_manage::evmregvldtor(const name& validator, const uint32_t role, const checksum160& stake_addr,
                                   const optional<checksum160>& reward_addr, const optional<uint16_t>& commission_rate) {
 
-    require_auth(caller);
-
-    // Check WhiteList caller
-    whitelist_table _whitelist(get_self(), "regvalidator"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::newregvalidator: whitelist account does not exist");
+    require_auth(validator);
 
     check(commission_rate <= RATE_BASE_10000,
           "endrmng.xsat::newregvalidator: commission_rate must be less than or equal to " + std::to_string(RATE_BASE_10000));

@@ -1216,7 +1216,7 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
 #endif
     // v2
     [[eosio::action]]
-    void evmregvldtor(const name& caller, const name& validator, const uint32_t role, const checksum160& stake_addr,
+    void evmregvldtor(const name& validator, const uint32_t role, const checksum160& stake_addr,
                       const optional<checksum160>& reward_addr, const optional<uint16_t>& commission_rate);
 
     [[eosio::action]]
