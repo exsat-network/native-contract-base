@@ -164,7 +164,7 @@ void block_endorse::endorse(const name& validator, const uint64_t height, const 
             auto other_endorsement_itr = other_endorsement_idx.find(hash);
 
             // xsat consensus & btc consensus need same and
-            if (other_endorsement_itr->num_reached_consensus() > endorsement_itr->provider_validators.size()) {
+            if (other_endorsement_itr == other_endorsement_idx.end() || other_endorsement_itr->num_reached_consensus() > endorsement_itr->provider_validators.size()) {
 
                 return;
             }

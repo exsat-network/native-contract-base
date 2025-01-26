@@ -159,7 +159,11 @@ void reward_distribution::endtreward(const uint64_t height, uint32_t from_index,
     endtreward_per_symbol(height, from_index, to_index, true, _btc_reward_log, _btc_reward_balance);
 
     // XSAT consensus reward
-    endtreward_per_symbol(height, from_index, to_index, false, _xsat_reward_log, _xsat_reward_balance);
+    // TODO:  
+    auto itr = _xsat_reward_log.find(height);
+    if (itr != _xsat_reward_log.end()) {
+        endtreward_per_symbol(height, from_index, to_index, false, _xsat_reward_log, _xsat_reward_balance);
+    }
 }
 
 [[eosio::action]]
