@@ -1236,16 +1236,8 @@ void endorse_manage::evmregvldtor(const name& validator, const uint32_t role, co
 
 //@auth validator
 [[eosio::action]]
-void endorse_manage::evmconfigvald(const name& caller, const checksum160& proxy, const name& validator,
-                                   const uint16_t commission_rate, const uint16_t donate_rate) {
-    require_auth(caller);
-
-    evm_proxy_table _evm_proxy = evm_proxy_table(get_self(), caller.value);
-    auto evm_proxy_idx = _evm_proxy.get_index<"byproxy"_n>();
-    evm_proxy_idx.require_find(xsat::utils::compute_id(proxy), "endrmng.xsat::evmconfigvald: [evmproxies] does not exist");
-
-    whitelist_table _whitelist(get_self(), "regvalidator"_n.value);
-    _whitelist.require_find(caller.value, "endrmng.xsat::evmconfigvald: caller is not in the `evmcaller` whitelist");
+void endorse_manage::evmconfigvald(const name& validator, const uint16_t commission_rate, const uint16_t donate_rate) {
+    require_auth(validator);
 
     auto validator_itr = _validator.require_find(validator.value, "endrmng.xsat::evmconfigvald: [validators] does not exists");
 
@@ -1256,17 +1248,10 @@ void endorse_manage::evmconfigvald(const name& caller, const checksum160& proxy,
 }
 
 [[eosio::action]]
-void endorse_manage::evmsetstaker(const name& caller, const checksum160& proxy, const name& validator, const checksum160& sender,
-                                  const checksum160& stake_addr) {
-    require_auth(caller);
+void endorse_manage::evmsetstaker(const name& validator, const checksum160& stake_addr) {
+    require_auth(validator);
 
     auto validator_itr = _validator.require_find(validator.value, "endrmng.xsat::evmsetstaker: [validators] does not exists");
-
-    if (validator_itr->stake_address.has_value()) {
-
-        check(sender == validator_itr->stake_address.value(),
-              "endrmng.xsat::evmsetstaker: sender must be the same as the validator's stake address");
-    }
 
     check(validator_itr->qualification.amount == 0, "endrmng.xsat::evmsetstaker: the validator's qualification must be 0");
 

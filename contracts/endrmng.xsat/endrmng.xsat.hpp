@@ -1220,12 +1220,10 @@ class [[eosio::contract("endrmng.xsat")]] endorse_manage : public contract {
                       const optional<checksum160>& reward_addr, const optional<uint16_t>& commission_rate);
 
     [[eosio::action]]
-    void evmconfigvald(const name& caller, const checksum160& proxy, const name& validator, const uint16_t commission_rate,
-                       const uint16_t donate_rate);
+    void evmconfigvald(const name& validator, const uint16_t commission_rate, const uint16_t donate_rate);
 
     [[eosio::action]]
-    void evmsetstaker(const name& caller, const checksum160& proxy, const name& validator, const checksum160& sender,
-                      const checksum160& stake_addr);
+    void evmsetstaker(const name& validator, const checksum160& stake_addr);
 
     [[eosio::action]]
     void updatexsat(const bool is_open);
