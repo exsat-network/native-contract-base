@@ -172,18 +172,6 @@ class [[eosio::contract("rwddist.xsat")]] reward_distribution : public contract 
     };
     typedef eosio::singleton<"rewardconfig"_n, reward_config_row> reward_config_table;
 
-    // consensus_config_row from ENDORSER_MANAGE_CONTRACT contract
-    struct consensus_config_row { 
-        uint16_t version = 1; 
-        asset xsat_base_stake;
-        asset btc_base_stake;
-        uint32_t flags = 0; 
-        enum _ { xsat_consensus_mask = 0x00000001 }; 
-        uint8_t validator_active_vote_count = 0; 
-        uint8_t synchronizer_revote_confirm_count = 2; 
-    };
-    typedef eosio::singleton<"consconfig"_n, consensus_config_row> consensus_config_table;
-
     /**
      * ## ACTION `distribute`
      *

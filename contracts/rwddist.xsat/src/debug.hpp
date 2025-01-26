@@ -52,11 +52,11 @@ void reward_distribution::setstate(uint64_t height, name miner, name synchronize
             row.id = _endorsement.available_primary_key();
             row.hash = chain_state.migrating_hash;
             row.provider_validators.resize(provider_validators.size());
-            for (size_t i = 0; i < num_validators; ++i) {
-                row.provider_validators[i].account = provider_validators[i];
-                row.provider_validators[i].staking = staking;
-                row.provider_validators[i].created_at = time_point_sec();
-            }
+            // for (size_t i = 0; i < num_validators; ++i) {
+            //     row.provider_validators[i].account = provider_validators[i];
+            //     row.provider_validators[i].staking = staking;
+            //     row.provider_validators[i].created_at = time_point_sec();
+            // }
         });
     }
 }

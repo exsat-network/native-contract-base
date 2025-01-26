@@ -1,17 +1,18 @@
 #pragma once
 
 #include <eosio/asset.hpp>
+#include <eosio/crypto.hpp>
 #include <eosio/eosio.hpp>
 #include <eosio/singleton.hpp>
-#include <eosio/crypto.hpp>
 #include "../internal/defines.hpp"
 #include "../internal/utils.hpp"
+
 
 using namespace eosio;
 using namespace std;
 
 class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
-   public:
+  public:
     using contract::contract;
 
     /**
@@ -20,9 +21,12 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      * ### scope `get_self()`
      * ### params
      *
-     * - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
-     * - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
-     * - `{uint16_t} min_validators` - the minimum number of validators, which limits the number of validators that pledge more than 100 BTC at the time of first endorsement.
+     * - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater
+     * than this height, endorsement will not be allowed.
+     * - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed
+     * height. If it is 0, there will be no limit.
+     * - `{uint16_t} min_validators` - the minimum number of validators, which limits the number of validators that pledge more
+     * than 100 BTC at the time of first endorsement.
      * - `{uint16_t} consensus_interval_seconds` - the interval in seconds between consensus rounds.
      * - `{uint64_t} xsat_stake_activation_height` - block height at which XSAT staking feature is activated
      * - `{asset} min_xsat_qualification` - the minimum pledge amount of xast to become a validator
@@ -128,10 +132,16 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
         checksum256 hash;
         std::vector<requested_validator_info> requested_validators;
         std::vector<provider_validator_info> provider_validators;
-        uint64_t primary_key() const { return id; }
-        checksum256 by_hash() const { return hash; }
+        uint64_t primary_key() const {
+            return id;
+        }
+        checksum256 by_hash() const {
+            return hash;
+        }
 
-        uint16_t num_validators() const { return requested_validators.size() + provider_validators.size(); }
+        uint16_t num_validators() const {
+            return requested_validators.size() + provider_validators.size();
+        }
 
         uint64_t num_reached_consensus() const {
             return xsat::utils::num_reached_consensus(requested_validators.size() + provider_validators.size());
@@ -155,12 +165,15 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      *
      * ### params
      *
-     * - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater than this height, endorsement will not be allowed.
-     * - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed height. If it is 0, there will be no limit. 
-     * - `{uint16_t} min_validators` - the minimum number of validators, which limits the number of validators that pledge more than 100 BTC at the time of first endorsement.
+     * - `{uint64_t} limit_endorse_height` - limit the endorsement height. If it is 0, there will be no limit. If it is greater
+     * than this height, endorsement will not be allowed.
+     * - `{uint16_t} limit_num_endorsed_blocks` - limit the endorsement height to no more than the number of blocks of the parsed
+     * height. If it is 0, there will be no limit.
+     * - `{uint16_t} min_validators` - the minimum number of validators, which limits the number of validators that pledge more
+     * than 100 BTC at the time of first endorsement.
      * - `{uint64_t} xsat_stake_activation_height` - block height at which XSAT staking feature is activated
      * - `{uint16_t} consensus_interval_seconds` - the interval in seconds between consensus rounds.
-     * - `{asset} min_xsat_qualification` - the minimum pledge amount of xast to become a validator 
+     * - `{asset} min_xsat_qualification` - the minimum pledge amount of xast to become a validator
      *
      * ### example
      *
@@ -169,9 +182,9 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      * ```
      */
     [[eosio::action]]
-    void config(const uint64_t limit_endorse_height, const uint16_t limit_num_endorsed_blocks,
-                const uint16_t min_validators, const uint64_t xsat_stake_activation_height,
-                const uint16_t consensus_interval_seconds, const asset& min_xsat_qualification);
+    void config(const uint64_t limit_endorse_height, const uint16_t limit_num_endorsed_blocks, const uint16_t min_validators,
+                const uint64_t xsat_stake_activation_height, const uint16_t consensus_interval_seconds,
+                const asset& min_xsat_qualification);
 
     /**
      * ## ACTION `endorse`
@@ -189,7 +202,8 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
      * ### example
      *
      * ```bash
-     * $ cleos push action blkendt.xsat endorse '["alice", 840000, "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
+     * $ cleos push action blkendt.xsat endorse '["alice", 840000,
+     * "0000000000000000000320283a032748cef8227873ff4872689bf23f1cda83a5"]' -p alice
      * ```
      */
     [[eosio::action]]
@@ -222,14 +236,14 @@ class [[eosio::contract("blkendt.xsat")]] block_endorse : public contract {
 
     using erase_action = eosio::action_wrapper<"erase"_n, &block_endorse::erase>;
 
-   private:
-    std::vector<requested_validator_info> get_valid_validator_by_btc_stake();
+  private:
+    std::vector<requested_validator_info> get_valid_validator_by_btc_stake(const uint64_t min_btc_qualification);
     std::vector<requested_validator_info> get_valid_validator_by_xsat_stake(const uint64_t min_xsat_qualification);
 
 #ifdef DEBUG
     template <typename T>
     void clear_table(T& table, uint64_t rows_to_clear);
 #endif
-   private:
+  private:
     config_table _config = config_table(_self, _self.value);
 };
